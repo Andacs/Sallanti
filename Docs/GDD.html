@@ -483,7 +483,8 @@ AmbientSway = sin(t × 2π / SwayPeriod) × SwayAmplitude</pre>
             <tr><td>FOV</td><td class="n">30°</td></tr>
             <tr><td>Yaw</td><td class="n">45°</td></tr>
             <tr><td>Pitch</td><td class="n">−35°</td></tr>
-            <tr><td>Mesafe</td><td class="n">1400 cm</td></tr>
+            <tr><td>Mesafe</td><td class="n">2200 cm</td></tr>
+            <tr><td>Bakış noktası</td><td class="n">+40 cm Z</td></tr>
           </tbody>
         </table></div>
         <div class="tbl"><table>
@@ -498,6 +499,7 @@ AmbientSway = sin(t × 2π / SwayPeriod) × SwayAmplitude</pre>
         </table></div>
       </div>
       <p>Sabit izometrik, döndürme ve zoom yok. Platform eğilince kamera eğilmez. Girdi Enhanced Input.</p>
+      <p class="note">Spec mesafeyi 1400 cm veriyordu. Ölçüldü: 16:9 kadrajda 600 cm'lik platform dikeyde %153 taşıyor. 2200 cm'de platform kadrajın %87'sini kaplıyor ve kulelere pay kalıyor.</p>
     </section>
 
     <section class="card" id="siniflar">
@@ -522,6 +524,7 @@ AmbientSway = sin(t × 2π / SwayPeriod) × SwayAmplitude</pre>
         <tbody>
           <tr><td>Platform</td><td><code>TiltPerCm</code></td><td class="n">0.04 °/cm</td><td>CoM ofseti → eğim</td></tr>
           <tr><td>Platform</td><td><code>MaxTilt</code></td><td class="n">12°</td><td>Eğim üst sınırı</td></tr>
+          <tr><td>Platform</td><td><code>PlatformMass</code></td><td class="n">0</td><td>Platformun kendi kütlesi. 0'da ilk kutu tek başına tam eğim verir; büyüdükçe yük birikerek eğer</td></tr>
           <tr><td>Platform</td><td><code>TiltSpeed</code></td><td class="n">25 °/sn</td><td>Hedefe yaklaşma hızı</td></tr>
           <tr><td>Platform</td><td><code>SwayAmplitude</code></td><td class="n">1.5°</td><td>Dünya sallanması</td></tr>
           <tr><td>Platform</td><td><code>SwayPeriod</code></td><td class="n">4.0 sn</td><td>Sallanma periyodu</td></tr>
@@ -531,6 +534,8 @@ AmbientSway = sin(t × 2π / SwayPeriod) × SwayAmplitude</pre>
           <tr><td>Platform</td><td><code>FailZ</code></td><td class="n">−200 cm</td><td>Altı kayıp</td></tr>
           <tr><td>Placeable</td><td><code>Mass</code></td><td class="n">1.0</td><td>Dengeye katkı</td></tr>
           <tr><td>Placeable</td><td><code>GridSize</code></td><td class="n">50 cm</td><td>Izgara adımı</td></tr>
+          <tr><td>Build</td><td><code>Slots</code></td><td class="n">1·2·8·12</td><td>4 slotun kütlesi: kutu, orta nesne, küçük bina, orta bina (hacimle orantılı)</td></tr>
+          <tr><td>Build</td><td><code>GhostOpacity</code></td><td class="n">0.6</td><td>Hayaletin saydamlığı</td></tr>
           <tr><td>GameMode</td><td><code>TargetObjectCount</code></td><td class="n">12</td><td>Kazanma nesne sayısı</td></tr>
           <tr><td>GameMode</td><td><code>RoundSeconds</code></td><td class="n">120</td><td>Tur üst sınırı</td></tr>
         </tbody>

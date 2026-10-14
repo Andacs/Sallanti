@@ -134,8 +134,23 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
 ## Bilinen durum
 
 **Çalışıyor ve ekranda görüldü:** boş proje paketi (Shipping) açılıyor, `L_Ana` ışık/atmosfer
-görünüyor · temiz klon derleniyor ve editör açılıyor
+görünüyor · temiz klon derleniyor ve editör açılıyor · **uygulama sırası 1–6** (14 Ekim, `SLSelfTest`
+ile ölçüldü ve ekran görüntüsüyle görüldü): izometrik kamera, sallanma, hayalet, ızgara + geçerlilik
+rengi, yerleştirme + istif, CoM → eğim. Gerçek fare ışını da ölçüldü.
 
 **Derlendi, ekranda görülmedi:** —  ← 2'yi geçerse yeni özellik durur
 
 **Bozuk:** —
+
+**Gözlemler (6. adım kararı için):**
+- Spec formülü CoM = Σ(m·r)/Σm kütleden bağımsız: kenara konan **tek bir kutu** eğimi anında ~9°'ye
+  çıkarıyor. `ASLPlatform::PlatformMass` bunu yumuşatır (0 = spec). Oynayarak dene: 0, 10, 30.
+- `TiltSpeed` 25 °/sn → eğim 0,4 sn'de oturuyor; "ağır" değil "atik" hissettiriyor.
+- Platform kraft kahvesi değil krem görünüyor (otomatik pozlama); hayaletin yeşili bu yüzden soluk.
+  Mert'in lighting işi — kodla düzeltilmedi.
+- Kamera spec'te 1400 cm'di; ölçüldü, 600 cm'lik platform sığmıyordu → 2200.
+
+**Oynamak / ölçmek:** `Build\oyna.bat`. Konsolda (`~`) `SLSelfTest` 1–6'yı otomatik ölçer, ekran
+görüntüleri `Saved/Screenshots/WindowsEditor/SL_*.png`; `SLReport` anlık eğim/CoM'u loga yazar.
+Git Bash'ten UE çalıştırırken `/Game/...` yolu için `MSYS_NO_PATHCONV=1` gerekir — ama bu değişken
+`cmd //c` çağrısını bozar (bat hiç çalışmaz, eski DLL'le test edilir). İkisini aynı komutta kullanma.
