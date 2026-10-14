@@ -74,22 +74,31 @@ Binary asset'ler Git LFS'ten geçiyor — `.gitattributes`'a bak. Pointer olduğ
 Editör **kapalı** olmalı (Live Coding kilidi). `Build\derle.bat`:
 
 ```
-"C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat" SallantiEditor Win64 Development -project="C:/Dev/Sallanti/Sallanti.uproject" -waitmutex -NoXGE -MaxParallelActions=2
+"C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat" SallantiEditor Win64 Development -project="<repo>\Sallanti.uproject" -waitmutex -NoXGE -MaxParallelActions=2
 ```
 
 `-NoXGE -MaxParallelActions=2` bu makinede şart; normal derleme PCH için sanal bellek
-oluşturamıyor. Boş projenin ilk derlemesi: **70 sn.**
+oluşturamıyor. Bat dosyası proje yolunu kendi konumundan bulur, repo nereye klonlanırsa çalışır.
+Boş projenin ilk derlemesi: **70 sn** (temiz klonda 67 sn). Editörün soğuk açılışı: **97 sn.**
 
 ## Paketleme
 
 Editör kapalı. `Build\paketle.bat`:
 
 ```
-"C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun -project="C:/Dev/Sallanti/Sallanti.uproject" -noP4 -platform=Win64 -clientconfig=Shipping -build -cook -stage -pak -archive -archivedirectory="C:/Dev/Sallanti/Build/Package" -utf8output -unattended -ubtargs="-NoXGE -MaxParallelActions=2"
+"C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun -project="<repo>\Sallanti.uproject" -noP4 -platform=Win64 -clientconfig=Shipping -build -cook -stage -pak -archive -archivedirectory="<repo>\Build\Package" -utf8output -unattended -ubtargs="-NoXGE -MaxParallelActions=2"
 ```
 
-Ölçülen süre (boş proje, ilk paket): **PAKET_SURESI.** Teslim konfigürasyonu: **Shipping.**
-Çıktı: `Build\Package\Windows\Sallanti.exe`
+Ölçülen süre (boş proje): **117 sn** sıcak (derleme ve shader önbelleği hazırken). Soğuk ilk
+deneme takılmadan önce ~19 dakikaya varmıştı; jam'de ilk paketi **en az 30 dakika** bütçeleyin.
+Teslim konfigürasyonu: **Shipping.** Çıktı: `Build\Package\Windows\Sallanti.exe` (boş proje 639 MB).
+14 Ekim'de paket açıldı, `L_Ana` ekranda görüldü.
+
+**XGE kapalı tutulmalı.** `Sallanti.uproject`'te `XGEController` eklentisi kapalı,
+`DefaultEngine.ini`'de `r.XGEShaderCompile=0`. Açıkken cook işini bitirip kapanışta
+"Exiting ShaderCompilingThread" satırında **2,5 saat asılı kaldı**; logdaki tek iz
+`Ensure condition failed: GetShadowIndex() == 0` (XGEControllerModule, named pipe). Paket logu
+10 dakika yazılmıyorsa asılmıştır, beklemeyin.
 
 ---
 
@@ -124,7 +133,8 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
 
 ## Bilinen durum
 
-**Çalışıyor ve ekranda görüldü:** —
+**Çalışıyor ve ekranda görüldü:** boş proje paketi (Shipping) açılıyor, `L_Ana` ışık/atmosfer
+görünüyor · temiz klon derleniyor ve editör açılıyor
 
 **Derlendi, ekranda görülmedi:** —  ← 2'yi geçerse yeni özellik durur
 
