@@ -48,6 +48,10 @@ public:
 	UFUNCTION(Exec)
 	void SLKnobs();
 
+	/** Adim 7 olcumu: egimi kademeli artirir, esikte birakmayi ve dokulmeyi kaydeder. Sonda cikar. */
+	UFUNCTION(Exec)
+	void SLTest7();
+
 	/** Uygulama sirasi 1-6'yi sirayla calistirir; her adimda ekran goruntusu + SL_REPORT. Sonda cikar. */
 	UFUNCTION(Exec)
 	void SLSelfTest();
@@ -73,6 +77,7 @@ private:
 	TArray<UObject*> GetKnobTargets() const;
 
 	void SelfTestStep();
+	void Test7Step();
 	void MouseAtLocal(int32 Slot, const FVector& Local);
 	void LogGhost(const TCHAR* Label);
 	void Shot(const TCHAR* Name);

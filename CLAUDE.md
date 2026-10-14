@@ -136,13 +136,23 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
 **Çalışıyor ve ekranda görüldü:** boş proje paketi (Shipping) açılıyor, `L_Ana` ışık/atmosfer
 görünüyor · temiz klon derleniyor ve editör açılıyor · **uygulama sırası 1–6** (14 Ekim, `SLSelfTest`
 ile ölçüldü ve ekran görüntüsüyle görüldü): izometrik kamera, sallanma, hayalet, ızgara + geçerlilik
-rengi, yerleştirme + istif, CoM → eğim. Gerçek fare ışını da ölçüldü.
+rengi, yerleştirme + istif, CoM → eğim. Gerçek fare ışını da ölçüldü. · **adım 7** (`SLTest7`): eğim
+ReleaseTilt'i geçince bağlı her şey fiziğe bırakılıyor, alçak kenara kayıyor, eğimi artırıp dökülüyor.
 
 **Derlendi, ekranda görülmedi:** —  ← 2'yi geçerse yeni özellik durur
 
 **Bozuk:** —
 
-**Gözlemler (6. adım kararı için):**
+**Gözlemler (6–7. adım):**
+- Motorun varsayılan sürtünmesi (0,7 → 35°'de kayma) 8–12°'lik platformda hiçbir şeyi kaydırmıyordu.
+  Bırakılan nesnelere `ReleasedFriction` 0,1 (≈5,7°) veriliyor, birleştirme `Min`.
+- Bırakılan nesne yüzeyin üstünde ve kenardan en fazla bir hücre dışarıdaysa ağırlık yapmaya devam eder
+  (`bReleasedStillWeigh`); kaydıkça eğim artar. Merkezi kenarı geçince düşmüş sayınca platform,
+  binalar daha kenardayken düzeliyordu — ölçülüp düzeltildi.
+- `PlatformMass` 0'ken kenara konan tek kutu 9° verir → **ilk kenar yerleşiminde her şey bırakılır.**
+  Bu, kararın en önemli düğmesi.
+- Sallanma ±1,5° ekler: hedef eğim 6,5°'deyken bile sallanma tepesinde bırakma olur.
+- Bırakılmış nesneler ızgara istifine sayılmıyor; üstüne hayalet konursa iç içe doğabilir (adım 8'de bak).
 - Spec formülü CoM = Σ(m·r)/Σm kütleden bağımsız: kenara konan **tek bir kutu** eğimi anında ~9°'ye
   çıkarıyor. `ASLPlatform::PlatformMass` bunu yumuşatır (0 = spec). Oynayarak dene: 0, 10, 30.
 - `TiltSpeed` 25 °/sn → eğim 0,4 sn'de oturuyor; "ağır" değil "atik" hissettiriyor.
@@ -165,7 +175,7 @@ Izgara yerleştirirken görünür.
 
 Konsol (`~`): `SLKnobs` bütün ayarları listeler, `SLSet <Ad> <Değer>` derlemeden değiştirir
 (`SLSet PlatformMass 10`, `SLSet TiltSpeed 8`, `SLSet Distance 2600`). Kalıcı değildir: beğenilen
-değer koddaki varsayılana ya da Blueprint alt sınıfına yazılır. `SLSelfTest` 1–6'yı otomatik ölçer,
+değer koddaki varsayılana ya da Blueprint alt sınıfına yazılır. `SLSelfTest` 1–6.yı, `SLTest7` bırakmayı otomatik ölçer,
 ekran görüntüleri `Saved/Screenshots/WindowsEditor/SL_*.png`; `SLReport` anlık eğim/CoM'u loga yazar.
 
 Spec çakışması: kesme listesi "R ile yeniden başlat" diyor, girdi tablosu R'yi döndürmeye veriyor.

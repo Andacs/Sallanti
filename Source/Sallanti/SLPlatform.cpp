@@ -4,6 +4,7 @@
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "PhysicalMaterials/PhysicalMaterial.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/Engine.h"
 #include "Engine/StaticMesh.h"
@@ -104,21 +105,57 @@ void ASLPlatform::RegisterPlaceable(ASLPlaceable* Placeable)
 	}
 }
 
+bool ASLPlatform::IsOnDeck(const FVector& WorldCenter, FVector& OutLocal) const
+{
+	// Merkezi kenari gecmis ama hala kenarda asili duran nesne dusmus degildir (olculdu: merkez kenari
+	// gecip "dustu" sayilinca platform, binalar daha kenardayken duzeliyordu). Yuzeyin ustunde ve kenardan
+	// en fazla bir hucre disarida kaldikca platformda sayilir; agirligi kenara kirpilir (destek noktasi).
+	OutLocal = TiltPivot->GetComponentTransform().InverseTransformPosition(WorldCenter);
+	const float Reach = HalfExtent + GridSize;
+	const bool bOn = OutLocal.Z > 0.f && FMath::Abs(OutLocal.X) <= Reach && FMath::Abs(OutLocal.Y) <= Reach;
+	OutLocal.X = FMath::Clamp(OutLocal.X, -HalfExtent, HalfExtent);
+	OutLocal.Y = FMath::Clamp(OutLocal.Y, -HalfExtent, HalfExtent);
+	return bOn;
+}
+
 void ASLPlatform::RecomputeCenterOfMass()
 {
 	FVector2D Weighted = FVector2D::ZeroVector;
 	float Mass = 0.f;
+	int32 Released = 0, OnDeck = 0, Fallen = 0;
 	for (const TWeakObjectPtr<ASLPlaceable>& Weak : Placeables)
 	{
 		const ASLPlaceable* P = Weak.Get();
-		if (!P || P->GetAttachParentActor() != this)
+		if (!P)
 		{
-			continue; // fizige birakilmis ya da yok olmus: dengeye katilmaz
+			continue; // geri alinmis
 		}
-		const FVector Rel = P->GetRootComponent()->GetRelativeLocation();
-		Weighted += P->Mass * FVector2D(Rel.X, Rel.Y);
-		Mass += P->Mass;
+		if (!P->IsReleased())
+		{
+			const FVector Rel = P->GetRootComponent()->GetRelativeLocation();
+			Weighted += P->Mass * FVector2D(Rel.X, Rel.Y);
+			Mass += P->Mass;
+			continue;
+		}
+		++Released;
+		FVector Local;
+		if (IsOnDeck(P->GetBodyCenter(), Local))
+		{
+			++OnDeck;
+			if (bReleasedStillWeigh)
+			{
+				Weighted += P->Mass * FVector2D(Local.X, Local.Y);
+				Mass += P->Mass;
+			}
+		}
+		else
+		{
+			++Fallen;
+		}
 	}
+	ReleasedCount = Released;
+	ReleasedOnDeck = OnDeck;
+	FallenCount = Fallen;
 	TotalMass = Mass;
 	const float Denominator = Mass + PlatformMass;
 	CenterOfMass = Denominator > KINDA_SMALL_NUMBER ? Weighted / Denominator : FVector2D::ZeroVector;
@@ -144,6 +181,35 @@ int32 ASLPlatform::GetStackLevel(FIntPoint CellMin, FIntPoint Footprint) const
 		}
 	}
 	return Level;
+}
+
+void ASLPlatform::ReleaseAll()
+{
+	if (!ReleasedPhysMat)
+	{
+		ReleasedPhysMat = NewObject<UPhysicalMaterial>(this, TEXT("PM_Released"));
+	}
+	// Temas surtunmesi iki yuzeyin ortalamasi olursa platformun 0.7'si kaymayi oldurur: en kucugu al.
+	ReleasedPhysMat->Friction = ReleasedFriction;
+	ReleasedPhysMat->StaticFriction = ReleasedFriction;
+	ReleasedPhysMat->bOverrideFrictionCombineMode = true;
+	ReleasedPhysMat->FrictionCombineMode = EFrictionCombineMode::Min;
+
+	int32 N = 0;
+	for (const TWeakObjectPtr<ASLPlaceable>& Weak : Placeables)
+	{
+		ASLPlaceable* P = Weak.Get();
+		if (P && !P->IsReleased())
+		{
+			P->Release(ReleasedPhysMat, KgPerMass);
+			++N;
+		}
+	}
+	if (N > 0)
+	{
+		LastReleaseTime = GetWorld()->GetTimeSeconds();
+		UE_LOG(LogTemp, Log, TEXT("SL_RELEASE %d nesne birakildi, egim %.2f deg (esik %.1f)"), N, CurrentTiltDegrees, ReleaseTilt);
+	}
 }
 
 float ASLPlatform::GetWorldZOfLocal(const FVector& Local) const
@@ -182,6 +248,11 @@ void ASLPlatform::Tick(float DeltaSeconds)
 		Rot = FQuat(Axis, FMath::DegreesToRadians(CurrentTiltDegrees));
 	}
 	TiltPivot->SetRelativeRotation(Rot);
+
+	if (CurrentTiltDegrees >= ReleaseTilt)
+	{
+		ReleaseAll();
+	}
 
 #if !UE_BUILD_SHIPPING
 	if (bDebugDraw)

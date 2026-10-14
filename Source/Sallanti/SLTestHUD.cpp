@@ -70,6 +70,12 @@ void ASLTestHUD::DrawHUD()
 	Line(X, Y, FString::Printf(TEXT("Ağırlık merkezi (%.0f, %.0f) cm   merkeze %.0f cm   PlatformMass %.0f   TiltPerCm %.3f"),
 		P->CenterOfMass.X, P->CenterOfMass.Y, P->CenterOfMass.Size(), P->PlatformMass, P->TiltPerCm));
 
+	if (P->ReleasedCount > 0)
+	{
+		Line(X, Y, FString::Printf(TEXT("Fiziğe bırakıldı %d   platformda kayan %d   düşen %d"),
+			P->ReleasedCount, P->ReleasedOnDeck, P->FallenCount), FLinearColor(1.f, 0.6f, 0.3f));
+	}
+
 	// Egim cubugu: 0..MaxTilt. ReleaseTilt (sari) ve FailTilt (kirmizi) cizgileri.
 	const float BarW = 420.f, BarH = 16.f;
 	const float BarY = Y + 4.f;

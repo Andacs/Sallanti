@@ -234,6 +234,46 @@ void ASLPlayerController::LogGhost(const TCHAR* Label)
 		*UEnum::GetValueAsString(Build->State));
 }
 
+void ASLPlayerController::SLTest7()
+{
+	SelfTestIndex = 0;
+	// Kademeli olsun diye platform kutlesi: tek bina esigi hemen gecmesin.
+	SLSet(TEXT("PlatformMass"), TEXT("12"));
+	SLSet(TEXT("SwayAmplitude"), TEXT("0")); // esik gecisini sallanma karistirmasin
+	GetWorldTimerManager().SetTimer(SelfTestTimer, this, &ASLPlayerController::Test7Step, 0.5f, true, 1.0f);
+}
+
+void ASLPlayerController::Test7Step()
+{
+	const int32 I = SelfTestIndex++;
+	SLReport();
+	// 1-3: -X tarafinda 3 kutuluk kule (devrilmesi gorulsun). 4-9: +X kenarina 12'lik binalar.
+	// Beklenen hedef egim (PlatformMass 12, kule -125 cm'de 3 kutle): 3.9 / 5.8 / 6.8 / 7.4 / 7.8 / 8.1
+	// -> esik (8.0) ancak 6. binada gecilir.
+	switch (I)
+	{
+	case 1: case 2: case 3: SLPlace(1, -110.f, 10.f); break;
+	case 4: SLPlace(4, 250.f, -250.f); break;
+	case 5: SLPlace(4, 250.f, -150.f); break;
+	case 6: SLPlace(4, 250.f, -50.f); break;
+	case 7: SLPlace(4, 250.f, 50.f); break;
+	case 8: SLPlace(4, 250.f, 150.f); break;
+	case 9: Shot(TEXT("T7_0_esik_oncesi")); break;
+	case 10: SLPlace(4, 250.f, 250.f); Build->Cancel(); break;
+	case 11: Shot(TEXT("T7_1_birakma_05sn")); break;
+	case 13: Shot(TEXT("T7_2_15sn")); break;
+	case 16: Shot(TEXT("T7_3_3sn")); break;
+	case 20: Shot(TEXT("T7_4_5sn")); break;
+	case 28: Shot(TEXT("T7_5_9sn")); break;
+	case 30:
+		GetWorldTimerManager().ClearTimer(SelfTestTimer);
+		UE_LOG(LogSLInput, Log, TEXT("SL_TEST7_DONE"));
+		ConsoleCommand(TEXT("quit"));
+		break;
+	default: break;
+	}
+}
+
 void ASLPlayerController::SLSelfTest()
 {
 	SelfTestIndex = 0;
@@ -297,10 +337,10 @@ void ASLPlayerController::SLReport()
 	}
 	const float H = P->HalfExtent;
 	UE_LOG(LogSLInput, Log,
-		TEXT("SL_REPORT t=%.2f com=(%.1f,%.1f) mass=%.1f tilt=(%.2f,%.2f) total=%.2f | Z +X=%.1f -X=%.1f +Y=%.1f -Y=%.1f | placed=%d"),
+		TEXT("SL_REPORT t=%.2f com=(%.1f,%.1f) mass=%.1f tilt=(%.2f,%.2f) target=%.2f total=%.2f | Z +X=%.1f -X=%.1f +Y=%.1f -Y=%.1f | placed=%d released=%d ondeck=%d fallen=%d"),
 		GetWorld()->GetTimeSeconds(), P->CenterOfMass.X, P->CenterOfMass.Y, P->TotalMass,
-		P->CurrentTilt.X, P->CurrentTilt.Y, P->CurrentTiltDegrees,
+		P->CurrentTilt.X, P->CurrentTilt.Y, P->TargetTiltDegrees, P->CurrentTiltDegrees,
 		P->GetWorldZOfLocal(FVector(H, 0, 0)), P->GetWorldZOfLocal(FVector(-H, 0, 0)),
 		P->GetWorldZOfLocal(FVector(0, H, 0)), P->GetWorldZOfLocal(FVector(0, -H, 0)),
-		Build->PlacedCount);
+		Build->PlacedCount, P->ReleasedCount, P->ReleasedOnDeck, P->FallenCount);
 }

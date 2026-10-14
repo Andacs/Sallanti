@@ -8,6 +8,7 @@
 
 class ASLPlaceable;
 class UInstancedStaticMeshComponent;
+class UPhysicalMaterial;
 class UStaticMeshComponent;
 
 UCLASS()
@@ -76,9 +77,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Denge", meta = (Units = "Degrees"))
 	float SwayDirection = 0.f;
 
-	/** Adim 7: bu egimi gecince nesneler fizige birakilir. Henuz kullanilmiyor. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Denge", meta = (Units = "Degrees"))
+	/** Bu egimi (sallanma dahil) gecince bagli butun nesneler ayni anda fizige birakilir. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Dusme", meta = (Units = "Degrees"))
 	float ReleaseTilt = 8.f;
+
+	/** Birakilan nesnelerin surtunmesi. Kayma acisi = atan(surtunme): 0.1 -> 5.7 deg.
+	 *  Motorun varsayilani 0.7 (35 deg) olsaydi 8-12 deg'lik platformda hicbir sey kaymazdi. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Dusme", meta = (ClampMin = "0"))
+	float ReleasedFriction = 0.1f;
+
+	/** Birakilan govdenin fizik kutlesi = Mass * bu (kg). Yalnizca nesnelerin birbirini itmesini etkiler. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Dusme", meta = (ClampMin = "0.1"))
+	float KgPerMass = 20.f;
+
+	/** Birakilan nesne platformun ustunde kaldikca gercek yeriyle dengeye katilir:
+	 *  alcak kenara kaydikca egim artar, sonunda dokulurler. false = birakilan dengeden hemen cikar. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Dusme")
+	bool bReleasedStillWeigh = true;
 
 	/** Adim 8: kaybetme esigi. Henuz kullanilmiyor. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Denge", meta = (Units = "Degrees"))
@@ -115,6 +130,21 @@ public:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
 	float TotalMass = 0.f;
 
+	/** Fizige birakilmis nesne sayisi. */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
+	int32 ReleasedCount = 0;
+
+	/** Birakilmis ve hala platformun ustunde olanlar. */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
+	int32 ReleasedOnDeck = 0;
+
+	/** Platformdan dokulmus olanlar (adim 8'in kaybetme kosulu buradan okuyacak). */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
+	int32 FallenCount = 0;
+
+	/** Son birakmanin oldugu oyun zamani; hic olmadiysa negatif. */
+	float LastReleaseTime = -1.f;
+
 	/** CoM'un istedigi egim (sallanma haric), derece. Mevcut egim buna TiltSpeed ile yaklasir. */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
 	float TargetTiltDegrees = 0.f;
@@ -145,6 +175,13 @@ private:
 	void RecomputeCenterOfMass();
 	void ApplyDeckSize();
 	void BuildGrid();
+	void ReleaseAll();
+
+	/** Birakilmis govde platformun ustunde mi? (yerel XY sinirlar icinde, yuzeyin ustunde) */
+	bool IsOnDeck(const FVector& WorldCenter, FVector& OutLocal) const;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UPhysicalMaterial> ReleasedPhysMat;
 
 	bool bGridForPlacing = false;
 
