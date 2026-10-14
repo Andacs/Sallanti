@@ -462,6 +462,164 @@ table.matrix td[colspan]{background:var(--chip);text-align:center}
       <div class="prog"><i></i></div>
     </section>
 
+    <section class="card" id="istekler">
+      <h2>Tasarımcılardan istenenler <span class="hand">1. bölüm için, tam liste</span></h2>
+      <p>Bu liste bağlayıcı: ölçü, format ve isim tutmayan dosya oyuna girmez, geri gelir. Öncelik <b>P1</b> = vertical slice bunsuz bitmez, <b>P2</b> = zaman kalırsa. Oyunda şu an her şey gri kutu ve kodla çizilmiş arayüz; aşağıdakiler geldikçe yerleri değişir.</p>
+
+      <h3>Herkes için teslim kuralları</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Ne</th><th>Format</th><th>Kural</th></tr></thead>
+        <tbody>
+          <tr><td>3D model</td><td><code>.fbx</code> (+ kaynak <code>.blend</code>)</td><td>FBX ayarları <code>08_ASSET_SPEC</code> 10. bölüm: −Y Forward, +Z Up, Apply Scalings FBX All, Smoothing Face. Export öncesi <code>Ctrl+A → Rotation &amp; Scale</code>. Tek materyal slotu.</td></tr>
+          <tr><td>Doku (3D)</td><td><code>.png</code> 8 bit, sRGB</td><td>1024×1024, tileable. Normal haritası doğrusal (sRGB kapalı).</td></tr>
+          <tr><td>Arayüz görseli</td><td><code>.png</code> 32 bit RGBA, saydam arka plan</td><td>1920×1080 ekrana göre tasarlanır, @1x teslim. Premultiplied alpha yok. 9-slice'lar için kenar payları aşağıdaki tabloda.</td></tr>
+          <tr><td>Arayüz kaynağı</td><td><code>.psd</code> ya da Figma bağlantısı</td><td>Katmanlı. Repo'da <code>Art/UI/</code>.</td></tr>
+          <tr><td>Font</td><td><code>.ttf</code> / <code>.otf</code></td><td>Lisansı serbest (OFL gibi). Türkçe glifler zorunlu: <code>ŞşĞğİıÖöÜüÇç</code>.</td></tr>
+          <tr><td>Ses (P2)</td><td><code>.wav</code> 48 kHz, 16 bit, mono</td><td>Tepe −1 dBFS. Döngüler dikişsiz.</td></tr>
+          <tr><td>İsim</td><td colspan="2"><code>SM_Kategori_Ad01</code>, <code>T_UI_Ad</code>, <code>SFX_Ad</code>. Türkçe isim, <b>Türkçe karakter yok</b> (<code>SM_Bina_Hastane01</code>, <code>AVM</code>; ı/ş/ğ/ü/ö/ç yok).</td></tr>
+          <tr><td>Nereye</td><td colspan="2">Model: <code>Content/Sallanti/Meshes/&lt;Kategori&gt;/</code> (modelci import eder). Kaynak: <code>Art/Blender/</code>, <code>Art/UI/</code>. Arayüz PNG'lerini Yiğit <code>Content/Sallanti/UI/</code>'ya import eder. Commit + push, sonra sahibine haber.</td></tr>
+          <tr><td>Bitti sayılır</td><td colspan="2">Unreal'de <b>ekranda görüldüğünde</b>. Blender'da bitmiş olması "bitti" değil.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>3D modeller (Mert, Asil)</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Dosya</th><th>Ölçü (cm, G×D×Y)</th><th>Modül</th><th>Pivot</th><th>Kapı</th><th>Tris</th><th>Kim</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><code>SM_Zemin_Platform</code></td><td class="n">600×600×20</td><td class="n">12×12</td><td><b>Üst yüzün ortası</b> (istisna)</td><td>—</td><td class="n">2000</td><td>Mert</td><td>P1</td></tr>
+          <tr><td><code>SM_Bina_Ev01</code></td><td class="n">100×100×100</td><td class="n">2×2×2</td><td>Tabanın ortası</td><td class="n">≈30×55</td><td class="n">1500</td><td>Mert</td><td>P1</td></tr>
+          <tr><td><code>SM_Bina_Hastane01</code></td><td class="n">100×100×150</td><td class="n">2×2×3</td><td>Tabanın ortası</td><td class="n">≈30×80</td><td class="n">1500</td><td>Mert</td><td>P1</td></tr>
+          <tr><td><code>SM_Bina_AVM01</code></td><td class="n">150×150×200</td><td class="n">3×3×4</td><td>Tabanın ortası</td><td class="n">≈45×90</td><td class="n">1500</td><td>Mert</td><td>P1</td></tr>
+          <tr><td><code>SM_Zemin_Yol01</code></td><td class="n">50×50×4</td><td class="n">1×1</td><td>Tabanın ortası</td><td>—</td><td class="n">50</td><td>Mert</td><td>P1</td></tr>
+          <tr><td><code>SM_Dekor_InsanYetiskin01</code>, <code>…02</code></td><td>boy kararı Asil'de</td><td>—</td><td>İki ayağın ortası, Z=0</td><td>—</td><td class="n">3000</td><td>Asil</td><td>P1</td></tr>
+          <tr><td><code>SM_Dekor_InsanCocuk01</code></td><td>yetişkinin ~%70'i</td><td>—</td><td>İki ayağın ortası, Z=0</td><td>—</td><td class="n">3000</td><td>Asil</td><td>P1</td></tr>
+          <tr><td><code>SM_Bina_Ev02</code></td><td class="n">100×100×100</td><td class="n">2×2×2</td><td>Tabanın ortası</td><td class="n">≈30×55</td><td class="n">1500</td><td>Asil</td><td>P2</td></tr>
+          <tr><td><code>SM_Zemin_Yol_Kose01</code>, <code>_T01</code>, <code>_Kavsak01</code></td><td class="n">50×50×4</td><td class="n">1×1</td><td>Tabanın ortası</td><td>—</td><td class="n">50</td><td>Mert</td><td>P2</td></tr>
+        </tbody>
+      </table></div>
+      <ul>
+        <li><b>Ölçü çatı dahil.</b> Ev 100 cm ise çatının tepesi 100'de biter. Hiçbir parça ayak izinin dışına 2 cm'den fazla taşmaz; taşan parça komşu hücreye girer ve oyuncu "neden konmuyor" der.</li>
+        <li><b>Kapı ön yüzde, ortada.</b> Blender'da ön görünümde (<code>Numpad 1</code>) görünen yüz, yani <b>−Y yüzü</b>. Bu yüz Unreal'de +X olur ve oyun kapıyı oraya bekler; yol bu yüzün önündeki hücreye bağlanır. Kapı 2 cm içe girintili, dışarı taşmaz.</li>
+        <li><b>Dört yüz de bitmiş olacak.</b> Oyuncu binayı R / Q ile dört yöne çeviriyor; arka yüz boş kalmaz.</li>
+        <li><b>Kapının rengi vertex color ile.</b> Tek doku + tek materyal kuralı yüzünden kapıyı ayrı materyal yapmayın: kapı yüzlerine koyu vertex color (≈ <code>#2E1C12</code>), geri kalanı beyaz.</li>
+        <li><b>Platform istisnası:</b> pivot tabanın değil <b>üst yüzün</b> ortasında (yüzey Z=0, alt yüz Z=−20). Oyun binaları Z=0'a oturtuyor ve platformu üst yüzünün ortasından eğiyor. Izgara çizgileri dokuya çizilmez, oyun kendisi çiziyor.</li>
+        <li><b>Yol:</b> şeritsiz ya da dört yöne simetrik; yan yana konan karolar dikişsiz birleşmeli. Köşe/T/kavşak (P2) ancak kod otomatik seçmeyi öğrenince kullanılabilir.</li>
+        <li><b>İnsanlar:</b> spec 160 cm diyor ama ev 100 cm; ekranda aile evden uzun ve tuhaf duruyor (<code>SL_L1_1_aile_yuruyor</code>). Öneri 70–80 cm. Animasyon yok, oyun figürleri kaydırıyor; <b>karton figür</b> (ince, tabanlı, düz renkli) kaymayı doğal gösterir ve karton diline uyar.</li>
+        <li><b>Collision:</b> her mesh'te <code>UBX_&lt;MeshAdı&gt;_01</code> kutu, bounding box ile aynı. İnsanlarda da tek kutu.</li>
+        <li><b>Gün 0 doğrulaması:</b> −Y yüzüne kırmızı bir kare boyanmış 100×100×100 küpü export edin. Unreal'de kare <b>+X</b>'te ve küp 100 birimse ayar doğru; değilse üretime başlamadan düzeltin.</li>
+      </ul>
+
+      <h3>Doku ve materyal (Mert)</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Dosya</th><th>Boyut</th><th>Not</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><code>T_Cardboard_D</code></td><td class="n">1024×1024</td><td>Tileable karton, oluk görünür. 1 UV tile = 1 m. Renk nötr açık kahve; oyun tonu <code>Tint</code> ile veriyor.</td><td>P1</td></tr>
+          <tr><td><code>T_Cardboard_N</code></td><td class="n">1024×1024</td><td>Oluk normal haritası, sRGB kapalı.</td><td>P2</td></tr>
+          <tr><td>Renk listesi</td><td>—</td><td>Ev, Hastane, AVM, Yol, platform ve aile için birer karton tonu (hex). <code>MI_Cardboard_*</code> instance'larını Mert kurar.</td><td>P1</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Arayüz / HUD (Yiğit tasarlar, Asil görsel dili verir)</h3>
+      <p>Oyunda şu an bunların hepsi kodla çizilmiş taslak hâlde var. Yeri ve davranışı belli; istenen, <b>karton dilinde görünüşü</b>. Ölçüler 1920×1080 ekran içindir. "9-slice payı" = köşelerin esnemeden kaldığı kenar kalınlığı; panel her boyuta bu paylarla uzar.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Eleman</th><th>Dosya(lar)</th><th>Boyut (px)</th><th>9-slice payı</th><th>Durumlar / not</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><b>Denge barı</b> (üst orta)</td><td><code>T_UI_DengeBar_Cerceve</code></td><td class="n">600×48</td><td class="n">16</td><td>Çerçeve; içi boş.</td><td>P1</td></tr>
+          <tr><td></td><td><code>T_UI_DengeBar_Dolgu</code></td><td class="n">8×24</td><td>—</td><td>Beyaz; oyun yeşil / sarı / kırmızıya boyar.</td><td>P1</td></tr>
+          <tr><td></td><td><code>T_UI_DengeBar_Esik</code></td><td class="n">6×48</td><td>—</td><td>Uyarı (8°) ve devrilme (10°) çizgisi; beyaz, boyanır.</td><td>P1</td></tr>
+          <tr><td></td><td><code>T_UI_DengeBar_Tahmin</code></td><td class="n">20×20</td><td>—</td><td>Aşağı bakan ok: "koyarsan eğim buraya gelir". Beyaz, boyanır.</td><td>P1</td></tr>
+          <tr><td></td><td><code>T_UI_Ikon_Denge</code></td><td class="n">40×40</td><td>—</td><td>Barın solundaki terazi ikonu ("DENGE" yazısının yerine).</td><td>P2</td></tr>
+          <tr><td><b>İpucu kutusu</b> (barın altı)</td><td><code>T_UI_Panel_Ipucu</code></td><td class="n">96×96</td><td class="n">24</td><td>Tek satırdan üç satıra uzar.</td><td>P1</td></tr>
+          <tr><td></td><td><code>T_UI_Ikon_Bilgi</code>, <code>_Uyari</code>, <code>_Tehlike</code></td><td class="n">40×40</td><td>—</td><td>Beyaz şekil; oyun mavi / sarı / kırmızı boyar. Emoji değil, çizim.</td><td>P1</td></tr>
+          <tr><td><b>Konuşma balonu</b> (ailenin üstü)</td><td><code>T_UI_Balon</code></td><td class="n">160×120</td><td class="n">32</td><td>Kâğıt, el kesimi kenar. 330 px genişliğe kadar, 1–3 satır.</td><td>P1</td></tr>
+          <tr><td></td><td><code>T_UI_Balon_Kuyruk</code></td><td class="n">40×28</td><td>—</td><td>Ayrı dosya: oyun kuyruğu konuşana göre yatay kaydırıyor.</td><td>P1</td></tr>
+          <tr><td></td><td><code>T_UI_Portre_Aile</code></td><td class="n">96×96</td><td>—</td><td>Balonun köşesinde konuşan yüzü.</td><td>P2</td></tr>
+          <tr><td><b>Görev listesi</b> (sol üst)</td><td><code>T_UI_Panel_Gorev</code></td><td class="n">96×96</td><td class="n">24</td><td>Başlık + 5 satır.</td><td>P1</td></tr>
+          <tr><td></td><td><code>T_UI_Ikon_Gorev_Bos</code>, <code>_Tamam</code></td><td class="n">32×32</td><td>—</td><td>Boş kutu ve tik (çizim; ✓ karakteri değil).</td><td>P1</td></tr>
+          <tr><td><b>Bina çekmecesi</b> (sağ kenar)</td><td><code>T_UI_Cekmece_Govde</code></td><td class="n">300×640</td><td class="n">40</td><td>Oluklu karton kutu, koli bandı. Ekranın sağından kayarak çıkar.</td><td>P1</td></tr>
+          <tr><td></td><td><code>T_UI_Cekmece_Kulp</code></td><td class="n">48×180</td><td>—</td><td>Kapalıyken görünen tek parça. Üstünde "BİNALAR" yazısı tasarımın içinde (dikey) ya da kutu ikonu. Çekilebilir görünmeli.</td><td>P1</td></tr>
+          <tr><td></td><td><code>T_UI_Kart_Normal</code>, <code>_Uzerinde</code>, <code>_Secili</code>, <code>_Kilitli</code></td><td class="n">270×110</td><td class="n">20</td><td>Dört durum. Solda 96×96 bina resmi, sağda ad + kütle + ölçü.</td><td>P1</td></tr>
+          <tr><td></td><td><code>T_UI_Ikon_Kilit</code></td><td class="n">32×32</td><td>—</td><td>Kilitli kartın üstüne.</td><td>P1</td></tr>
+          <tr><td></td><td><code>T_UI_Bina_Ev</code>, <code>_Hastane</code>, <code>_AVM</code>, <code>_Yol</code></td><td class="n">256×256</td><td>—</td><td><b>Tasarımcı çizmez:</b> Yiğit, model gelince Unreal'de oyun kamerası açısından (yaw 45°, pitch −35°) saydam arka planla çeker. Kapı görünür.</td><td>P1</td></tr>
+          <tr><td><b>Orta mesaj şeridi</b> (alt orta)</td><td><code>T_UI_Serit</code></td><td class="n">720×96</td><td class="n">32</td><td>Beyaz; oyun boyar: DENGE SINIRDA (sarı), DEVRİLİYOR + sayaç (kırmızı), DEVRİLDİ (kırmızı), BÖLÜM TAMAMLANDI (yeşil).</td><td>P1</td></tr>
+          <tr><td><b>Fare imleci</b></td><td><code>T_UI_Imlec_Normal</code>, <code>_Tut</code></td><td class="n">32×32</td><td>—</td><td>Ok ve tutan el (taşırken). Tıklama noktası sol üst köşe.</td><td>P2</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Font (Yiğit)</h3>
+      <ul>
+        <li>İki font: <b>başlık</b> (bölüm adı, orta mesaj) ve <b>metin</b> (ipucu, balon, kart). Okunaklı, karton/el yapımı hissi başlıkta olsun, metin sade kalsın.</li>
+        <li>Kullanılan boyutlar 1080p'de: 16 (küçük not), 20 (ipucu, balon, kart), 28 (başlık), 44 (orta mesaj).</li>
+        <li>Import: Unreal'de <code>UFont</code> oluşmalı, <code>UFontFace</code> yetmez (import factory'de <code>BatchCreateFontAsset</code>). Yoksa yazılar sessizce Roboto'ya düşer. Ekranda <code>ŞşĞğİıÖöÜüÇç</code> görülmeden "tamam" denmez.</li>
+      </ul>
+
+      <h3>Renk anlamları</h3>
+      <p>Şu anki taslak renkleri. Tasarımcı tonu değiştirebilir, <b>anlamı değiştiremez</b>: yeşil güvenli, sarı dikkat, kırmızı tehlike. Renk körü oyuncular için her durumda ikon ya da şekil farkı da olsun.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Anlam</th><th>Şu an</th><th>Nerede</th></tr></thead>
+        <tbody>
+          <tr><td>Dengede / güvenli</td><td><code>#59D973</code></td><td>Bar dolgusu, hayalet, "tamamlandı"</td></tr>
+          <tr><td>Uyarı</td><td><code>#FFC733</code></td><td>8°–10°, "sınıra gelir", platform nabzı başlangıcı</td></tr>
+          <tr><td>Tehlike</td><td><code>#FF4D40</code></td><td>Devriliyor, "devirir", konamaz</td></tr>
+          <tr><td>Bilgi</td><td><code>#D9EBFF</code></td><td>Normal ipucu</td></tr>
+          <tr><td>Kâğıt / mürekkep</td><td><code>#FAF2E0</code> / <code>#261C12</code></td><td>Konuşma balonu, kart</td></tr>
+          <tr><td>Çekmece kartonu</td><td><code>#8C6640</code></td><td>Çekmece gövdesi</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Ses (P2, sahibi belli değil)</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Dosya</th><th>Ne zaman</th><th>Uzunluk</th></tr></thead>
+        <tbody>
+          <tr><td><code>SFX_Yerlestir</code></td><td>Bina konunca: karton "tok"</td><td class="n">≤0,4 sn</td></tr>
+          <tr><td><code>SFX_Kaldir</code></td><td>Bina kaldırılınca</td><td class="n">≤0,4 sn</td></tr>
+          <tr><td><code>SFX_Gicirti_Dongu</code></td><td>Eğimle sesi açılan karton gıcırtısı, döngü</td><td class="n">2–4 sn döngü</td></tr>
+          <tr><td><code>SFX_Devrilme</code></td><td>Platform devrilirken</td><td class="n">1–2 sn</td></tr>
+          <tr><td><code>SFX_Gorev_Tamam</code>, <code>SFX_Bolum_Tamam</code></td><td>Görev / bölüm bitince</td><td class="n">≤1 / ≤3 sn</td></tr>
+          <tr><td><code>SFX_Konusma</code></td><td>Balon açılınca kısa "mırıltı"</td><td class="n">≤0,5 sn</td></tr>
+          <tr><td><code>SFX_Cekmece</code>, <code>SFX_UI_Tik</code></td><td>Çekmece açılıp kapanınca, karta tıklayınca</td><td class="n">≤0,5 sn</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">Bir olay, bir ses. Aynı tıklamaya iki ses bindirilmez; gecikme gibi duyuluyor (<code>04_UNREAL_TUZAKLARI</code>).</p>
+
+      <h3>Dosyalar gelince kodda yapılacaklar (Andaç)</h3>
+      <ul>
+        <li>Bina mesh'leri <code>USLBuildComponent::Slots[i].Mesh</code>'e bağlanır; mesh varken kodun çizdiği gri kapı kapanır.</li>
+        <li>Platforma mesh alanı eklenir, <code>SM_Zemin_Platform</code> bağlanır.</li>
+        <li><code>M_Cardboard</code>'a vertex color çarpanı (kapı rengi için).</li>
+        <li>Aile figürlerine mesh alanı (<code>ASLFamily</code>, <code>ASLPlaceable</code> yerlileri).</li>
+        <li>Yiğit'in <code>WBP_HUD</code>'u için ipucu, balon ve tahmin değerleri Blueprint'e açılır (şu an yalnızca C++ HUD okuyor).</li>
+      </ul>
+    </section>
+
+    <section class="card taped" id="teslimler" data-group>
+      <h2>Tasarım teslimleri <span class="hand">P1, ekranda görülünce tikle</span></h2>
+      <ul class="list">
+        <li class="phase">Mert</li>
+        <li data-id="d-kup" data-t="Gün 0 küpü: −Y yüzü Unreal'de +X, 100 birim"></li>
+        <li data-id="d-platform" data-t="SM_Zemin_Platform 600×600×20, pivot üst yüz ortası"></li>
+        <li data-id="d-ev" data-t="SM_Bina_Ev01 100×100×100, kapı −Y yüzünde"></li>
+        <li data-id="d-hastane" data-t="SM_Bina_Hastane01 100×100×150"></li>
+        <li data-id="d-avm" data-t="SM_Bina_AVM01 150×150×200"></li>
+        <li data-id="d-yol" data-t="SM_Zemin_Yol01 50×50×4, dikişsiz"></li>
+        <li data-id="d-doku" data-t="T_Cardboard_D 1024 tileable + renk listesi"></li>
+        <li class="phase">Asil</li>
+        <li data-id="d-insanboy" data-t="Aile boyu kararı (spec 160 cm, öneri 70–80)"></li>
+        <li data-id="d-insan" data-t="İki yetişkin + bir çocuk figürü"></li>
+        <li data-id="d-dil" data-t="Arayüz görsel dili: karton paneller, balon, çekmece için bir sayfa"></li>
+        <li class="phase">Yiğit</li>
+        <li data-id="d-font" data-t="İki font, Türkçe glifler ekranda görüldü"></li>
+        <li data-id="d-bar" data-t="Denge barı: çerçeve, dolgu, eşik, tahmin oku"></li>
+        <li data-id="d-ipucu" data-t="İpucu paneli + bilgi / uyarı / tehlike ikonları"></li>
+        <li data-id="d-balon" data-t="Konuşma balonu + kuyruk"></li>
+        <li data-id="d-gorev" data-t="Görev paneli + boş / tamam ikonları"></li>
+        <li data-id="d-cekmece" data-t="Çekmece gövdesi, kulp, 4 durumlu kart, kilit"></li>
+        <li data-id="d-resim" data-t="Bina resimleri (Unreal'de çekilir) 256×256"></li>
+        <li data-id="d-serit" data-t="Orta mesaj şeridi"></li>
+      </ul>
+      <div class="prog"><i></i></div>
+    </section>
+
     <section class="card taped" id="teslim" data-group>
       <h2>Teslim kontrolü <span class="hand">son 12 saat</span></h2>
       <ul class="list">
