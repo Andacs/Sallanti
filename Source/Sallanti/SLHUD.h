@@ -12,6 +12,7 @@
 class ASLLevelDirector;
 class ASLPlatform;
 class USLBuildComponent;
+struct FSLSlot;
 
 UCLASS()
 class SALLANTI_API ASLHUD : public AHUD
@@ -33,7 +34,7 @@ public:
 
 	/** Cekmece genisligi, px. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Cekmece")
-	float DrawerWidth = 250.f;
+	float DrawerWidth = 330.f;
 
 	/** Cekmece acilip kapanma hizi (1/sn). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Cekmece")
@@ -42,10 +43,6 @@ public:
 	/** Kart secilince cekmece kapansin mi (platform gorunsun). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Cekmece")
 	bool bCloseDrawerOnSelect = true;
-
-	/** Cekmece karton rengi. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Cekmece")
-	FLinearColor DrawerColor = FLinearColor(0.55f, 0.40f, 0.25f, 0.95f);
 
 	/** Fare basildi: HUD'a dustuyse (cekmece) true doner, oyun tiklamayi islemez. */
 	bool HandleMouseDown(const FVector2D& Mouse);
@@ -79,6 +76,16 @@ private:
 	void BuildHint(const ASLPlatform& P, const USLBuildComponent& B, const ASLLevelDirector* D, FString& Out, FLinearColor& Color) const;
 	/** Elindekini koyarsan olacak egim (yoksa negatif). */
 	float PredictPlacement(const ASLPlatform& P, const USLBuildComponent& B) const;
+
+	void FillRound(float X, float Y, float W, float H, float R, const FLinearColor& C);
+	void FillCircle(float CX, float CY, float R, const FLinearColor& C);
+	void FillTri(float CX, float ApexY, float BaseW, float H, const FLinearColor& C);
+	/** Golgeli yuvarlak kart. */
+	void Card(float X, float Y, float W, float H, float R, const FLinearColor& C);
+	void DrawHouseIcon(float CX, float CY, float S, const FLinearColor& C);
+	void DrawLockIcon(float CX, float CY, float S, const FLinearColor& C);
+	void DrawSlotThumb(const FSLSlot& S, float X, float Y, float Size, bool bOpen);
+	bool bTextShadow = false;
 
 	void Text(const FString& S, float X, float Y, const FLinearColor& Color, float Scale = 1.f, bool bLarge = false);
 	void Line(float X, float& Y, const FString& S, const FLinearColor& Color = FLinearColor::White);

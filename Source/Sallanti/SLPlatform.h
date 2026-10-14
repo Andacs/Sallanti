@@ -49,14 +49,44 @@ public:
 	TObjectPtr<UInstancedStaticMeshComponent> Tiles;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Tahta")
-	FLinearColor TileColor = FLinearColor(0.30f, 0.55f, 0.14f);
+	FLinearColor TileColor = FLinearColor(0.30f, 0.78f, 0.50f);
+
+	/** Cozy kaide (14 Eki): tahtanin altinda kemerli sutunlu krem/pembe govde. Platformla egilir. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sallanti")
+	TObjectPtr<UInstancedStaticMeshComponent> ArcadeLight;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sallanti")
+	TObjectPtr<UInstancedStaticMeshComponent> ArcadeDark;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sallanti")
+	TObjectPtr<UInstancedStaticMeshComponent> ArcadeArches;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kaide")
+	bool bArcade = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kaide", meta = (ClampMin = "10"))
+	float ArcadeHeight = 90.f;
+
+	/** Kenar basina kemer sayisi. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kaide", meta = (ClampMin = "1", ClampMax = "30"))
+	int32 ArcadeBays = 7;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kaide", meta = (ClampMin = "2"))
+	float PillarWidth = 18.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kaide")
+	FLinearColor ArcadeColor = FLinearColor(0.98f, 0.86f, 0.84f);
+
+	/** Kemer acikliginin (icerideki golgeli duvar) rengi. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kaide")
+	FLinearColor ArcadeShadeColor = FLinearColor(0.80f, 0.58f, 0.66f);
 
 	/** Karolar arasi derz, cm. Plaka ve yol da bu payla hizalanir (karo = GridSize - TileGap). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Tahta", meta = (ClampMin = "0"))
 	float TileGap = 8.f;
 
 	/** Boyut/karo degerleri canli degistirildiyse (SLSet) gorunumu yeniden kurar. */
-	void RefreshVisuals() { ApplyDeckSize(); BuildGrid(); RefreshConnections(); }
+	void RefreshVisuals() { ApplyDeckSize(); BuildGrid(); BuildArcade(); RefreshConnections(); }
 
 	/** Yol karolarinin birlesme uzantilarini (komsu yol, kapisi bakan bina) yeniden hesaplar.
 	 *  Nesneler degisince Tick kendisi cagirir; elle cagirmak da zararsiz. */
@@ -148,7 +178,7 @@ public:
 
 	/** Platform govdesinin (derzlerin) rengi. Uyari bundan ve karolardan WarnColor'a dogru atar. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Devrilme")
-	FLinearColor DeckTint = FLinearColor(0.30f, 0.18f, 0.09f);
+	FLinearColor DeckTint = FLinearColor(0.97f, 0.90f, 0.82f);
 
 	// --- Boyut ---
 
@@ -164,7 +194,7 @@ public:
 
 	/** Ekrana CoM/egim yazar ve CoM'u isaretler. Ayar yaparken acik kalsin. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Debug")
-	bool bDebugDraw = true;
+	bool bDebugDraw = false;
 
 	// --- Okunan durum (HUD/ses buradan okur) ---
 
@@ -244,6 +274,7 @@ private:
 	void RecomputeCenterOfMass();
 	void ApplyDeckSize();
 	void BuildGrid();
+	void BuildArcade();
 	void UpdateBalanceState(float DeltaSeconds);
 	void UpdateDeckWarning(float DeltaSeconds);
 	void UpdateCreak();

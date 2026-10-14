@@ -106,6 +106,10 @@ void ASLPlayerController::OnToggleHelp()
 	if (ASLHUD* HUD = GetHUD<ASLHUD>())
 	{
 		HUD->bShowTestPanel = !HUD->bShowTestPanel;
+		if (ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>(); GM && GM->GetPlatform())
+		{
+			GM->GetPlatform()->bDebugDraw = HUD->bShowTestPanel; // CoM kuresi yalniz panel acikken
+		}
 	}
 }
 

@@ -69,6 +69,10 @@ void ASLCameraPawn::ApplyCamera()
 	Camera->SetFieldOfView(FieldOfView);
 	Camera->PostProcessSettings.bOverride_AutoExposureBias = true;
 	Camera->PostProcessSettings.AutoExposureBias = ExposureBias;
+	Camera->PostProcessSettings.bOverride_AutoExposureMinBrightness = bFixedExposure;
+	Camera->PostProcessSettings.bOverride_AutoExposureMaxBrightness = bFixedExposure;
+	Camera->PostProcessSettings.AutoExposureMinBrightness = FixedExposureEV100;
+	Camera->PostProcessSettings.AutoExposureMaxBrightness = FixedExposureEV100;
 	// Hareket bulanikligi kapali: sag tikla kaydirmada ve zoom'da tahta lekeleniyordu (ekran goruntusu).
 	Camera->PostProcessSettings.bOverride_MotionBlurAmount = true;
 	Camera->PostProcessSettings.MotionBlurAmount = 0.f;

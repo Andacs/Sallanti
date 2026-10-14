@@ -1,5 +1,6 @@
 #include "SLGameMode.h"
 
+#include "SLAmbience.h"
 #include "SLCameraPawn.h"
 #include "SLLevelDirector.h"
 #include "SLPlatform.h"
@@ -97,6 +98,14 @@ void ASLGameMode::StartPlay()
 {
 	Super::StartPlay();
 	GetDirector();
+	// Cozy cevre: seviyeye konmadiysa platformun yerine dogur (L_Ana'ya Yigit koyarsa o kullanilir).
+	if (!TActorIterator<ASLAmbience>(GetWorld()))
+	{
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		const FTransform At = GetPlatform() ? FTransform(GetPlatform()->GetActorLocation()) : FTransform::Identity;
+		GetWorld()->SpawnActor<ASLAmbience>(ASLAmbience::StaticClass(), At, Params);
+	}
 }
 
 ASLLevelDirector* ASLGameMode::GetDirector()

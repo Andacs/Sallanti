@@ -159,6 +159,14 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
   → `/Game/Sallanti/Audio`). Gerçek ses aynı adla `Art/Audio`'ya konup import betiği tekrar çalıştırılır
   (betik eskisini siler, üstüne import etmez). `ASLGameMode::PlaySfx`: kare başına tek ses, en önemlisi;
   önemli sesten sonra 0,4 sn önemsizler susar ("bir olay, bir ses"). Gıcırtı döngüsü eğimle yükselir.
+- **Cozy görünüş (14 Ekim, Andaç'ın referans görseli):** lavanta arka plan, aşağıda bulutlar, kenarlarda
+  havada pastel adacıklar (`ASLAmbience`, seviyede yoksa GameMode doğurur). Nane karo + krem derz, tahtanın
+  altında kemerli sütunlu pembe kaide (`ASLPlatform::BuildArcade`). Mesh gelene kadar binalar koddan
+  süslü (`ASLPlaceable::BuildDecor`): Ev'e mercan beşik çatı + baca, Hastane'ye kırmızı haç, AVM'ye vitrin,
+  tente, "AVM" tabelası; hepsine pencere, plakada servi ve çalı. `DisplayMesh` gelince süs çizilmez.
+  HUD krem yuvarlak kartlar (turkuaz / sarı / mercan), çekmece "Binalar" + kart başına "Yerleştir".
+  **Pozlama sabit** (`ASLCameraPawn::FixedExposureEV100` 1,9): otomatik pozlama büyük arka plana bakıp
+  sahneyi karartıyordu. Güneş yönü ve şiddeti `ASLAmbience`'ta (oyun sırasında; seviye dosyası değişmez).
 - **Şehir planı:** istif kapalı (`bAllowStacking`), dolu hücre geçersiz.
 - **Tahta (14 Ekim, Blender taslağı):** 13×13 hücre, 50 cm → 650 cm. Yeşil karolar + kahverengi derz
   (`TileGap` 8 cm). Bina gri **plakada** (ayak izi − derz), gövde plakadan `BodyInsetCm` içeride.
@@ -203,7 +211,9 @@ karton renklerini yıkıyordu → kamera `ExposureBias` −1,5 (ölçüldü: kar
 - Figürlere evin MID'i verilince motor aynı MID'i paylaştırıyor: figürü boyamak evi boyuyordu. Ayrı
   `UMaterialInstanceDynamic::Create` ile çözüldü. Aynı tuzak her "parçanın rengini ayrı ver" işinde.
 - `CollapseAngle` 75'te platformun altı ekranı kaplıyordu → 45.
-- Platform kraft kahvesi değil krem görünüyor (otomatik pozlama). Mert'in lighting işi.
+- Otomatik pozlama cozy sahnede lavantayı (0,55 0,45 0,78) ekranda (43,36,57)'ye indiriyordu → sabit
+  pozlama. Ölçüm (EV 1,9): arka plan (213,205,227), karo (150,190,170), kaide (201,186,184).
+  Işıksız malzeme (arka plan, bulut) `UnlitBrightness` ile çarpılıyor, yoksa ışıklılardan koyu kalıyor.
 - Kamera spec'te 1400 cm'di; 600 cm'lik platform sığmıyordu → 2200; tahta 650'ye çıkınca 2400.
 
 **Oynamak / ölçmek:** `Build\oyna.bat` (önce `derle.bat`). Oyun ekranı (`ASLHUD`): denge barı,

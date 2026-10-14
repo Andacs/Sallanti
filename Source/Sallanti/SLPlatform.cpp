@@ -56,7 +56,89 @@ ASLPlatform::ASLPlatform()
 	{
 		Tiles->SetMaterial(0, CardboardMat.Object);
 	}
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylMesh(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+	auto MakeIsm = [&](const TCHAR* Name, UStaticMesh* M)
+	{
+		UInstancedStaticMeshComponent* I = CreateDefaultSubobject<UInstancedStaticMeshComponent>(Name);
+		I->SetupAttachment(TiltPivot);
+		I->SetMobility(EComponentMobility::Movable);
+		I->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		I->SetStaticMesh(M);
+		if (CardboardMat.Succeeded())
+		{
+			I->SetMaterial(0, CardboardMat.Object);
+		}
+		return I;
+	};
+	ArcadeLight = MakeIsm(TEXT("ArcadeLight"), CubeMesh.Object);
+	ArcadeDark = MakeIsm(TEXT("ArcadeDark"), CubeMesh.Object);
+	ArcadeArches = MakeIsm(TEXT("ArcadeArches"), CylMesh.Object);
 	ApplyDeckSize();
+}
+
+void ASLPlatform::BuildArcade()
+{
+	// Kemerli kaide: icte golgeli bir blok, kenarlarda sutunlar, ustte sutunlari baglayan bant. Kemerin
+	// yuvarlak tepesi: bandin alt kenarina, disari bakan golge renkli bir disk (ust yarisi bandi oyar gibi).
+	ArcadeLight->ClearInstances();
+	ArcadeDark->ClearInstances();
+	ArcadeArches->ClearInstances();
+	if (!bArcade)
+	{
+		return;
+	}
+	const float Top = -DeckThickness;
+	const float Bot = Top - ArcadeHeight;
+	const float E = HalfExtent;
+	const float Inset = 6.f;
+	auto Box = [](UInstancedStaticMeshComponent* I, const FVector& C, const FVector& S, const FRotator& R = FRotator::ZeroRotator)
+	{
+		I->AddInstance(FTransform(R.Quaternion(), C, S / 100.f));
+	};
+	// Ic blok (aciklik arkasi) ve alt kaide (biraz tasan, kalin).
+	Box(ArcadeDark, FVector(0, 0, 0.5f * (Top + Bot)), FVector(2.f * (E - Inset), 2.f * (E - Inset), ArcadeHeight));
+	Box(ArcadeLight, FVector(0, 0, Bot - 9.f), FVector(2.f * E + 16.f, 2.f * E + 16.f, 18.f));
+	Box(ArcadeLight, FVector(0, 0, Bot - 18.f - 40.f), FVector(1.4f * E, 1.4f * E, 80.f));
+	Box(ArcadeLight, FVector(0, 0, Top - 4.f), FVector(2.f * E + 6.f, 2.f * E + 6.f, 8.f)); // tahtanin alt kornisi
+
+	const float Bay = 2.f * E / ArcadeBays;
+	const float Span = FMath::Max(4.f, Bay - PillarWidth);
+	const float BandH = 0.28f * ArcadeHeight;
+	const float ArchR = 0.5f * Span;
+	const float ArchZ = Top - BandH;
+	for (int32 Side = 0; Side < 4; ++Side)
+	{
+		const bool bAlongX = (Side % 2) == 0;          // 0/2: +-Y kenari (X boyunca), 1/3: +-X kenari
+		const float Sign = Side < 2 ? 1.f : -1.f;
+		auto At = [&](float T, float Out, float Z) { return bAlongX ? FVector(T, Sign * Out, Z) : FVector(Sign * Out, T, Z); };
+		auto Sz = [&](float L, float Th, float Hh) { return bAlongX ? FVector(L, Th, Hh) : FVector(Th, L, Hh); };
+		// Ust bant
+		Box(ArcadeLight, At(0, E - 0.5f * Inset, Top - 0.5f * BandH), Sz(2.f * E, Inset, BandH));
+		// Sutunlar (koseler dahil)
+		for (int32 I = 0; I <= ArcadeBays; ++I)
+		{
+			const float T = -E + I * Bay;
+			Box(ArcadeLight, At(T, E - 0.5f * Inset, 0.5f * (Top + Bot)), Sz(PillarWidth, Inset + 2.f, ArcadeHeight));
+		}
+		// Kemer tepeleri: silindir ekseni disari (yerel Z -> kenar normali), ince disk.
+		const FRotator R = bAlongX ? FRotator(0, 0, 90.f) : FRotator(90.f, 0, 0);
+		for (int32 I = 0; I < ArcadeBays; ++I)
+		{
+			const float T = -E + (I + 0.5f) * Bay;
+			Box(ArcadeArches, At(T, E + 0.6f, ArchZ), FVector(2.f * ArchR, 2.f * ArchR, 1.f), R);
+		}
+	}
+	if (UMaterialInstanceDynamic* L = ArcadeLight->CreateDynamicMaterialInstance(0))
+	{
+		L->SetVectorParameterValue(TEXT("Tint"), ArcadeColor);
+	}
+	for (UInstancedStaticMeshComponent* D : { ArcadeDark.Get(), ArcadeArches.Get() })
+	{
+		if (UMaterialInstanceDynamic* M = D->CreateDynamicMaterialInstance(0))
+		{
+			M->SetVectorParameterValue(TEXT("Tint"), ArcadeShadeColor);
+		}
+	}
 }
 
 void ASLPlatform::OnConstruction(const FTransform& Transform)
@@ -64,6 +146,7 @@ void ASLPlatform::OnConstruction(const FTransform& Transform)
 	Super::OnConstruction(Transform);
 	ApplyDeckSize();
 	BuildGrid();
+	BuildArcade();
 }
 
 void ASLPlatform::BuildGrid()
@@ -295,6 +378,7 @@ void ASLPlatform::BeginPlay()
 	{
 		BuildGrid();
 	}
+	BuildArcade();
 }
 
 void ASLPlatform::ApplyTiltRotation(const FVector2D& TiltDeg)

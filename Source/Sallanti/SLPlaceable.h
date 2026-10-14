@@ -73,7 +73,7 @@ public:
 
 	/** Kapidan yola uzanan giris yolu (kaldirim) rengi; yalnizca bina yola bagliyken gorunur. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Giris")
-	FLinearColor EntrancePathColor = FLinearColor(0.86f, 0.82f, 0.72f);
+	FLinearColor EntrancePathColor = FLinearColor(0.99f, 0.95f, 0.86f);
 
 	/** Viraj kac parcayla cizilir (cok = daha yuvarlak). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Yol", meta = (ClampMin = "2", ClampMax = "16"))
@@ -83,18 +83,39 @@ public:
 	FLinearColor Tint = FLinearColor(0.62f, 0.45f, 0.28f);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Nesne")
-	FLinearColor PlateColor = FLinearColor(0.72f, 0.72f, 0.70f);
+	FLinearColor PlateColor = FLinearColor(0.97f, 0.93f, 0.86f);
 
 	/** Kapisi var mi? Kapi yerel +X yuzunde; yol ancak kapinin onundeki hucreye degerse baglanir. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Giris")
 	bool bHasEntrance = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Giris")
-	FLinearColor DoorColor = FLinearColor(0.18f, 0.11f, 0.07f);
+	FLinearColor DoorColor = FLinearColor(0.55f, 0.33f, 0.24f);
 
 	/** Kapi onu isareti (yerlestirirken gorunur). Yol ustune gelince ortulur: baglandigi gorulur. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Giris")
 	FLinearColor EntranceMarkColor = FLinearColor(0.95f, 0.75f, 0.15f);
+
+	// --- Cozy suslemesi (14 Eki): DisplayMesh yokken TypeId'ye gore cati, pencere, haç, tabela, agac ---
+
+	/** Kapali = yalniz govde kutusu (eski gorunus). Mesh gelince zaten cizilmez. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
+	bool bDecor = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
+	FLinearColor RoofColor = FLinearColor(0.86f, 0.33f, 0.28f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
+	FLinearColor WindowColor = FLinearColor(0.38f, 0.58f, 0.85f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
+	FLinearColor TreeColor = FLinearColor(0.20f, 0.45f, 0.38f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
+	FLinearColor BushColor = FLinearColor(0.38f, 0.66f, 0.42f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
+	FLinearColor AccentColor = FLinearColor(0.30f, 0.72f, 0.70f);
 
 	/** Bos = olcekli gri kup. Modelcinin mesh'i verilirse olceklenmez; kapisi mesh'te, kod kapi cizmez. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Nesne")
@@ -237,12 +258,26 @@ private:
 	TArray<TObjectPtr<UStaticMeshComponent>> EntrancePaths;
 
 	UPROPERTY(Transient)
+	TArray<TObjectPtr<USceneComponent>> DecorParts;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMesh> ConeMesh;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMesh> SphereMesh;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UStaticMeshComponent> FxRing;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> FxRingMID;
 
 	void BuildEntrance();
+	void BuildDecor();
+	void ClearDecor();
+	UStaticMeshComponent* AddDecor(UStaticMesh* InMesh, const FVector& Loc, const FVector& SizeCm, const FLinearColor& Color, const FRotator& Rot = FRotator::ZeroRotator);
+	void AddCypress(const FVector& Base, float Height);
+	void AddWindowGrid(int32 Face, float Bottom, float Top, int32 Rows, int32 Cols, float WinW, float WinH, bool bSkipDoorColumn);
 	void BuildRoadLinks();
 	void BuildRoadShape();
 	UStaticMeshComponent* MakePart(const FLinearColor& Color, bool bForGhost, UStaticMesh* InMesh = nullptr);

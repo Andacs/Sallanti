@@ -64,7 +64,15 @@ public:
 	 *  ekranda (221,238,193), kahverengi derz (225,203,166) olcululdu, renkler ayirt edilmiyordu.
 	 *  Isigin son ayari Mert'te; bu yalnizca okunurluk icin baslangic. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
-	float ExposureBias = -1.5f;
+	float ExposureBias = 0.f;
+
+	/** Sabit pozlama (14 Eki, cozy): otomatik pozlama buyuk lavanta arka plana bakip sahneyi karartiyordu ve
+	 *  zoom'la renk degisiyordu. Acikken pozlama FixedExposureEV100'de kilitli; pastel renkler her yakinlikta ayni. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
+	bool bFixedExposure = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
+	float FixedExposureEV100 = 1.9f;
 
 	/** Sag tikla surukleyince harita kayar. Kayma siniri, cm (bakis noktasi tahtanin bu kadar disina cikmaz). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")

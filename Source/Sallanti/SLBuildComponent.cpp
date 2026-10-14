@@ -32,17 +32,17 @@ USLBuildComponent::USLBuildComponent()
 		return S;
 	};
 	// Ev 1x1 (14 Ekim, Blender taslagi). Kutle 2: hacim kurali 1 verirdi, egitimin ilk adimi hic hissedilmezdi.
-	FSLSlot Ev = Make(TEXT("Ev"), TEXT("Ev"), 1, 1, 1, 2.f, FLinearColor(0.80f, 0.55f, 0.35f));
+	FSLSlot Ev = Make(TEXT("Ev"), TEXT("Ev"), 1, 1, 1, 2.f, FLinearColor(0.96f, 0.89f, 0.80f));
 	Ev.Residents = 3;
 	Ev.bHasEntrance = true;
 	Slots.Add(Ev);
-	FSLSlot Hastane = Make(TEXT("Hastane"), TEXT("Hastane"), 2, 2, 3, 12.f, FLinearColor(0.92f, 0.92f, 0.88f)); // orta bina
+	FSLSlot Hastane = Make(TEXT("Hastane"), TEXT("Hastane"), 2, 2, 3, 12.f, FLinearColor(0.97f, 0.95f, 0.92f)); // orta bina
 	Hastane.bHasEntrance = true;
 	Slots.Add(Hastane);
-	FSLSlot Avm = Make(TEXT("AVM"), TEXT("AVM"), 3, 3, 4, 36.f, FLinearColor(0.40f, 0.30f, 0.22f));             // buyuk bina
+	FSLSlot Avm = Make(TEXT("AVM"), TEXT("AVM"), 3, 3, 4, 36.f, FLinearColor(0.96f, 0.84f, 0.80f));             // buyuk bina
 	Avm.bHasEntrance = true;
 	Slots.Add(Avm);
-	FSLSlot Yol = Make(TEXT("Yol"), TEXT("Yol"), 1, 1, 1, 0.5f, FLinearColor(0.25f, 0.22f, 0.20f));
+	FSLSlot Yol = Make(TEXT("Yol"), TEXT("Yol"), 1, 1, 1, 0.5f, FLinearColor(0.90f, 0.77f, 0.60f));
 	Yol.bFlat = true;
 	Slots.Add(Yol);
 }
