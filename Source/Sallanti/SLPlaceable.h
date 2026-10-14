@@ -1,5 +1,6 @@
 // Yerlestirilen nesnenin tabani. Pivot tabanin ortasinda (08_ASSET_SPEC 3. bolum).
 // Hem gercek nesne hem hayalet olarak kullanilir; hayalet collision'siz ve yari saydamdir.
+// Yerlestirilen nesne platforma bagli ve sabittir (fizik yok); platform devrilince onunla devrilir.
 
 #pragma once
 
@@ -11,7 +12,6 @@ class UStaticMesh;
 class UStaticMeshComponent;
 class UMaterialInstanceDynamic;
 class UMaterialInterface;
-class UPhysicalMaterial;
 
 UCLASS()
 class SALLANTI_API ASLPlaceable : public AActor
@@ -63,14 +63,6 @@ public:
 	/** Mesh'i SizeCells'e gore olcekler, pivotu tabana alir, rengi uygular. */
 	void ApplyVisuals();
 
-	/** Adim 7: platformdan cozulur, fizik acilir, kayip duser. Geri donusu yok. */
-	void Release(UPhysicalMaterial* PhysMat, float KgPerMass);
-
-	bool IsReleased() const { return bReleased; }
-
-	/** Govdenin dunya merkezi. Birakildiktan sonra aktor koku yerinde kalir, mesh hareket eder. */
-	FVector GetBodyCenter() const;
-
 	/** Hayalet moduna gecer: collision yok, golge yok, yari saydam. */
 	void MakeGhost(UMaterialInterface* GhostMaterial);
 	void SetGhostColor(const FLinearColor& Color, float Opacity);
@@ -83,5 +75,4 @@ private:
 	TObjectPtr<UStaticMesh> DefaultCube;
 
 	bool bGhost = false;
-	bool bReleased = false;
 };

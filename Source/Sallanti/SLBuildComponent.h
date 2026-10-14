@@ -73,6 +73,13 @@ public:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
 	ESLBuildState State = ESLBuildState::Idle;
 
+	/** false = yerlestirme kapali (platform devrildi, oyun bitti). */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
+	bool bBuildEnabled = true;
+
+	/** Oyun bitti: hayaleti kaldirir, yerlestirmeyi kilitler. */
+	void DisableBuilding();
+
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
 	int32 SelectedSlot = INDEX_NONE;
 

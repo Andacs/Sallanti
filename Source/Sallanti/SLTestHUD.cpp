@@ -17,6 +17,37 @@ void ASLTestHUD::Line(float X, float& Y, const FString& Text, const FLinearColor
 	Y += 22.f * TextScale;
 }
 
+void ASLTestHUD::DrawCenterMessage(const ASLPlatform& P)
+{
+	UFont* Font = GEngine ? GEngine->GetLargeFont() : nullptr;
+	FString Text;
+	FLinearColor Color;
+	switch (P.BalanceState)
+	{
+	case ESLBalanceState::Warning:
+		Text = TEXT("DENGE SINIRDA");
+		Color = FLinearColor(1.f, 0.8f, 0.2f);
+		break;
+	case ESLBalanceState::Failing:
+		Text = FString::Printf(TEXT("DEVRİLİYOR  %.1f"), FMath::Max(0.f, P.FailSeconds - P.FailTimer));
+		Color = FLinearColor(1.f, 0.3f, 0.25f);
+		break;
+	case ESLBalanceState::Collapsed:
+		Text = TEXT("DEVRİLDİ   Space / F5: tekrar");
+		Color = FLinearColor(1.f, 0.3f, 0.25f);
+		break;
+	default:
+		return;
+	}
+	const float Scale = 2.f;
+	float W = 0.f, H = 0.f;
+	GetTextSize(Text, W, H, Font, Scale);
+	const float CX = 0.5f * (Canvas->ClipX - W);
+	const float CY = 0.30f * Canvas->ClipY;
+	DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.45f), CX - 24.f, CY - 10.f, W + 48.f, H + 20.f);
+	DrawText(Text, Color, CX, CY, Font, Scale);
+}
+
 void ASLTestHUD::DrawHUD()
 {
 	Super::DrawHUD();
@@ -31,6 +62,11 @@ void ASLTestHUD::DrawHUD()
 	const USLBuildComponent* B = PC ? PC->Build.Get() : nullptr;
 	const float X = 24.f;
 	float Y = 20.f;
+
+	if (P)
+	{
+		DrawCenterMessage(*P);
+	}
 
 	if (!bShowTestPanel)
 	{
@@ -70,33 +106,33 @@ void ASLTestHUD::DrawHUD()
 	Line(X, Y, FString::Printf(TEXT("Ağırlık merkezi (%.0f, %.0f) cm   merkeze %.0f cm   PlatformMass %.0f   TiltPerCm %.3f"),
 		P->CenterOfMass.X, P->CenterOfMass.Y, P->CenterOfMass.Size(), P->PlatformMass, P->TiltPerCm));
 
-	if (P->ReleasedCount > 0)
-	{
-		Line(X, Y, FString::Printf(TEXT("Fiziğe bırakıldı %d   platformda kayan %d   düşen %d"),
-			P->ReleasedCount, P->ReleasedOnDeck, P->FallenCount), FLinearColor(1.f, 0.6f, 0.3f));
-	}
-
-	// Egim cubugu: 0..MaxTilt. ReleaseTilt (sari) ve FailTilt (kirmizi) cizgileri.
+	// Egim cubugu: 0..MaxTilt, sallanma haric (kararlar ona bakar). Sari = WarnTilt, kirmizi = FailTilt.
 	const float BarW = 420.f, BarH = 16.f;
 	const float BarY = Y + 4.f;
 	const float Max = FMath::Max(P->MaxTilt, 0.1f);
-	const float Frac = FMath::Clamp(P->CurrentTiltDegrees / Max, 0.f, 1.f);
-	const FLinearColor Fill = P->CurrentTiltDegrees >= P->FailTilt ? FLinearColor(0.95f, 0.2f, 0.15f)
-		: P->CurrentTiltDegrees >= P->ReleaseTilt ? FLinearColor(1.f, 0.75f, 0.1f) : FLinearColor(0.3f, 0.85f, 0.4f);
+	const float Judged = P->CurrentTilt.Size();
+	const float Frac = FMath::Clamp(Judged / Max, 0.f, 1.f);
+	const FLinearColor Fill = Judged >= P->FailTilt ? FLinearColor(0.95f, 0.2f, 0.15f)
+		: Judged >= P->WarnTilt ? FLinearColor(1.f, 0.75f, 0.1f) : FLinearColor(0.3f, 0.85f, 0.4f);
 	DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.55f), X, BarY, BarW, BarH);
 	DrawRect(Fill, X, BarY, BarW * Frac, BarH);
-	const float RelX = X + BarW * FMath::Clamp(P->ReleaseTilt / Max, 0.f, 1.f);
+	const float WarnX = X + BarW * FMath::Clamp(P->WarnTilt / Max, 0.f, 1.f);
 	const float FailX = X + BarW * FMath::Clamp(P->FailTilt / Max, 0.f, 1.f);
-	DrawLine(RelX, BarY - 4.f, RelX, BarY + BarH + 4.f, FLinearColor(1.f, 0.85f, 0.2f), 2.f);
+	DrawLine(WarnX, BarY - 4.f, WarnX, BarY + BarH + 4.f, FLinearColor(1.f, 0.85f, 0.2f), 2.f);
 	DrawLine(FailX, BarY - 4.f, FailX, BarY + BarH + 4.f, FLinearColor(1.f, 0.2f, 0.15f), 2.f);
 	Y = BarY + BarH + 6.f;
-	Line(X, Y, FString::Printf(TEXT("sarı çizgi = ReleaseTilt %.0f°   kırmızı = FailTilt %.0f°   çubuğun ucu = MaxTilt %.0f°"),
-		P->ReleaseTilt, P->FailTilt, P->MaxTilt), FLinearColor(1.f, 1.f, 1.f, 0.75f));
+	Line(X, Y, FString::Printf(TEXT("sarı = uyarı %.0f°   kırmızı = devrilme %.0f° (%.1f sn kalırsa)   uç = MaxTilt %.0f°"),
+		P->WarnTilt, P->FailTilt, P->FailSeconds, P->MaxTilt), FLinearColor(1.f, 1.f, 1.f, 0.75f));
+
+	static const TCHAR* StateNames[] = { TEXT("DENGEDE"), TEXT("UYARI"), TEXT("DEVRİLİYOR"), TEXT("DEVRİLDİ") };
+	const int32 StateIdx = FMath::Clamp(static_cast<int32>(P->BalanceState), 0, 3);
+	Line(X, Y, FString::Printf(TEXT("Durum: %s   sayaç %.1f / %.1f sn"), StateNames[StateIdx], P->FailTimer, P->FailSeconds),
+		StateIdx == 0 ? FLinearColor(0.4f, 1.f, 0.5f) : StateIdx == 1 ? FLinearColor(1.f, 0.8f, 0.2f) : FLinearColor(1.f, 0.35f, 0.3f));
 
 	// --- Kontroller (alt) ---
 	float BY = Canvas->ClipY - 22.f * TextScale * 3.f - 16.f;
 	const FLinearColor Dim(1.f, 1.f, 1.f, 0.8f);
 	Line(X, BY, TEXT("1-4 slot   Fare: hayalet   Sol tık: koy   R: döndür   Sağ tık / Esc: bırak"), Dim);
-	Line(X, BY, TEXT("Backspace: son nesneyi geri al   F5: baştan   G: ızgara hep açık   H: bu panel"), Dim);
-	Line(X, BY, TEXT("Konsol (~):  SLKnobs = ayarları listele   SLSet PlatformMass 10 = değiştir   SLSelfTest"), Dim);
+	Line(X, BY, TEXT("Backspace: son nesneyi geri al   F5 / Space: baştan   G: ızgara hep açık   H: bu panel"), Dim);
+	Line(X, BY, TEXT("Konsol (~):  SLKnobs = ayarları listele   SLSet PlatformMass 10 = değiştir   SLTest8"), Dim);
 }

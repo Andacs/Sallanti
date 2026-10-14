@@ -4,7 +4,6 @@
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
-#include "PhysicalMaterials/PhysicalMaterial.h"
 #include "UObject/ConstructorHelpers.h"
 
 ASLPlaceable::ASLPlaceable()
@@ -64,31 +63,6 @@ void ASLPlaceable::ApplyVisuals()
 			MID->SetVectorParameterValue(TEXT("Tint"), Tint);
 		}
 	}
-}
-
-void ASLPlaceable::Release(UPhysicalMaterial* PhysMat, float KgPerMass)
-{
-	if (bReleased || bGhost)
-	{
-		return;
-	}
-	bReleased = true;
-	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-	// BlockAll = WorldStatic; simule edilen govde PhysicsActor olmali.
-	Mesh->SetCollisionProfileName(TEXT("PhysicsActor"));
-	if (PhysMat)
-	{
-		Mesh->SetPhysMaterialOverride(PhysMat);
-	}
-	Mesh->SetMassOverrideInKg(NAME_None, FMath::Max(0.1f, Mass * KgPerMass), true);
-	Mesh->SetSimulatePhysics(true);
-	Mesh->WakeAllRigidBodies();
-}
-
-FVector ASLPlaceable::GetBodyCenter() const
-{
-	// Simule edilen mesh aktor kokunden ayrilir; gercek yer mesh'in sinir kutusunun merkezi.
-	return Mesh->Bounds.Origin;
 }
 
 void ASLPlaceable::MakeGhost(UMaterialInterface* GhostMaterial)

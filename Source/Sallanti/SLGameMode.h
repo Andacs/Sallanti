@@ -17,6 +17,10 @@ class SALLANTI_API ASLGameMode : public AGameModeBase
 public:
 	ASLGameMode();
 
+	/** Platform devrildi mi? (adim 8: kaybetme) */
+	UFUNCTION(BlueprintPure, Category = "Sallanti")
+	bool IsGameOver() const { return bGameOver; }
+
 	/** Seviyedeki platform; yoksa dunya merkezine dogurulur. */
 	ASLPlatform* GetPlatform();
 	const ASLPlatform* GetPlatform() const { return Platform; }
@@ -33,6 +37,11 @@ protected:
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 
 private:
+	UFUNCTION()
+	void HandleCollapsed();
+
 	UPROPERTY(Transient)
 	TObjectPtr<ASLPlatform> Platform;
+
+	bool bGameOver = false;
 };

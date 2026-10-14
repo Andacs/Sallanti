@@ -4,7 +4,6 @@
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
-#include "PhysicalMaterials/PhysicalMaterial.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/Engine.h"
 #include "Engine/StaticMesh.h"
@@ -105,24 +104,10 @@ void ASLPlatform::RegisterPlaceable(ASLPlaceable* Placeable)
 	}
 }
 
-bool ASLPlatform::IsOnDeck(const FVector& WorldCenter, FVector& OutLocal) const
-{
-	// Merkezi kenari gecmis ama hala kenarda asili duran nesne dusmus degildir (olculdu: merkez kenari
-	// gecip "dustu" sayilinca platform, binalar daha kenardayken duzeliyordu). Yuzeyin ustunde ve kenardan
-	// en fazla bir hucre disarida kaldikca platformda sayilir; agirligi kenara kirpilir (destek noktasi).
-	OutLocal = TiltPivot->GetComponentTransform().InverseTransformPosition(WorldCenter);
-	const float Reach = HalfExtent + GridSize;
-	const bool bOn = OutLocal.Z > 0.f && FMath::Abs(OutLocal.X) <= Reach && FMath::Abs(OutLocal.Y) <= Reach;
-	OutLocal.X = FMath::Clamp(OutLocal.X, -HalfExtent, HalfExtent);
-	OutLocal.Y = FMath::Clamp(OutLocal.Y, -HalfExtent, HalfExtent);
-	return bOn;
-}
-
 void ASLPlatform::RecomputeCenterOfMass()
 {
 	FVector2D Weighted = FVector2D::ZeroVector;
 	float Mass = 0.f;
-	int32 Released = 0, OnDeck = 0, Fallen = 0;
 	for (const TWeakObjectPtr<ASLPlaceable>& Weak : Placeables)
 	{
 		const ASLPlaceable* P = Weak.Get();
@@ -130,32 +115,10 @@ void ASLPlatform::RecomputeCenterOfMass()
 		{
 			continue; // geri alinmis
 		}
-		if (!P->IsReleased())
-		{
-			const FVector Rel = P->GetRootComponent()->GetRelativeLocation();
-			Weighted += P->Mass * FVector2D(Rel.X, Rel.Y);
-			Mass += P->Mass;
-			continue;
-		}
-		++Released;
-		FVector Local;
-		if (IsOnDeck(P->GetBodyCenter(), Local))
-		{
-			++OnDeck;
-			if (bReleasedStillWeigh)
-			{
-				Weighted += P->Mass * FVector2D(Local.X, Local.Y);
-				Mass += P->Mass;
-			}
-		}
-		else
-		{
-			++Fallen;
-		}
+		const FVector Rel = P->GetRootComponent()->GetRelativeLocation();
+		Weighted += P->Mass * FVector2D(Rel.X, Rel.Y);
+		Mass += P->Mass;
 	}
-	ReleasedCount = Released;
-	ReleasedOnDeck = OnDeck;
-	FallenCount = Fallen;
 	TotalMass = Mass;
 	const float Denominator = Mass + PlatformMass;
 	CenterOfMass = Denominator > KINDA_SMALL_NUMBER ? Weighted / Denominator : FVector2D::ZeroVector;
@@ -183,43 +146,49 @@ int32 ASLPlatform::GetStackLevel(FIntPoint CellMin, FIntPoint Footprint) const
 	return Level;
 }
 
-void ASLPlatform::ReleaseAll()
-{
-	if (!ReleasedPhysMat)
-	{
-		ReleasedPhysMat = NewObject<UPhysicalMaterial>(this, TEXT("PM_Released"));
-	}
-	// Temas surtunmesi iki yuzeyin ortalamasi olursa platformun 0.7'si kaymayi oldurur: en kucugu al.
-	ReleasedPhysMat->Friction = ReleasedFriction;
-	ReleasedPhysMat->StaticFriction = ReleasedFriction;
-	ReleasedPhysMat->bOverrideFrictionCombineMode = true;
-	ReleasedPhysMat->FrictionCombineMode = EFrictionCombineMode::Min;
-
-	int32 N = 0;
-	for (const TWeakObjectPtr<ASLPlaceable>& Weak : Placeables)
-	{
-		ASLPlaceable* P = Weak.Get();
-		if (P && !P->IsReleased())
-		{
-			P->Release(ReleasedPhysMat, KgPerMass);
-			++N;
-		}
-	}
-	if (N > 0)
-	{
-		LastReleaseTime = GetWorld()->GetTimeSeconds();
-		UE_LOG(LogTemp, Log, TEXT("SL_RELEASE %d nesne birakildi, egim %.2f deg (esik %.1f)"), N, CurrentTiltDegrees, ReleaseTilt);
-	}
-}
-
 float ASLPlatform::GetWorldZOfLocal(const FVector& Local) const
 {
 	return TiltPivot->GetComponentTransform().TransformPosition(Local).Z;
 }
 
+void ASLPlatform::BeginPlay()
+{
+	Super::BeginPlay();
+	DeckMID = Deck->CreateDynamicMaterialInstance(0);
+	if (DeckMID)
+	{
+		DeckMID->SetVectorParameterValue(TEXT("Tint"), DeckTint);
+	}
+}
+
+void ASLPlatform::ApplyTiltRotation(const FVector2D& TiltDeg)
+{
+	// d = inen taraf. k = Z x d ekseni etrafinda pozitif aci d tarafini asagi indirir (SLReport ile olculdu).
+	const float Deg = TiltDeg.Size();
+	FQuat Rot = FQuat::Identity;
+	if (Deg > KINDA_SMALL_NUMBER)
+	{
+		const FVector Down(TiltDeg.X / Deg, TiltDeg.Y / Deg, 0.f);
+		const FVector Axis = FVector::CrossProduct(FVector::UpVector, Down).GetSafeNormal();
+		Rot = FQuat(Axis, FMath::DegreesToRadians(Deg));
+	}
+	TiltPivot->SetRelativeRotation(Rot);
+}
+
 void ASLPlatform::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+
+	if (BalanceState == ESLBalanceState::Collapsed)
+	{
+		// Devrilme: ayni yone, hizlanarak, CollapseAngle'a kadar. Binalar bagli, birlikte gider.
+		CollapseVelocity += CollapseAcceleration * DeltaSeconds;
+		CollapseCurrent = FMath::Min(CollapseCurrent + CollapseVelocity * DeltaSeconds, CollapseAngle);
+		CurrentTiltDegrees = CollapseCurrent;
+		ApplyTiltRotation(CollapseDir * CollapseCurrent);
+		UpdateDeckWarning(DeltaSeconds);
+		return;
+	}
 
 	RecomputeCenterOfMass();
 
@@ -238,21 +207,10 @@ void ASLPlatform::Tick(float DeltaSeconds)
 
 	const FVector2D Total = CurrentTilt + Sway;
 	CurrentTiltDegrees = Total.Size();
+	ApplyTiltRotation(Total);
 
-	// d = inen taraf. k = Z x d ekseni etrafinda pozitif aci d tarafini asagi indirir (SLReport ile olculdu).
-	FQuat Rot = FQuat::Identity;
-	if (CurrentTiltDegrees > KINDA_SMALL_NUMBER)
-	{
-		const FVector Down(Total.X / CurrentTiltDegrees, Total.Y / CurrentTiltDegrees, 0.f);
-		const FVector Axis = FVector::CrossProduct(FVector::UpVector, Down).GetSafeNormal();
-		Rot = FQuat(Axis, FMath::DegreesToRadians(CurrentTiltDegrees));
-	}
-	TiltPivot->SetRelativeRotation(Rot);
-
-	if (CurrentTiltDegrees >= ReleaseTilt)
-	{
-		ReleaseAll();
-	}
+	UpdateBalanceState(DeltaSeconds);
+	UpdateDeckWarning(DeltaSeconds);
 
 #if !UE_BUILD_SHIPPING
 	if (bDebugDraw)
@@ -262,4 +220,59 @@ void ASLPlatform::Tick(float DeltaSeconds)
 		DrawDebugSphere(GetWorld(), ComWorld, 12.f, 8, FColor::Magenta, false, -1.f, SDPG_Foreground);
 	}
 #endif
+}
+
+void ASLPlatform::UpdateBalanceState(float DeltaSeconds)
+{
+	const float Judged = CurrentTilt.Size(); // sallanma haric
+	WarnAlpha = FMath::Clamp((Judged - WarnTilt) / FMath::Max(FailTilt - WarnTilt, 0.01f), 0.f, 1.f);
+
+	if (Judged >= FailTilt)
+	{
+		FailTimer += DeltaSeconds;
+		BalanceState = ESLBalanceState::Failing;
+		if (FailTimer >= FailSeconds)
+		{
+			Collapse();
+		}
+		return;
+	}
+	FailTimer = 0.f; // kesintisiz olmali: esigin altina inen sayaci sifirlar
+	BalanceState = Judged >= WarnTilt ? ESLBalanceState::Warning : ESLBalanceState::Stable;
+}
+
+void ASLPlatform::UpdateDeckWarning(float DeltaSeconds)
+{
+	if (!DeckMID)
+	{
+		return;
+	}
+	float Strength = 0.f;
+	float Hz = 0.f;
+	switch (BalanceState)
+	{
+	case ESLBalanceState::Warning:
+		Strength = FMath::Lerp(WarnStrengthMin, WarnStrengthMax, WarnAlpha);
+		Hz = FMath::Lerp(WarnPulseHzMin, WarnPulseHzMax, WarnAlpha);
+		break;
+	case ESLBalanceState::Failing:   Strength = WarnStrengthMax; Hz = FailingPulseHz; break;
+	case ESLBalanceState::Collapsed: Strength = WarnStrengthMax; Hz = 0.f; break;
+	default: break;
+	}
+	WarnPhase += DeltaSeconds * Hz * UE_TWO_PI;
+	// Nabiz yarim genlikte: en sonuk aninda bile Strength'in yarisi kadar kirmizi kalir, uyari kaybolmaz.
+	const float Pulse = Hz > 0.f ? 0.75f + 0.25f * FMath::Sin(WarnPhase) : 1.f;
+	DeckMID->SetVectorParameterValue(TEXT("Tint"), FMath::Lerp(DeckTint, WarnColor, Strength * Pulse));
+}
+
+void ASLPlatform::Collapse()
+{
+	BalanceState = ESLBalanceState::Collapsed;
+	const float Deg = CurrentTilt.Size();
+	CollapseDir = Deg > KINDA_SMALL_NUMBER ? CurrentTilt / Deg : FVector2D(1.f, 0.f);
+	CollapseCurrent = Deg;
+	CollapseVelocity = TiltSpeed * 0.5f; // eldeki egimden yumusak devam
+	UE_LOG(LogTemp, Log, TEXT("SL_COLLAPSE egim %.2f deg, %.2f sn FailTilt (%.1f) ustunde, yon (%.2f, %.2f)"),
+		Deg, FailTimer, FailTilt, CollapseDir.X, CollapseDir.Y);
+	OnCollapsed.Broadcast();
 }

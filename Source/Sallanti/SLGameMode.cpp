@@ -2,6 +2,7 @@
 
 #include "SLCameraPawn.h"
 #include "SLPlatform.h"
+#include "SLBuildComponent.h"
 #include "SLPlayerController.h"
 #include "SLTestHUD.h"
 #include "EngineUtils.h"
@@ -27,12 +28,32 @@ ASLPlatform* ASLGameMode::GetPlatform()
 	for (TActorIterator<ASLPlatform> It(World); It; ++It)
 	{
 		Platform = *It;
-		return Platform;
+		break;
 	}
-	FActorSpawnParameters Params;
-	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	Platform = World->SpawnActor<ASLPlatform>(ASLPlatform::StaticClass(), FTransform::Identity, Params);
+	if (!Platform)
+	{
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		Platform = World->SpawnActor<ASLPlatform>(ASLPlatform::StaticClass(), FTransform::Identity, Params);
+	}
+	if (Platform)
+	{
+		Platform->OnCollapsed.AddUniqueDynamic(this, &ASLGameMode::HandleCollapsed);
+	}
 	return Platform;
+}
+
+void ASLGameMode::HandleCollapsed()
+{
+	bGameOver = true;
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (ASLPlayerController* PC = Cast<ASLPlayerController>(It->Get()))
+		{
+			PC->Build->DisableBuilding();
+		}
+	}
+	UE_LOG(LogTemp, Log, TEXT("SL_GAMEOVER platform devrildi"));
 }
 
 AActor* ASLGameMode::ChoosePlayerStart_Implementation(AController* Player)

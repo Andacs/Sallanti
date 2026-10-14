@@ -55,9 +55,15 @@ void USLBuildComponent::ConfigurePlaceable(ASLPlaceable* P, const FSLSlot& Slot)
 	P->ApplyVisuals();
 }
 
+void USLBuildComponent::DisableBuilding()
+{
+	Cancel();
+	bBuildEnabled = false;
+}
+
 void USLBuildComponent::SelectSlot(int32 Index)
 {
-	if (!Slots.IsValidIndex(Index))
+	if (!bBuildEnabled || !Slots.IsValidIndex(Index))
 	{
 		return;
 	}
@@ -208,7 +214,7 @@ void USLBuildComponent::UpdateGhost()
 bool USLBuildComponent::TryPlace()
 {
 	ASLPlatform* Platform = GetPlatform();
-	if (!Ghost || !Platform || !Slots.IsValidIndex(SelectedSlot))
+	if (!bBuildEnabled || !Ghost || !Platform || !Slots.IsValidIndex(SelectedSlot))
 	{
 		return false;
 	}
@@ -252,6 +258,10 @@ bool USLBuildComponent::TryPlace()
 
 void USLBuildComponent::UndoLast()
 {
+	if (!bBuildEnabled)
+	{
+		return; // devrildikten sonra geri alma yok: F5 / Space ile bastan
+	}
 	while (PlacedStack.Num() > 0)
 	{
 		ASLPlaceable* P = PlacedStack.Pop().Get();

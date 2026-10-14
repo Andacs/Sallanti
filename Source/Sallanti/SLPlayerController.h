@@ -48,9 +48,9 @@ public:
 	UFUNCTION(Exec)
 	void SLKnobs();
 
-	/** Adim 7 olcumu: egimi kademeli artirir, esikte birakmayi ve dokulmeyi kaydeder. Sonda cikar. */
+	/** Adim 8 olcumu: uyari -> karsi agirlikla duzelme -> asiri yuk -> devrilme ve kilit. Sonda cikar. */
 	UFUNCTION(Exec)
-	void SLTest7();
+	void SLTest8();
 
 	/** Uygulama sirasi 1-6'yi sirayla calistirir; her adimda ekran goruntusu + SL_REPORT. Sonda cikar. */
 	UFUNCTION(Exec)
@@ -70,6 +70,7 @@ private:
 	void OnSlot4();
 	void OnUndo();
 	void OnRestart();
+	void OnAgain();
 	void OnToggleGrid();
 	void OnToggleHelp();
 
@@ -77,7 +78,7 @@ private:
 	TArray<UObject*> GetKnobTargets() const;
 
 	void SelfTestStep();
-	void Test7Step();
+	void Test8Step();
 	void MouseAtLocal(int32 Slot, const FVector& Local);
 	void LogGhost(const TCHAR* Label);
 	void Shot(const TCHAR* Name);

@@ -22,5 +22,7 @@ public:
 	float TextScale = 1.2f;
 
 private:
+	/** Uyari / devrilme mesaji. Test paneli gizliyken de cizilir (oynanis geri bildirimi). */
+	void DrawCenterMessage(const class ASLPlatform& P);
 	void Line(float X, float& Y, const FString& Text, const FLinearColor& Color = FLinearColor::White);
 };

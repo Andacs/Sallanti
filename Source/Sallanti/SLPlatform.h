@@ -8,8 +8,19 @@
 
 class ASLPlaceable;
 class UInstancedStaticMeshComponent;
-class UPhysicalMaterial;
+class UMaterialInstanceDynamic;
 class UStaticMeshComponent;
+
+UENUM(BlueprintType)
+enum class ESLBalanceState : uint8
+{
+	Stable,    // WarnTilt altinda
+	Warning,   // WarnTilt..FailTilt: platform kirmizi atar
+	Failing,   // FailTilt ustunde, FailSeconds sayiyor: hala kurtarilabilir
+	Collapsed  // devrildi, oyun bitti
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FSLOnCollapsed);
 
 UCLASS()
 class SALLANTI_API ASLPlatform : public AActor
@@ -20,7 +31,10 @@ public:
 	ASLPlatform();
 
 	virtual void OnConstruction(const FTransform& Transform) override;
+	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
+
+	bool IsCollapsed() const { return BalanceState == ESLBalanceState::Collapsed; }
 
 	/** Yerlestirilen nesneler buna baglanir; egim bu bileseni dondurur. Ust yuzey yerel Z=0. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sallanti")
@@ -77,33 +91,55 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Denge", meta = (Units = "Degrees"))
 	float SwayDirection = 0.f;
 
-	/** Bu egimi (sallanma dahil) gecince bagli butun nesneler ayni anda fizige birakilir. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Dusme", meta = (Units = "Degrees"))
-	float ReleaseTilt = 8.f;
+	// --- Uyari ve devrilme (14 Ekim tasarim degisikligi: binalar sabit, platform devrilir) ---
+	// Egim kararlari sallanma HARIC egime bakar: anlik salinimda uyarmak/kaybettirmek haksiz.
 
-	/** Birakilan nesnelerin surtunmesi. Kayma acisi = atan(surtunme): 0.1 -> 5.7 deg.
-	 *  Motorun varsayilani 0.7 (35 deg) olsaydi 8-12 deg'lik platformda hicbir sey kaymazdi. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Dusme", meta = (ClampMin = "0"))
-	float ReleasedFriction = 0.1f;
+	/** Bu egimden itibaren uyari: platform kirmiziya dogru nabiz gibi atar, FailTilt'e yaklastikca hizlanir. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Devrilme", meta = (Units = "Degrees"))
+	float WarnTilt = 8.f;
 
-	/** Birakilan govdenin fizik kutlesi = Mass * bu (kg). Yalnizca nesnelerin birbirini itmesini etkiler. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Dusme", meta = (ClampMin = "0.1"))
-	float KgPerMass = 20.f;
-
-	/** Birakilan nesne platformun ustunde kaldikca gercek yeriyle dengeye katilir:
-	 *  alcak kenara kaydikca egim artar, sonunda dokulurler. false = birakilan dengeden hemen cikar. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Dusme")
-	bool bReleasedStillWeigh = true;
-
-	/** Adim 8: kaybetme esigi. Henuz kullanilmiyor. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Denge", meta = (Units = "Degrees"))
+	/** Kaybetme esigi. FailSeconds boyunca kesintisiz asilirsa platform devrilir, oyun biter. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Devrilme", meta = (Units = "Degrees"))
 	float FailTilt = 10.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Denge", meta = (Units = "Seconds"))
+	/** Esigin ustunde kalma suresi. Bu sure oyuncunun karsi agirlikla kurtarma penceresi. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Devrilme", meta = (Units = "Seconds"))
 	float FailSeconds = 1.5f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Denge")
-	float FailZ = -200.f;
+	/** Devrilmenin vardigi aci. Binalar bagli kalir, platformla birlikte devrilir.
+	 *  Olculdu: 75'te kameradan uzaga devrilen platformun alti ekrani kapliyor, binalar kayboluyor.
+	 *  Kamera 35 deg yukaridan bakiyor: uzaga devrilmede 35'ten sonra alt yuz gorunur. 45'te alt yuz
+	 *  gorunse de binalar kenarin ustunden seciliyor (ekran goruntusu SL_T8_5). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Devrilme", meta = (Units = "Degrees"))
+	float CollapseAngle = 45.f;
+
+	/** Devrilme ivmesi, derece/sn^2. Yavas baslayip hizlanan dusus. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Devrilme")
+	float CollapseAcceleration = 120.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Devrilme")
+	FLinearColor WarnColor = FLinearColor(0.85f, 0.12f, 0.08f);
+
+	/** Uyari nabzinin gucu: WarnTilt'te Min, FailTilt'e yaklasirken Max'a cikar (0 = karton, 1 = WarnColor). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Devrilme", meta = (ClampMin = "0", ClampMax = "1"))
+	float WarnStrengthMin = 0.6f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Devrilme", meta = (ClampMin = "0", ClampMax = "1"))
+	float WarnStrengthMax = 0.9f;
+
+	/** Nabiz hizi, Hz: WarnTilt'te Min, FailTilt'te Max. Devrilme sayaci isliyorken FailingPulseHz. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Devrilme")
+	float WarnPulseHzMin = 1.5f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Devrilme")
+	float WarnPulseHzMax = 4.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Devrilme")
+	float FailingPulseHz = 6.f;
+
+	/** Platformun normal karton rengi (M_Cardboard Tint). Uyari bundan WarnColor'a dogru atar. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Devrilme")
+	FLinearColor DeckTint = FLinearColor(0.62f, 0.45f, 0.28f);
 
 	// --- Boyut ---
 
@@ -130,20 +166,20 @@ public:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
 	float TotalMass = 0.f;
 
-	/** Fizige birakilmis nesne sayisi. */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
-	int32 ReleasedCount = 0;
+	ESLBalanceState BalanceState = ESLBalanceState::Stable;
 
-	/** Birakilmis ve hala platformun ustunde olanlar. */
+	/** 0 = WarnTilt'te, 1 = FailTilt'te. HUD gostergesi ve ses bunu okur. */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
-	int32 ReleasedOnDeck = 0;
+	float WarnAlpha = 0.f;
 
-	/** Platformdan dokulmus olanlar (adim 8'in kaybetme kosulu buradan okuyacak). */
+	/** FailTilt'in ustunde kesintisiz gecen sure, sn. FailSeconds'a ulasinca devrilir. */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
-	int32 FallenCount = 0;
+	float FailTimer = 0.f;
 
-	/** Son birakmanin oldugu oyun zamani; hic olmadiysa negatif. */
-	float LastReleaseTime = -1.f;
+	/** Devrildigi an yayinlanir; GameMode oyunu bitirir. */
+	UPROPERTY(BlueprintAssignable, Category = "Sallanti")
+	FSLOnCollapsed OnCollapsed;
 
 	/** CoM'un istedigi egim (sallanma haric), derece. Mevcut egim buna TiltSpeed ile yaklasir. */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
@@ -153,7 +189,7 @@ public:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
 	FVector2D CurrentTilt = FVector2D::ZeroVector;
 
-	/** Sallanma dahil toplam egim, derece. Kaybetme ve HUD bunu okur. */
+	/** Sallanma dahil toplam egim, derece (ekranda gorulen). Uyari/kaybetme sallanma haric CurrentTilt'e bakar. */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
 	float CurrentTiltDegrees = 0.f;
 
@@ -175,13 +211,18 @@ private:
 	void RecomputeCenterOfMass();
 	void ApplyDeckSize();
 	void BuildGrid();
-	void ReleaseAll();
-
-	/** Birakilmis govde platformun ustunde mi? (yerel XY sinirlar icinde, yuzeyin ustunde) */
-	bool IsOnDeck(const FVector& WorldCenter, FVector& OutLocal) const;
+	void UpdateBalanceState(float DeltaSeconds);
+	void UpdateDeckWarning(float DeltaSeconds);
+	void Collapse();
+	void ApplyTiltRotation(const FVector2D& TiltDeg);
 
 	UPROPERTY(Transient)
-	TObjectPtr<UPhysicalMaterial> ReleasedPhysMat;
+	TObjectPtr<UMaterialInstanceDynamic> DeckMID;
+
+	FVector2D CollapseDir = FVector2D(1.f, 0.f);
+	float CollapseCurrent = 0.f;
+	float CollapseVelocity = 0.f;
+	float WarnPhase = 0.f;
 
 	bool bGridForPlacing = false;
 
