@@ -88,6 +88,13 @@ td.n{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:now
 .prog{height:8px;background:var(--chip);border-radius:999px;overflow:hidden;margin-top:10px}
 .prog i{display:block;height:100%;background:var(--ok);width:0;transition:width .3s}
 .decision{color:var(--accent);font-weight:700}
+.role{font-family:var(--f-body);font-size:.8rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--chip);border-radius:3px;padding:2px 8px}
+.pnote{color:var(--muted);font-size:.93rem}
+.list li.phase{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--accent);padding:14px 4px 2px;border-bottom:0}
+.list li.phase:first-child{padding-top:4px}
+table.matrix{min-width:820px}
+table.matrix td{font-size:.86rem}
+table.matrix td[colspan]{background:var(--chip);text-align:center}
 @media (prefers-reduced-motion:reduce){.prog i,#plank{transition:none!important}}
 @media (max-width:520px){.item{grid-template-columns:28px minmax(0,1fr)}.who{grid-column:2;text-align:left}}
 </style>
@@ -138,6 +145,206 @@ td.n{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:now
         <li data-id="k-kesme" data-t="Kesme listesi ekiple onaylandı" data-d="Aşağıdaki 'Kesilenler' tablosu."></li>
       </ul>
       <div class="prog"><i></i></div>
+    </section>
+
+    <!-- ============ GÖREV DAĞILIMI ============ -->
+    <section class="card" id="dagilim">
+      <h2>Görev dağılımı <span class="hand">kim, ne zaman, neyi teslim eder</span></h2>
+      <p>Tek kural bütün tabloyu taşıyor: <b>kod gerektiren iş Andaç'ta, kod gerektirmeyen hiçbir iş Andaç'ta değil.</b> Altı işten dördü Andaç'ın üstünden alındı: yerleştirme, environment yerleştirme ve paketleme Yiğit'e, animasyon (gerekirse) Mert'e geçti. Andaç'ta yalnızca mekanik kodu kalıyor.</p>
+      <div class="tbl"><table class="matrix">
+        <thead><tr><th>Saat</th><th>Andaç · kod</th><th>Yiğit · seviye, UI, teslim</th><th>Mert · model, doku, ışık</th><th>Asil · konsept, model</th></tr></thead>
+        <tbody>
+          <tr><td class="n">Gün 0</td><td>Proje, Git+LFS, derleme, ilk paket, CLAUDE.md</td><td>Klonla, editörü aç, <code>paketle.bat</code>'ı bir kez kendisi çalıştır</td><td>Blender küp testi, export preset, <code>T_Cardboard_D</code></td><td>Küp testini kendi makinesinde tekrarla, preset'i al</td></tr>
+          <tr><td class="n">0–1</td><td>Tek cümle, kesme listesi, sahiplik ilanı</td><td>"Seviye bende" ilanı; istek kuyruğunu aç</td><td>Asil'le asset listesini böl</td><td>Karton İstanbul mood board (1 sayfa)</td></tr>
+          <tr><td class="n">1–3</td><td>Kamera + platform + sallanma (sıra 1–2)</td><td>Seviye yarım sayfası; HUD wireframe</td><td>Platform mesh'i 600×600</td><td>4 slot nesnesinin konsepti</td></tr>
+          <tr><td class="n">3–10</td><td>Hayalet, ızgara, yerleştirme, eğim (sıra 3–6)</td><td>Font + ikon dokuları; <code>WBP_HUD</code> iskeleti</td><td>4 slot nesnesi + <code>UBX_</code> collision</td><td>Dekor insan figürü 160 cm</td></tr>
+          <tr><td class="n">10–12</td><td colspan="4"><b>Herkes oynar.</b> Karar: mekanik eğlenceli mi? Değilse şimdi pivot.</td></tr>
+          <tr><td class="n">12–18</td><td colspan="4"><b>Uyku.</b> Herkes birlikte, en az 6 saat. Vardiya yok.</td></tr>
+          <tr><td class="n">18–24</td><td>Fiziğe bırakma, kaybetme, yeniden başlatma, kazanma (sıra 7–9)</td><td>HUD'u gerçek değerlere bağla; environment yerleştirme</td><td>Material instance'lar: Kraft, Dark, White</td><td>Büyük bina + bina varyasyonları</td></tr>
+          <tr><td class="n">24</td><td colspan="4"><b>Temiz klon kontrolü.</b> Herkes yeni klasöre klonlar, açar, oynar. 10 dakika.</td></tr>
+          <tr><td class="n">24–30</td><td>Mesh'leri slotlara bağla; ses tetikleyicileri</td><td>Gelen asset'leri <code>L_Ana</code>'ya yerleştir</td><td><b>Lighting penceresi</b> (seviye Mert'te)</td><td>Arka plan, silüet, çevre parçaları</td></tr>
+          <tr><td class="n">30–36</td><td>Denge ayarı: sayılar oynanarak</td><td>Jam sayfası metni (İngilizce), ekran görüntüleri</td><td>Görsel düzeltmeler</td><td>Kapak görseli</td></tr>
+          <tr><td class="n">36</td><td colspan="4"><b>Özellik dondurma.</b> Yeni kod yok, yeni asset yok. Yalnızca hata ve paket.</td></tr>
+          <tr><td class="n">36–42</td><td>Yalnızca Yiğit'in listesindeki hatalar</td><td>Paket al, başka makinede aç, hata listesi çıkar</td><td>Görsel hata düzeltme</td><td>Görsel hata düzeltme</td></tr>
+          <tr><td class="n">42–44</td><td colspan="4">Yükleme, sayfa, ekran görüntüleri. Sahibi Yiğit.</td></tr>
+          <tr><td class="n">44–48</td><td colspan="4">Tampon. Kullanılacak, yeni iş için değil.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="card taped person" id="andac" data-group>
+      <h2>Andaç <span class="role">tek programcı · yalnızca mekanik kodu</span></h2>
+      <p class="pnote">Sahip olduğu: <code>Source/</code>, <code>L_Test</code>, <code>Tools/</code>. Kod adımlarının kendisi aşağıdaki "Uygulama sırası" listesinde; buradakiler o adımların çevresindeki koordinasyon işleri. <b>Ana seviyeyi kaydetmez.</b> Derleme için editörü sık kapattığından kaydedilmemiş seviye değişikliği zaten onda kaybolur.</p>
+      <ul class="list">
+        <li class="phase">0–1. saat</li>
+        <li data-id="n-cumle" data-t="Tek cümleyi ekibe oku ve onaylat" data-d="&quot;Sallanan bir platformun üstüne şehir kuruyorsun; her koyduğun şey dengeyi bozuyor.&quot;"></li>
+        <li data-id="n-kesme" data-t="Kesme listesini ekiple bir kez oku, sırayı kilitle" data-d="İlk atılan HUD göstergesi, sonra ses, sonra kazanma sayacı. 24. saatte çekirdek çalışmıyorsa liste tamamen atılır, tartışma yok."></li>
+        <li data-id="n-yigitbp" data-t="Yiğit'e sor: Blueprint'te buton ve bar yapabiliyor musun?" data-d="Evetse UI/HUD'a hiç dokunmazsın; sadece HUD'un okuyacağı değerleri açarsın."></li>
+        <li class="phase">1–10. saat</li>
+        <li data-id="n-l-test" data-t="Bütün testleri L_Test'te yap" data-d="Oraya konan hiçbir şey L_Ana'ya taşınmaz. Kodun seviyeye bağımlı olmasın: platformu, kamerayı GameMode spawn etsin."></li>
+        <li data-id="n-slotolcu" data-t="Mert'e 4 slotun kesin ölçü ve kütlesini ver" data-d="Kutu 50×50×50 · Orta 50×50×100 · Küçük bina 100×100×100 · Orta bina 100×100×150. Mert bu ölçülere modeller, sen bu ölçülere kod yazarsın."></li>
+        <li data-id="n-kuyruk" data-t="İstek kuyruğuna saatte bir bak, arada bakma" data-d="Kuyruğu Yiğit tutar. Acil olan tek şey &quot;oyun açılmıyor/çöküyor&quot;."></li>
+        <li class="phase">10–12. saat</li>
+        <li data-id="n-oyna" data-t="Oynatma oturumunu yönet" data-d="Herkes 3'er dakika oynar, sen konuşmazsın, not alırsın. Sonra tek soru: eğlenceli mi?"></li>
+        <li class="phase">18–36. saat</li>
+        <li data-id="n-hudapi" data-t="HUD'un okuyacağı değerleri BlueprintReadOnly aç" data-d="Anlık eğim, FailTilt, yerleştirilen/hedef sayısı, kalan süre. HUD hesap yapmaz, platformdan okur."></li>
+        <li data-id="n-meshbagla" data-t="Mert'in 4 slot mesh'ini slot verisine bağla" data-d="Yol Content Browser'dan kopyalanır, ezberden yazılmaz."></li>
+        <li data-id="n-ayar" data-t="Denge ayarını oynayarak yap, tahminle değil" data-d="Bir sayıyı iki kez tahminle değiştirdiysen dur, ölç."></li>
+        <li class="phase">Her 6 saatte</li>
+        <li data-id="n-durum" data-t="CLAUDE.md &quot;Bilinen durum&quot; bölümünü güncelle" data-d="Görüldü / derlendi-görülmedi / bozuk. Ortadaki 2'yi geçerse yeni özellik durur."></li>
+        <li class="phase">36. saatten sonra</li>
+        <li data-id="n-dondur" data-t="Yeni özellik yok; yalnızca Yiğit'in paket hata listesi"></li>
+      </ul>
+      <div class="prog"><i></i></div>
+    </section>
+
+    <section class="card taped person" id="yigit" data-group>
+      <h2>Yiğit <span class="role">proje yardımcısı · seviye sahibi · UI/HUD · teslim</span></h2>
+      <p class="pnote">Sahip olduğu: <b><code>L_Ana</code></b>, <code>Content/Sallanti/UI/</code>, paketleme ve teslim. "Proje yardımcısı" rolünün somut hâli bu üç devralınan iş: yerleştirme, environment yerleştirme, paketleme. Üçü de kod bilmeden yapılıyor ve üçü de Andaç'ın en çok saatini yiyecek işler.</p>
+      <ul class="list">
+        <li class="phase">Gün 0</li>
+        <li data-id="y-klon" data-t="Repoyu klonla, git lfs install, editörü aç" data-d="github.com/Andacs/Sallanti. M_Cardboard açılıyorsa LFS doğru çözülmüş demektir."></li>
+        <li data-id="y-paket" data-t="Build\paketle.bat'ı kendin bir kez çalıştır" data-d="Editör kapalıyken. Çıktı Build\Package\Windows\Sallanti.exe. Açılıp açılmadığını gör. Teslim günü bu komutu ilk kez çalıştıran sen olmamalısın."></li>
+        <li class="phase">0–1. saat</li>
+        <li data-id="y-seviye" data-t="&quot;L_Ana bende&quot; diye ilan et" data-d="Devir her zaman sözlü ve açık: &quot;seviye sende&quot; / &quot;seviye bende&quot;. İki kişi aynı anda &quot;bende&quot; sanıyorsa iş kaybolmuştur."></li>
+        <li data-id="y-kuyruk" data-t="Andaç'a giden istek kuyruğunu aç ve tut" data-d="Tek bir paylaşılan not. Herkes isteğini oraya yazar, Andaç'ı doğrudan bölmez. Sen önceliği sıralarsın."></li>
+        <li class="phase">1–10. saat</li>
+        <li data-id="y-seviyetasarim" data-t="Seviyenin yarım sayfası" data-d="Seviye burada tek bir platform demek: platformun şekli, çevrede ne görünüyor, oyuncuya hangi sırayla hangi nesneler veriliyor."></li>
+        <li data-id="y-wire" data-t="HUD wireframe: 4 slot butonu, denge göstergesi, sayaç" data-d="Neredeyse metinsiz. Sayı, ikon, bar. Emoji yok; ikon gerekiyorsa doku."></li>
+        <li data-id="y-font" data-t="UI fontunu içe aktar, ş ğ ı İ ö ü ç'yi ekranda gör" data-d="Import'ta UFont oluştuğunu kontrol et (UFontFace değil), yoksa her şey sessizce Roboto'ya düşer."></li>
+        <li data-id="y-wbp" data-t="WBP_HUD iskeleti" data-d="Blueprint yapabiliyorsan. Butonlar Andaç'ın açtığı slot seçme fonksiyonunu çağırır."></li>
+        <li class="phase">18–30. saat</li>
+        <li data-id="y-hudbagla" data-t="HUD'u Andaç'ın açtığı gerçek değerlere bağla" data-d="Eğim yaklaşırken gösterge belirginleşsin; oyuncu kaybetmeden önce uyarılmış olmalı."></li>
+        <li data-id="y-env" data-t="Environment yerleştirme: dekor insanlar, arka plan" data-d="Asil'in teslim ettiği parçalarla. Platformun üstüne değil, çevresine."></li>
+        <li data-id="y-assetyer" data-t="Gelen her asset'i L_Ana'ya yerleştir" data-d="Mert ve Asil commit + push edip sana haber verir. Mevcut asset yeniden import edildiyse seviyede kontrol et."></li>
+        <li data-id="y-isikdevir" data-t="Lighting penceresi: seviyeyi Mert'e ver, bitince geri al" data-d="Mert ışık yaparken L_Ana'yı açma bile. Mert &quot;seviye bitti&quot; deyip push edince pull et."></li>
+        <li class="phase">30–44. saat</li>
+        <li data-id="y-sayfa" data-t="Jam sayfası: İngilizce açıklama, 3–5 ekran görüntüsü" data-d="Açıklama kısa: tek cümle + kontroller."></li>
+        <li data-id="y-paket2" data-t="36. saatte paketi al, başka makinede aç" data-d="&quot;Bende çalışıyor&quot; teslim değildir."></li>
+        <li data-id="y-hatalist" data-t="Paket hata listesini Andaç'a ver" data-d="Her madde: ne yaptın, ne gördün, ne bekliyordun."></li>
+        <li data-id="y-yukle" data-t="Son paketi yükle" data-d="42–44. saat. 44'ten sonrası tampon."></li>
+      </ul>
+      <div class="prog"><i></i></div>
+    </section>
+
+    <section class="card taped person" id="mert" data-group>
+      <h2>Mert <span class="role">model · topoloji · texture · lighting</span></h2>
+      <p class="pnote">Sahip olduğu: <code>Content/Sallanti/Meshes/</code> altındaki kendi mesh'leri, <code>T_Cardboard_D</code>, material instance'lar, lighting penceresinde <code>L_Ana</code>. Oyunun ilk ihtiyacı platform ve 4 slot nesnesi, binaların güzelliği sonra gelir.</p>
+      <ul class="list">
+        <li class="phase">Gün 0</li>
+        <li data-id="m-kup" data-t="Küp testi: Blender'da 1×1×1 m küp, Unreal'de 100×100×100 görünüyor" data-d="FBX: Forward −Y, Up +Z, Apply Scalings: FBX All. Ezberleme, doğrula. Tutmuyorsa ayarı düzelt."></li>
+        <li data-id="m-preset" data-t="Doğrulanan export preset'ini kaydet, Asil'e ver"></li>
+        <li data-id="m-doku" data-t="T_Cardboard_D: 1024×1024 tileable karton dokusu" data-d="1 UV tile = 1 m. Oluk her nesnede aynı büyüklükte görünmeli."></li>
+        <li class="phase">0–10. saat</li>
+        <li data-id="m-bolus" data-t="Asil'le asset listesini böl, kim neyi yapıyor yaz"></li>
+        <li data-id="m-platform" data-t="Platform mesh'i: 600×600, en çok 2000 tris" data-d="Pivot üst yüzeyin ortasında değil, tabanın ortasında. Andaç'ın platform kodu sonra bu mesh'e geçer."></li>
+        <li data-id="m-slot" data-t="4 slot nesnesi, gri kutuların yerine" data-d="50×50×50 · 50×50×100 · 100×100×100 · 100×100×150. Her biri en çok 300/1500 tris."></li>
+        <li data-id="m-ubx" data-t="Her mesh'e UBX_ collision kutusu" data-d="UBX_SM_Ad_01, aynı FBX içinde. Bounding box ile birebir. Auto-convex kule titretir."></li>
+        <li class="phase">18–30. saat</li>
+        <li data-id="m-mi" data-t="Material instance'lar: MI_Cardboard_Kraft, _Dark, _White" data-d="M_Cardboard hazır, Tint ve Roughness parametreleri var. Yeni doku üretme, renk parametreyle."></li>
+        <li data-id="m-isik" data-t="Lighting pass (Yiğit'ten &quot;seviye sende&quot; alınca)" data-d="Sıcak, cozy taban. Bitince kaydet, push et, &quot;seviye bitti&quot; de."></li>
+        <li class="phase">Her asset teslimi</li>
+        <li data-id="m-kontrol" data-t="Teslim kontrolünü her asset'te uygula" data-d="Boyut 50'nin katı · pivot taban ortası · UBX var · tek materyal slotu · tris bütçede · isim SM_Kategori_Ad."></li>
+        <li data-id="m-uzerine" data-t="Mevcut asset'in üstüne import etme" data-d="Önce sil, sonra import et. Üstüne import eski ayarları korur. Yiğit'e haber ver."></li>
+      </ul>
+      <div class="prog"><i></i></div>
+    </section>
+
+    <section class="card taped person" id="asil" data-group>
+      <h2>Asil <span class="role">konsept tasarım · modeller</span></h2>
+      <p class="pnote">Sahip olduğu: konsept sayfaları ve kendi mesh'leri. Asil'in işi oyunun neye benzeyeceğine karar vermek ve Mert platform ile slot nesnelerindeyken binaları, insanları ve çevreyi üretmek.</p>
+      <ul class="list">
+        <li class="phase">Gün 0</li>
+        <li data-id="a-preset" data-t="Mert'in export preset'ini al, küp testini kendi makinende tekrarla"></li>
+        <li class="phase">0–3. saat</li>
+        <li data-id="a-mood" data-t="Karton İstanbul mood board, tek sayfa" data-d="Palet, karton tipi (kraft/beyaz/koyu), 3–4 ikonik ama sade silüet. Siyasi gönderme yok, 13+."></li>
+        <li data-id="a-slotkonsept" data-t="4 slot nesnesinin konsepti, Mert'e" data-d="Ölçüler sabit, sadece görünüş: kutu, orta nesne, küçük bina, orta bina."></li>
+        <li class="phase">3–24. saat</li>
+        <li data-id="a-insan" data-t="Dekor insan figürü: 160 cm, en çok 3000 tris, hareketsiz" data-d="Rig yok, animasyon yok. Pivot ayakların arasında, Z=0."></li>
+        <li data-id="a-buyuk" data-t="Büyük bina 150×150×200 ve bina varyasyonları" data-d="En çok 1500 tris, bevel yok, keskin karton kenar."></li>
+        <li class="phase">24–36. saat</li>
+        <li data-id="a-cevre" data-t="Çevre parçaları: arka plan silüeti, platformun çevresi" data-d="Yiğit'e teslim, o yerleştirir."></li>
+        <li data-id="a-kapak" data-t="Jam sayfası kapak görseli" data-d="Yiğit'in sayfasına."></li>
+        <li class="phase">Her asset teslimi</li>
+        <li data-id="a-kontrol" data-t="Mert'le aynı teslim kontrolü" data-d="Boyut · pivot · UBX · tek slot · tris · isim. Commit + push, sonra Yiğit'e haber."></li>
+      </ul>
+      <div class="prog"><i></i></div>
+    </section>
+
+    <section class="card" id="duzen">
+      <h2>Çalışma düzeni <span class="hand">herkes için, tartışmasız</span></h2>
+
+      <h3>Seviye devri</h3>
+      <ol>
+        <li>Seviyeyi isteyen sorar: "<code>L_Ana</code> bende olabilir mi?"</li>
+        <li>Sahip kaydeder, commit + push eder, editörü kapatır ve "seviye sende" der.</li>
+        <li>Alan kişi editörü kapalıyken pull eder, sonra açar.</li>
+        <li>İşini bitirince kaydeder, push eder ve "seviye bitti, sende" der.</li>
+        <li>Sahip pull eder. Ancak o zaman tekrar dokunur.</li>
+      </ol>
+      <p class="note">Aynı anda iki kişi seviyede olmaz. <code>.umap</code> çakışmasında merge yok, seçim var ve seçilmeyen taraf kaybolur. Seviyenin kopyası açılmaz.</p>
+
+      <h3>Git ritüeli</h3>
+      <ol>
+        <li>Editörü kapat.</li>
+        <li><code>git pull</code></li>
+        <li>Editörü aç, çalış.</li>
+        <li>Çalışan her şeyi commit et, <b>her commit'i push et.</b> Yerelde bekleyen commit yedeklenmemiş iştir.</li>
+      </ol>
+      <div class="tbl"><table>
+        <thead><tr><th>Commit öneki</th><th>Ne için</th><th>Örnek</th></tr></thead>
+        <tbody>
+          <tr><td><code>feat:</code></td><td>Yeni mekanik ya da kod</td><td>feat: ağırlık merkezinden eğim</td></tr>
+          <tr><td><code>fix:</code></td><td>Hata düzeltme</td><td>fix: hayalet kenarda yeşil kalıyordu</td></tr>
+          <tr><td><code>asset:</code></td><td>Mesh, doku, materyal</td><td>asset: SM_Bina_Ev01 + UBX</td></tr>
+          <tr><td><code>level:</code></td><td>L_Ana değişikliği (yalnızca sahibi)</td><td>level: dekor insanlar yerleşti</td></tr>
+          <tr><td><code>ui:</code></td><td>HUD, font, ikon</td><td>ui: slot çubuğu</td></tr>
+        </tbody>
+      </table></div>
+      <p>Bir şey yazıldı ama ekranda görülmediyse commit mesajına <b>"görülmedi"</b> yazılır.</p>
+
+      <h3>Asset teslim akışı</h3>
+      <ol>
+        <li>Blender'da: transform'lar uygulanmış (<code>Ctrl+A</code>), origin tabanın ortasında, <code>UBX_</code> kutusu yanında.</li>
+        <li>Ortak preset'le FBX export.</li>
+        <li>Unreal'de <code>Content/Sallanti/Meshes/&lt;Kategori&gt;/</code> altına import. <code>Vendor/</code>'a asla.</li>
+        <li>Teslim kontrolü: boyut 50'nin katı, pivot doğru, collision kutu, tek materyal slotu, tris bütçede, isim kalıba uygun.</li>
+        <li>Materyal olarak <code>M_Cardboard</code> ya da bir instance'ı.</li>
+        <li>Commit (<code>asset:</code>) + push.</li>
+        <li>Yiğit'e haber: "SM_X push edildi." Yiğit yerleştirir. Slot nesnesiyse Andaç'a da haber.</li>
+      </ol>
+
+      <h3>Andaç'a istek</h3>
+      <p>Andaç'ı doğrudan bölmek yok. İstek Yiğit'in tuttuğu kuyruğa yazılır, Andaç saatte bir bakar. Tek istisna: oyun açılmıyor ya da çöküyor. Her istek üç şey söyler: ne isteniyor, neden, ne zaman lazım.</p>
+
+      <h3>6 saatlik alarm</h3>
+      <p>Telefon alarmı çalınca herkes durur, beş dakikada üç soruyu cevaplar:</p>
+      <ol>
+        <li>Oyun şu an oynanabilir mi? Hayırsa yeni özellik yok.</li>
+        <li>Ekranda görmediğimiz kaç şey var? 2'den fazlaysa dur ve bak.</li>
+        <li>Son push ne zaman? 1 saatten eskiyse şimdi.</li>
+      </ol>
+
+      <h3>Kontrol noktaları</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Saat</th><th>Ne olur</th><th>Karar</th></tr></thead>
+        <tbody>
+          <tr><td class="n">10–12</td><td>Herkes oynar</td><td>Mekanik eğlenceli mi? Değilse pivot.</td></tr>
+          <tr><td class="n">12–18</td><td>Herkes uyur</td><td>Plansız uykusuzluk doğrulanmamış iş üretir.</td></tr>
+          <tr><td class="n">24</td><td>Temiz klon, herkeste</td><td>Çekirdek çalışmıyorsa kesme listesinin tamamı atılır.</td></tr>
+          <tr><td class="n">36</td><td>Özellik dondurma + temiz klon</td><td>Bundan sonra yalnızca hata ve paket.</td></tr>
+          <tr><td class="n">42</td><td>Son paket</td><td>Başka makinede açılmadan yüklenmez.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Herkesin uyduğu beş kural</h3>
+      <ol>
+        <li>Sahiplik dışına çıkılmaz. Başkasının dosyasına dokunmadan önce konuşulur.</li>
+        <li><code>Content/Vendor/</code> ve indirilen paket klasörleri yeniden adlandırılmaz, taşınmaz.</li>
+        <li>UI metninde emoji yok. Görünür bir şey sıfıra ölçeklenmez, gizlenir.</li>
+        <li>Asset yolu ezberden yazılmaz, Content Browser'dan kopyalanır.</li>
+        <li>"Bende çalışıyor" bitti demek değildir. Başka makinede görülür.</li>
+      </ol>
     </section>
 
     <section class="card taped" id="gun0" data-group>
