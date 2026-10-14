@@ -39,18 +39,18 @@ ASLPlatform::ASLPlatform()
 		Deck->SetMaterial(0, CardboardMat.Object);
 	}
 
-	GridLines = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("GridLines"));
-	GridLines->SetupAttachment(TiltPivot);
-	GridLines->SetMobility(EComponentMobility::Movable);
-	GridLines->SetCollisionEnabled(ECollisionEnabled::NoCollision); // isini engellemesin
-	GridLines->SetCastShadow(false);
+	Tiles = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("Tiles"));
+	Tiles->SetupAttachment(TiltPivot);
+	Tiles->SetMobility(EComponentMobility::Movable);
+	Tiles->SetCollisionEnabled(ECollisionEnabled::NoCollision); // isin Deck'e dussun
+	Tiles->SetCastShadow(false);
 	if (CubeMesh.Succeeded())
 	{
-		GridLines->SetStaticMesh(CubeMesh.Object);
+		Tiles->SetStaticMesh(CubeMesh.Object);
 	}
 	if (CardboardMat.Succeeded())
 	{
-		GridLines->SetMaterial(0, CardboardMat.Object);
+		Tiles->SetMaterial(0, CardboardMat.Object);
 	}
 	ApplyDeckSize();
 }
@@ -64,28 +64,94 @@ void ASLPlatform::OnConstruction(const FTransform& Transform)
 
 void ASLPlatform::BuildGrid()
 {
-	GridLines->ClearInstances();
+	// Her hucreye bir karo: GridSize - TileGap kare, 0.6 cm kalin, yuzeyin hemen ustunde.
+	// Plaka (2 cm) ve yol (2.5 cm) bunun ustune biner; ortulen karo gorunmez.
+	Tiles->ClearInstances();
 	const int32 N = GetCellCount();
-	const float Len = 2.f * HalfExtent;
-	const float W = GridLineWidth / 100.f;
-	const float H = 0.5f / 100.f; // 0.5 cm yukseklik, yuzeyin 0.25 cm ustunde: z-fighting yok
-	for (int32 I = 0; I <= N; ++I)
+	const float S = FMath::Max(1.f, GridSize - TileGap) / 100.f;
+	for (int32 X = 0; X < N; ++X)
 	{
-		const float P = CellToLocal(I);
-		GridLines->AddInstance(FTransform(FQuat::Identity, FVector(P, 0.f, 0.25f), FVector(W, Len / 100.f, H)));
-		GridLines->AddInstance(FTransform(FQuat::Identity, FVector(0.f, P, 0.25f), FVector(Len / 100.f, W, H)));
+		for (int32 Y = 0; Y < N; ++Y)
+		{
+			Tiles->AddInstance(FTransform(FQuat::Identity,
+				FVector(CellToLocal(X + 0.5f), CellToLocal(Y + 0.5f), 0.3f), FVector(S, S, 0.6f / 100.f)));
+		}
 	}
-	if (UMaterialInstanceDynamic* MID = GridLines->CreateDynamicMaterialInstance(0))
+	TileMID = Tiles->CreateDynamicMaterialInstance(0);
+	if (TileMID)
 	{
-		MID->SetVectorParameterValue(TEXT("Tint"), GridColor);
+		TileMID->SetVectorParameterValue(TEXT("Tint"), TileColor);
 	}
-	GridLines->SetVisibility(bGridAlwaysVisible || bGridForPlacing);
 }
 
-void ASLPlatform::SetGridShownForPlacing(bool bPlacing)
+uint32 ASLPlatform::ComputeSignature() const
 {
-	bGridForPlacing = bPlacing;
-	GridLines->SetVisibility(bGridAlwaysVisible || bGridForPlacing);
+	uint32 H = 17;
+	for (const TWeakObjectPtr<ASLPlaceable>& Weak : Placeables)
+	{
+		const ASLPlaceable* P = Weak.Get();
+		if (!P)
+		{
+			continue;
+		}
+		H = HashCombine(H, GetTypeHash(P->CellMin));
+		H = HashCombine(H, GetTypeHash(P->Facing * 2 + (P->bHeld ? 1 : 0)));
+		H = HashCombine(H, GetTypeHash(P->TypeId));
+	}
+	return H;
+}
+
+void ASLPlatform::RefreshConnections()
+{
+	// Kapi onu hucresi -> o kapinin binasina dogru yon. Yol karosu o yone uzanir: bina ile birlesir.
+	TMap<FIntPoint, FIntPoint> DoorDirAt;
+	for (const TWeakObjectPtr<ASLPlaceable>& Weak : Placeables)
+	{
+		const ASLPlaceable* B = Weak.Get();
+		if (B && !B->bHeld && B->bHasEntrance)
+		{
+			for (const FIntPoint& E : B->GetEntranceCells())
+			{
+				DoorDirAt.Add(E, FIntPoint(-B->GetFacingDir().X, -B->GetFacingDir().Y));
+			}
+		}
+	}
+	for (const TWeakObjectPtr<ASLPlaceable>& Weak : Placeables)
+	{
+		ASLPlaceable* R = Weak.Get();
+		if (!R || !R->bFlat)
+		{
+			continue;
+		}
+		if (R->bHeld)
+		{
+			R->SetRoadLinks(0);
+			continue;
+		}
+		// Bitler: 0 +X, 1 +Y, 2 -X, 3 -Y (platform hucre ekseni).
+		const FIntPoint Dirs[4] = { {1, 0}, {0, 1}, {-1, 0}, {0, -1} };
+		uint8 Mask = 0;
+		for (int32 I = 0; I < 4; ++I)
+		{
+			const ASLPlaceable* N = FindPlaceableAt(R->CellMin + Dirs[I]);
+			if (N && N->bFlat)
+			{
+				Mask |= 1 << I;
+			}
+		}
+		if (const FIntPoint* ToHouse = DoorDirAt.Find(R->CellMin))
+		{
+			for (int32 I = 0; I < 4; ++I)
+			{
+				if (Dirs[I] == *ToHouse)
+				{
+					Mask |= 1 << I;
+				}
+			}
+		}
+		R->SetRoadLinks(Mask);
+	}
+	ConnectionSignature = ComputeSignature();
 }
 
 void ASLPlatform::ApplyDeckSize()
@@ -221,6 +287,10 @@ void ASLPlatform::BeginPlay()
 	{
 		DeckMID->SetVectorParameterValue(TEXT("Tint"), DeckTint);
 	}
+	if (!TileMID)
+	{
+		BuildGrid();
+	}
 }
 
 void ASLPlatform::ApplyTiltRotation(const FVector2D& TiltDeg)
@@ -253,6 +323,10 @@ void ASLPlatform::Tick(float DeltaSeconds)
 	}
 
 	RecomputeCenterOfMass();
+	if (ComputeSignature() != ConnectionSignature)
+	{
+		RefreshConnections(); // yol konuldu/kaldirildi/tasindi ya da bina dondu
+	}
 
 	// Hedef egim: CoM'un oldugu taraf iner. Boy = |CoM| * TiltPerCm, MaxTilt ile kirpilir.
 	const float ComDist = CenterOfMass.Size();
@@ -325,6 +399,11 @@ void ASLPlatform::UpdateDeckWarning(float DeltaSeconds)
 	// Nabiz yarim genlikte: en sonuk aninda bile Strength'in yarisi kadar kirmizi kalir, uyari kaybolmaz.
 	const float Pulse = Hz > 0.f ? 0.75f + 0.25f * FMath::Sin(WarnPhase) : 1.f;
 	DeckMID->SetVectorParameterValue(TEXT("Tint"), FMath::Lerp(DeckTint, WarnColor, Strength * Pulse));
+	if (TileMID)
+	{
+		// Karolar da atar: tahtanin cogu karo, yalniz derzler kizarsa uyari kaybolur.
+		TileMID->SetVectorParameterValue(TEXT("Tint"), FMath::Lerp(TileColor, WarnColor, Strength * Pulse));
+	}
 }
 
 void ASLPlatform::Collapse()

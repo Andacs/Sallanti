@@ -523,7 +523,7 @@ void ASLHUD::DrawTestPanel(const ASLPlatform& P, const USLBuildComponent& B)
 		P.CenterOfMass.X, P.CenterOfMass.Y, P.CenterOfMass.Size(), P.TotalMass, B.PlacedCount));
 	Line(X, Y, FString::Printf(TEXT("PlatformMass %.0f  TiltPerCm %.3f  uyarı %.0f°  devrilme %.0f° / %.1f sn"),
 		P.PlatformMass, P.TiltPerCm, P.WarnTilt, P.FailTilt, P.FailSeconds), Dim);
-	Line(X, Y, TEXT("Backspace geri al  F5 baştan  G ızgara  Tab çekmece  ~ konsol: SLKnobs, SLSet"), Dim);
+	Line(X, Y, TEXT("Backspace geri al  F5 baştan  Tab çekmece  ~ konsol: SLKnobs, SLSet"), Dim);
 	Line(X, Y, TEXT("SLTestLevel1: bölümü otomatik oynar ve ölçer"), Dim);
 }
 

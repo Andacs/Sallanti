@@ -52,6 +52,9 @@ void ASLCameraPawn::ApplyCamera()
 {
 	const FRotator ViewRot(Pitch, Yaw, 0.f);
 	Camera->SetFieldOfView(FieldOfView);
+	Camera->PostProcessSettings.bOverride_AutoExposureBias = true;
+	Camera->PostProcessSettings.AutoExposureBias = ExposureBias;
+	Camera->PostProcessBlendWeight = 1.f;
 	Camera->SetRelativeLocation(LookAtOffset - ViewRot.Vector() * Distance);
 	Camera->SetRelativeRotation(ViewRot);
 }

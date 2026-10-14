@@ -34,9 +34,10 @@ public:
 	float Pitch = -35.f;
 
 	/** Bakilan noktaya (platform merkezi) baslangic uzakligi, cm. Spec 1400 diyordu; olculdu: 1400'de
-	 *  600 cm'lik platform 16:9 kadraja sigmiyor (dikeyde %153). 2200'de platform kadrajin %87'si. */
+	 *  600 cm'lik platform 16:9 kadraja sigmiyor (dikeyde %153); 2200'de %87. Tahta 650 cm'e cikinca
+	 *  ayni oran icin 2200 * 650/600 ~ 2400. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
-	float Distance = 2200.f;
+	float Distance = 2400.f;
 
 	/** Yakinlastirma siniri, cm. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
@@ -44,7 +45,7 @@ public:
 
 	/** Uzaklastirma siniri, cm. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
-	float ZoomMax = 3400.f;
+	float ZoomMax = 3600.f;
 
 	/** Tekerlegin bir tiki: mevcut uzakligin bu orani (carpimsal: yakinda ince, uzakta kaba adim). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera", meta = (ClampMin = "0.01", ClampMax = "0.5"))
@@ -58,6 +59,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
 	FVector LookAtOffset = FVector(0.f, 0.f, 40.f);
 
+	/** Pozlama duzeltmesi, EV. Otomatik pozlama karton tahtayi asiri aciyordu: yesil karo (0.30,0.55,0.14)
+	 *  ekranda (221,238,193), kahverengi derz (225,203,166) olcululdu, renkler ayirt edilmiyordu.
+	 *  Isigin son ayari Mert'te; bu yalnizca okunurluk icin baslangic. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
+	float ExposureBias = -1.5f;
+
 	/** Tekerlek: + yakinlastir, - uzaklastir (tik sayisi). */
 	void Zoom(float Ticks);
 
@@ -68,5 +75,5 @@ public:
 	void ApplyCamera();
 
 private:
-	float TargetDistance = 2200.f;
+	float TargetDistance = 2400.f;
 };

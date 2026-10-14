@@ -26,7 +26,7 @@ void ASLFamily::BuildFigures()
 	{
 		return;
 	}
-	const float W = 30.f;
+	const float W = FMath::Max(6.f, HeightCm * 0.19f); // 160'lik figurun oranlari
 	for (int32 I = 0; I < Members; ++I)
 	{
 		UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
@@ -38,7 +38,7 @@ void ASLFamily::BuildFigures()
 		// Ilk ikisi yetiskin (HeightCm), digerleri cocuk (%70).
 		const float H = I < 2 ? HeightCm : HeightCm * 0.7f;
 		C->SetRelativeScale3D(FVector(W / 100.f, W / 100.f, H / 100.f));
-		C->SetRelativeLocation(FVector(0.f, (I - 0.5f * (Members - 1)) * 45.f, 0.5f * H));
+		C->SetRelativeLocation(FVector(0.f, (I - 0.5f * (Members - 1)) * W * 1.6f, 0.5f * H));
 		if (UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(BaseMat, C))
 		{
 			MID->SetVectorParameterValue(TEXT("Tint"), Tint * (0.8f + 0.2f * I));

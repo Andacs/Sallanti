@@ -43,25 +43,23 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sallanti")
 	TObjectPtr<UStaticMeshComponent> Deck;
 
-	/** Izgara cizgileri; TiltPivot'a bagli, platformla birlikte egilir. */
+	/** Yesil karolar: her hucre bir karo, aralari derz (Deck'in kahverengisi gorunur). Platformla egilir. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sallanti")
-	TObjectPtr<UInstancedStaticMeshComponent> GridLines;
+	TObjectPtr<UInstancedStaticMeshComponent> Tiles;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Izgara")
-	FLinearColor GridColor = FLinearColor(0.12f, 0.08f, 0.05f);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Tahta")
+	FLinearColor TileColor = FLinearColor(0.30f, 0.55f, 0.14f);
 
-	/** Cizgi kalinligi, cm. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Izgara")
-	float GridLineWidth = 1.5f;
+	/** Karolar arasi derz, cm. Plaka ve yol da bu payla hizalanir (karo = GridSize - TileGap). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Tahta", meta = (ClampMin = "0"))
+	float TileGap = 8.f;
 
-	/** true = hep gorunur. false = yalnizca yerlestirirken (BuildComponent acar/kapatir). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Izgara")
-	bool bGridAlwaysVisible = false;
+	/** Boyut/karo degerleri canli degistirildiyse (SLSet) gorunumu yeniden kurar. */
+	void RefreshVisuals() { ApplyDeckSize(); BuildGrid(); RefreshConnections(); }
 
-	void SetGridShownForPlacing(bool bPlacing);
-
-	/** Boyut/izgara degerleri canli degistirildiyse (SLSet) gorunumu yeniden kurar. */
-	void RefreshVisuals() { ApplyDeckSize(); BuildGrid(); }
+	/** Yol karolarinin birlesme uzantilarini (komsu yol, kapisi bakan bina) yeniden hesaplar.
+	 *  Nesneler degisince Tick kendisi cagirir; elle cagirmak da zararsiz. */
+	void RefreshConnections();
 
 	// --- Denge (09_MEKANIK_SPEC 7. bolum; hepsi baslangic tahmini) ---
 
@@ -140,15 +138,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Devrilme")
 	float FailingPulseHz = 6.f;
 
-	/** Platformun normal karton rengi (M_Cardboard Tint). Uyari bundan WarnColor'a dogru atar. */
+	/** Platform govdesinin (derzlerin) rengi. Uyari bundan ve karolardan WarnColor'a dogru atar. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Devrilme")
-	FLinearColor DeckTint = FLinearColor(0.62f, 0.45f, 0.28f);
+	FLinearColor DeckTint = FLinearColor(0.30f, 0.18f, 0.09f);
 
 	// --- Boyut ---
 
-	/** Platform kenari / 2, cm. 300 = 600x600 (08_ASSET_SPEC: 12x12 modul). */
+	/** Platform kenari / 2, cm. 325 = 650x650 = 13x13 hucre (14 Ekim: ortada bir hucre olsun diye tek sayi). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Platform")
-	float HalfExtent = 300.f;
+	float HalfExtent = 325.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Platform")
 	float DeckThickness = 20.f;
@@ -246,12 +244,18 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> DeckMID;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> TileMID;
+
+	/** Nesnelerin yer/yon ozeti; degisince yol baglantilari yenilenir. */
+	uint32 ConnectionSignature = 0;
+	uint32 ComputeSignature() const;
+
 	FVector2D CollapseDir = FVector2D(1.f, 0.f);
 	float CollapseCurrent = 0.f;
 	float CollapseVelocity = 0.f;
 	float WarnPhase = 0.f;
 
-	bool bGridForPlacing = false;
 
 	UPROPERTY(Transient)
 	TArray<TWeakObjectPtr<ASLPlaceable>> Placeables;

@@ -81,7 +81,6 @@ void ASLPlayerController::SetupInputComponent()
 	Bind(TEXT("IA_Undo"), { EKeys::BackSpace }, &ASLPlayerController::OnUndo);
 	Bind(TEXT("IA_Restart"), { EKeys::F5 }, &ASLPlayerController::OnRestart);
 	Bind(TEXT("IA_Again"), { EKeys::SpaceBar }, &ASLPlayerController::OnAgain);
-	Bind(TEXT("IA_Grid"), { EKeys::G }, &ASLPlayerController::OnToggleGrid);
 	Bind(TEXT("IA_Help"), { EKeys::H }, &ASLPlayerController::OnToggleHelp);
 }
 
@@ -95,16 +94,6 @@ void ASLPlayerController::OnAgain()
 	if (GM && GM->IsRoundOver())
 	{
 		RestartLevel();
-	}
-}
-
-void ASLPlayerController::OnToggleGrid()
-{
-	ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
-	if (ASLPlatform* P = GM ? GM->GetPlatform() : nullptr)
-	{
-		P->bGridAlwaysVisible = !P->bGridAlwaysVisible;
-		P->SetGridShownForPlacing(Build->State != ESLBuildState::Idle);
 	}
 }
 
@@ -333,17 +322,15 @@ void ASLPlayerController::TestLevel1Step()
 	{
 		UE_LOG(LogSLInput, Log, TEXT("SL_HINT %s"), *HUD->GetCurrentHint());
 	}
-	// Gercek fare yolu: cekmece kulpu, kart, dunyadaki bina. Beklenen (PlatformMass 12, TiltPerCm 0.08):
-	//  aile (-230,-250)'de bekler, balon konusur | kulpa tik: cekmece acilir | Ev kartina tik: Ev secilir |
-	//  Ev (-100,0) yon 3 -> aile ~2.7 sn yurur | Hastane kilitli | tekerlek +3: uzaklik 2200 -> ~1500 |
-	//  Hastane (150,0) yon 1 (kapi +Y, yanlis) | AVM hayaleti (175,225): tahmin >= 10 -> "DEVRILIR" ipucu |
-	//  AVM konur -> DEVRILIYOR -> fareyle kaldir -> (25,25) | yol (3..8,4): 2/3 (Hastane kapisi ters) |
-	//  Hastaneyi kaldir, R R (1 -> 3), ayni yere: 3/3 -> BOLUM TAMAMLANDI.
+	// 13x13 tahta, 50 cm hucre (CellToLocal(i) = -325 + 50i). Beklenen (PlatformMass 12, TiltPerCm 0.08):
+	//  Ev 1x1 (-100,0) hucre (4,6) yon 3, giris (4,5); egim 1.1 | aile (-230,-250)'den kapiya ~4 sn |
+	//  Hastane 2x2 (175,25) hucre (9,6) yon 1 (kapi +Y, yanlis) giris (9,8)(10,8); egim 5.9 |
+	//  AVM 3x3 (250,250) hucre (10,10): hedef 12 -> DEVRILIYOR -> fareyle kaldir -> 5.9 -> (0,50) hucre (5,6)
+	//  giris (6,5); egim 3.7 | yol (4..9, 5): ilk karoda Ev baglanir (efekt), (6,5)'te AVM; Hastane kapisi
+	//  ters: 2/3 | Hastaneyi kaldir, R R (1 -> 3), ayni yere: giris (9,5)(10,5) -> 3/3 BOLUM TAMAMLANDI.
 	switch (I)
 	{
 	case 1: Shot(TEXT("L1_0_baslangic")); break;
-	// Cekmece: HUD'un tiklama islevi kulp/kart koordinatlariyla dogrudan (gercek fare bu makinede
-	// kullanici tarafindan oynatilabiliyor; olculdu: imlec tasindiktan sonra (14,161) okundu).
 	case 3: if (HUD) { HUD->HandleMouseDown(HUD->GetHandleCenter()); HUD->HandleMouseUp(HUD->GetHandleCenter()); }
 		UE_LOG(LogSLInput, Log, TEXT("SL_DRAWER kulpa tik -> istenen acik=%d"), HUD && HUD->IsDrawerWanted() ? 1 : 0); break;
 	case 4: Shot(TEXT("L1_0b_cekmece_acik")); break;
@@ -352,34 +339,40 @@ void ASLPlayerController::TestLevel1Step()
 	// Ekran goruntusu kare sonunda alinir: hayaleti gostereceksek koyma bir sonraki adimda olmali.
 	case 6: Build->SetAimOverride(FVector2D(-100.f, 0.f)); Shot(TEXT("L1_0c_ev_hayalet")); break;
 	case 7: OnPlace(); break;                                                       // Ev, yon 3
-	case 8: SLPlace(2, 150.f, 0.f); break;                                          // Hastane henuz kilitli
+	case 8: SLPlace(2, 175.f, 25.f); break;                                         // Hastane henuz kilitli
 	case 9: Shot(TEXT("L1_1_aile_yuruyor")); break;
-	case 14: Shot(TEXT("L1_2_aile_yerlesti")); if (Cam) { Cam->Zoom(3.f); } break;
-	case 16: Shot(TEXT("L1_2b_yakin")); UE_LOG(LogSLInput, Log, TEXT("SL_ZOOM uzaklik %.0f hedef %.0f"), Cam ? Cam->Distance : 0.f, Cam ? Cam->GetTargetDistance() : 0.f);
+	case 13: Shot(TEXT("L1_1b_aile_yolda")); break;
+	case 18: Shot(TEXT("L1_2_aile_yerlesti")); if (Cam) { Cam->Zoom(3.f); } break;
+	case 20: Shot(TEXT("L1_2b_yakin")); UE_LOG(LogSLInput, Log, TEXT("SL_ZOOM uzaklik %.0f hedef %.0f"), Cam ? Cam->Distance : 0.f, Cam ? Cam->GetTargetDistance() : 0.f);
 		if (Cam) { Cam->Zoom(-3.f); } break;
-	case 18: SLGhost(2, 150.f, 0.f); Build->SetFacing(1); Shot(TEXT("L1_2c_hastane_ters")); break;
-	case 19: Build->TryPlace(); break;                                              // Hastane, kapi +Y
-	case 20: SLGhost(3, 150.f, 225.f); Shot(TEXT("L1_3a_avm_tahmin")); break;      // tahmin isareti + ipucu
-	case 21: Build->TryPlace(); break;                                              // AVM yanlis yere
-	case 22: Build->Cancel(); MoveMouseToLocal(FVector(175.f, 225.f, 200.f)); Shot(TEXT("L1_3_devriliyor")); break;
-	case 23:
+	case 22: SLGhost(2, 175.f, 25.f); Build->SetFacing(1); Shot(TEXT("L1_2c_hastane_ters")); break;
+	case 23: Build->TryPlace(); break;                                              // Hastane, kapi +Y
+	case 24: SLGhost(3, 250.f, 250.f); Shot(TEXT("L1_3a_avm_tahmin")); break;      // tahmin isareti + ipucu
+	case 25: Build->TryPlace(); break;                                              // AVM yanlis yere
+	case 26: Build->Cancel(); MoveMouseToLocal(FVector(250.f, 250.f, 204.f)); Shot(TEXT("L1_3_devriliyor")); break;
+	case 27:
 		OnPlace(); LogGhost(TEXT("tasima_fare"));                                     // bosta sol tik: AVM'yi kaldir
 		if (!Build->IsMoving())
 		{
 			UE_LOG(LogSLInput, Warning, TEXT("SL_TASIMA fare kaydi (kullanici?), hucreden kaldiriliyor"));
-			Build->PickUp(GetWorld()->GetAuthGameMode<ASLGameMode>()->GetPlatform()->FindPlaceableAt(FIntPoint(9, 10)));
+			Build->PickUp(GetWorld()->GetAuthGameMode<ASLGameMode>()->GetPlatform()->FindPlaceableAt(FIntPoint(11, 11)));
 		}
 		break;
-	case 24: Build->SetAimOverride(FVector2D(25.f, 25.f)); Shot(TEXT("L1_4_elde")); break;
-	case 25: OnPlace(); break;                                                      // yeni yerine
-	case 26: case 27: case 28: case 29: case 30: case 31:
-		SLPlace(4, -300.f + (3 + (I - 26) + 0.5f) * 50.f, -75.f); break;            // yol hucre (3..8, 4)
-	case 32: Build->Cancel(); Shot(TEXT("L1_5_hastane_bagli_degil")); break;
-	case 33: Build->PickUp(GetWorld()->GetAuthGameMode<ASLGameMode>()->GetPlatform()->FindPlaceableAt(FIntPoint(8, 5))); break;
-	case 34: OnRotate(); OnRotate(); Build->SetAimOverride(FVector2D(150.f, 0.f)); LogGhost(TEXT("hastane_R_R")); break;
-	case 35: Shot(TEXT("L1_6_hastane_cevrildi")); OnPlace(); break;
-	case 37: Shot(TEXT("L1_7_tamamlandi")); break;
-	case 39:
+	case 28: Build->SetAimOverride(FVector2D(0.f, 50.f)); Shot(TEXT("L1_4_elde")); break;
+	case 29: OnPlace(); break;                                                      // yeni yerine
+	case 30: case 31: case 32: case 33: case 34: case 35:
+		SLPlace(4, 50.f * (4 + (I - 30)) - 300.f, -50.f);                           // yol hucre (4..9, 5)
+		if (I == 31) { Shot(TEXT("L1_5a_ev_baglandi")); }
+		if (I == 33) { Shot(TEXT("L1_5b_avm_baglandi")); }
+		break;
+	case 36: Build->Cancel(); Shot(TEXT("L1_5c_hastane_bagli_degil")); break;
+	case 37: Build->PickUp(GetWorld()->GetAuthGameMode<ASLGameMode>()->GetPlatform()->FindPlaceableAt(FIntPoint(9, 6))); break;
+	case 38: OnRotate(); OnRotate(); Build->SetAimOverride(FVector2D(175.f, 25.f)); LogGhost(TEXT("hastane_R_R")); break;
+	case 39: Shot(TEXT("L1_6_hastane_cevrildi")); break;
+	case 40: OnPlace(); break;
+	case 41: Shot(TEXT("L1_6b_hastane_baglandi")); break;
+	case 43: Shot(TEXT("L1_7_tamamlandi")); break;
+	case 45:
 		GetWorldTimerManager().ClearTimer(SelfTestTimer);
 		UE_LOG(LogSLInput, Log, TEXT("SL_TESTL1_DONE"));
 		ConsoleCommand(TEXT("quit"));

@@ -75,6 +75,64 @@ void ASLLevelDirector::BeginPlay()
 	UE_LOG(LogSLLevel, Log, TEXT("SL_LEVEL %s, %d gorev"), *LevelTitle, Tasks.Num());
 }
 
+void ASLLevelDirector::UpdateConnectionFx()
+{
+	ASLPlatform* P = GetPlatform();
+	if (!P)
+	{
+		return;
+	}
+	auto RoadAt = [P](const FIntPoint& C) -> ASLPlaceable*
+	{
+		ASLPlaceable* R = P->FindPlaceableAt(C);
+		return (R && R->bFlat) ? R : nullptr;
+	};
+	TSet<TWeakObjectPtr<ASLPlaceable>> Now;
+	for (const TWeakObjectPtr<ASLPlaceable>& Weak : P->GetPlaceables())
+	{
+		ASLPlaceable* B = Weak.Get();
+		if (!B || B->bHeld || !B->bHasEntrance)
+		{
+			continue;
+		}
+		ASLPlaceable* Door = nullptr;
+		for (const FIntPoint& E : B->GetEntranceCells())
+		{
+			Door = Door ? Door : RoadAt(E);
+		}
+		if (!Door)
+		{
+			continue;
+		}
+		Now.Add(B);
+		if (ConnectedBuildings.Contains(B))
+		{
+			continue;
+		}
+		// Yeni baglanti: bina halka + parlama; yol kapidan uzaklastikca sirayla parlar (akis).
+		B->PlayConnectFx(0.f, true);
+		TMap<ASLPlaceable*, int32> Dist;
+		TArray<ASLPlaceable*> Queue = { Door };
+		Dist.Add(Door, 0);
+		for (int32 Q = 0; Q < Queue.Num() && Q < 400; ++Q)
+		{
+			ASLPlaceable* R = Queue[Q];
+			R->PlayConnectFx(0.07f * Dist[R], false);
+			const FIntPoint Dirs[4] = { {1, 0}, {0, 1}, {-1, 0}, {0, -1} };
+			for (const FIntPoint& D : Dirs)
+			{
+				if (ASLPlaceable* N = RoadAt(R->CellMin + D); N && !Dist.Contains(N))
+				{
+					Dist.Add(N, Dist[R] + 1);
+					Queue.Add(N);
+				}
+			}
+		}
+		UE_LOG(LogSLLevel, Log, TEXT("SL_CONNECT %s yola baglandi, %d yol karosu parladi"), *B->TypeId.ToString(), Queue.Num());
+	}
+	ConnectedBuildings = MoveTemp(Now);
+}
+
 void ASLLevelDirector::SpawnFamily()
 {
 	ASLPlatform* P = GetPlatform();
@@ -335,6 +393,7 @@ void ASLLevelDirector::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	SpawnFamily();
 	ApplyUnlocks();
+	UpdateConnectionFx();
 	StartFamilies();
 	if (bLevelComplete || !Tasks.IsValidIndex(CurrentTask))
 	{

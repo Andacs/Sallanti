@@ -72,7 +72,6 @@ private:
 	void OnUndo();
 	void OnRestart();
 	void OnAgain();
-	void OnToggleGrid();
 	void OnToggleHelp();
 
 	/** SLSet/SLKnobs'un dolastigi nesneler: platform, BuildComponent, kamera pawn'i. */

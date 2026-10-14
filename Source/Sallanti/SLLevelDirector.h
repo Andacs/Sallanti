@@ -126,6 +126,11 @@ private:
 
 	void SpawnFamily();
 
+	/** Kapisina yol degen binalar: yeni baglananda efekt (bina halkasi + yol boyunca akan parlama). */
+	void UpdateConnectionFx();
+
+	TSet<TWeakObjectPtr<ASLPlaceable>> ConnectedBuildings; // zayif isaretci: GC'ye UPROPERTY gerekmez
+
 	UPROPERTY(Transient)
 	TObjectPtr<ASLFamily> Family;
 

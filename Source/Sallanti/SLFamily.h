@@ -25,7 +25,8 @@ public:
 	int32 Members = 3;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Aile")
-	float HeightCm = 160.f;
+	/** Spec 160 diyordu; ev 50 cm'e inince oran icin gecici 35. Karar Asil'de. */
+	float HeightCm = 35.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Aile")
 	FLinearColor Tint = FLinearColor(0.15f, 0.35f, 0.75f);

@@ -31,7 +31,8 @@ USLBuildComponent::USLBuildComponent()
 		S.Tint = Tint;
 		return S;
 	};
-	FSLSlot Ev = Make(TEXT("Ev"), TEXT("Ev"), 2, 2, 2, 8.f, FLinearColor(0.80f, 0.55f, 0.35f));          // kucuk bina
+	// Ev 1x1 (14 Ekim, Blender taslagi). Kutle 2: hacim kurali 1 verirdi, egitimin ilk adimi hic hissedilmezdi.
+	FSLSlot Ev = Make(TEXT("Ev"), TEXT("Ev"), 1, 1, 1, 2.f, FLinearColor(0.80f, 0.55f, 0.35f));
 	Ev.Residents = 3;
 	Ev.bHasEntrance = true;
 	Slots.Add(Ev);
@@ -65,6 +66,7 @@ void USLBuildComponent::ConfigurePlaceable(ASLPlaceable* P, const FSLSlot& Slot)
 	if (const ASLPlatform* Platform = GetPlatform())
 	{
 		P->GridSize = Platform->GridSize;
+		P->TileGap = Platform->TileGap; // plaka ve yol karoyla hizali olsun
 	}
 	P->ApplyVisuals();
 }
@@ -109,7 +111,7 @@ void USLBuildComponent::SelectSlot(int32 Index)
 	}
 	Cancel(); // tasima yapiliyorduysa nesne yerine doner
 	SelectedSlot = Index;
-	GhostFacing = DefaultFacing & 3;
+	GhostFacing = Slots[Index].bFlat ? 0 : (DefaultFacing & 3); // yol yonsuz: uzantilar platform ekseninde
 	SpawnGhostFor(Slots[Index]);
 	State = ESLBuildState::Blocked;
 	UpdateGhost();
@@ -140,7 +142,7 @@ void USLBuildComponent::RotateGhost(int32 Steps)
 
 void USLBuildComponent::SetFacing(int32 InFacing)
 {
-	GhostFacing = ((InFacing % 4) + 4) % 4;
+	GhostFacing = (Ghost && Ghost->bFlat) ? 0 : ((InFacing % 4) + 4) % 4;
 	UpdateGhost();
 }
 
@@ -451,10 +453,6 @@ void USLBuildComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	UpdateGhost();
-	if (ASLPlatform* Platform = GetPlatform())
-	{
-		Platform->SetGridShownForPlacing(State != ESLBuildState::Idle);
-	}
 	// Yerlestirirken her binanin kapi onu gorunsun: yol nereye gelmeli, kapinin onu kapanmasin.
 	const bool bPlacing = State != ESLBuildState::Idle;
 	if (bPlacing || bPlacing != bMarkersShown)
