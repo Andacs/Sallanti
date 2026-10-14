@@ -168,8 +168,8 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
   **Pozlama sabit** (`ASLCameraPawn::FixedExposureEV100` 1,9): otomatik pozlama büyük arka plana bakıp
   sahneyi karartıyordu. Güneş yönü ve şiddeti `ASLAmbience`'ta (oyun sırasında; seviye dosyası değişmez).
 - **Şehir planı:** istif kapalı (`bAllowStacking`), dolu hücre geçersiz.
-- **Tahta (14 Ekim, Blender taslağı):** 13×13 hücre, 50 cm → 650 cm. Yeşil karolar + kahverengi derz
-  (`TileGap` 8 cm). Bina gri **plakada** (ayak izi − derz), gövde plakadan `BodyInsetCm` içeride.
+- **Tahta (14 Ekim, Blender taslağı):** 13×13 hücre, 50 cm → 650 cm. Karo + derz (renkleri cozy maddesinde)
+  (`TileGap` 8 cm). Bina **plakada** (ayak izi − derz), gövde plakadan `BodyInsetCm` içeride.
   **Yol** plakasız karo; komşu yollara ve kapısı kendine bakan binaya derzi kapatan uzantı çıkarır,
   birleşik şerit olur (`ASLPlatform::RefreshConnections`). Plakayı ve yolu kod çiziyor, modelciden
   yalnızca bina gövdesi gelir.
