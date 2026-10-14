@@ -139,7 +139,18 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
   platform binalarla birlikte 45°'ye devrilir, oyun biter. Kararlar sallanma hariç eğime bakar.
 - **Taşıma (replace):** boştayken sol tık bir binayı kaldırır. Elde tutulurken ağırlığı dengeden
   çıkar — devrilme sayacı işliyorken kaldırmak kurtarır. Sağ tık eski yerine koyar.
-- **Denge barı** üstte ortada (yeşil / sarı 8° / kırmızı 10°, devrilirken geri sayım şeridi).
+- **Denge barı** üstte ortada (yeşil / sarı 8° / kırmızı 10°, devrilirken geri sayım şeridi). Elindekini
+  koymadan önce barda **tahmin işareti** (beyaz / sarı / kırmızı); hayalet de tahmine göre yeşil / sarı / turuncu.
+- **Kapı ve yön:** Ev, Hastane, AVM'nin kapısı var (yerel +X yüzü). Yol ancak **kapının önündeki hücreye**
+  (yerleştirirken sarı kare) değerse bağlanır. R saat yönü, Q tersi, 4 yön; varsayılan kapı kameraya (−Y).
+- **Bina çekmecesi:** sağda karton çekmece, kulptan çekilir ya da tıklanır (Tab). Kartlar: çizim, kütle,
+  ölçü, kilit. Kart seçilince çekmece kapanır. 1–4 kısayol olarak duruyor.
+- **Aile ve konuşma balonu:** bölüm başında ön kenarda bekler (`FamilyWaitLocal`), görevi balonla verir
+  (`FSLTask::Speech`), ev kurulunca o noktadan kapıya yürür (kapı arkadaysa yan sokaktan dolaşır), sonra
+  evin üstünden konuşur; görev bitince teşekkür (`DoneSpeech`).
+- **Eğitim ipuçları** (barın altında): devriliyor > hayalet (konmaz / devirir / sınıra gelir / kapı dışarı /
+  kapı önü dolu / elde) > platform hangi yana yatıyor > görevin ne istediği. `ASLHUD::BuildHint`.
+- **Kamera:** tekerlekle 1100–3400 cm arası yakınlaş/uzaklaş (çarpımsal adım, yumuşak).
 - **Şehir planı:** istif kapalı (`bAllowStacking`), dolu hücre geçersiz.
 - **1. bölüm = eğitim / vertical slice** (`ASLLevelDirector`, görevler veri):
   1. Ev kur (yalnızca Ev açık) → 2. aile kameraya bakan kenardan yürüyüp eve girer →
@@ -153,8 +164,13 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
 yanlış AVM ile DEVRİLİYOR, gerçek fareyle AVM'yi kaldırıp kurtarma, yeni yerine koyma, yolla bağlama,
 bölüm sonu. Sayılar elle hesapla aynı (3,2° / 2,5° / 12° / 2,47°, bağlantı 6. karoda).
 
-**Derlendi, ekranda görülmedi:** Space/F5 ile yeniden başlatma, G, H, R (taşırken döndürme),
-taşımayı sağ tıkla iptal ← 2'yi geçerse yeni özellik durur
+**Ayrıca görüldü (14 Ekim akşam, `SLTestLevel1`):** çekmece kulpu ve kart, kapı/giriş hücreleri, ters kapının
+bağlanmaması (2/3) ve R R ile düzelince 3/3, aile bekleyip yürümesi, balonlar, zoom (2200 → 1499),
+AVM için turuncu hayalet + "DEVRİLİR" + kırmızı tahmin işareti.
+
+**Derlendi, ekranda görülmedi:** Space/F5 ile yeniden başlatma, G, H, Tab, Q, taşımayı sağ tıkla iptal,
+çekmeceyi **gerçek fareyle sürükleme** (test HUD'un tıklama işlevini koordinatla çağırıyor: bu makinede
+imleç kullanıcı tarafından oynatıldığı için gerçek fare güvenilmez) ← 2'yi geçerse yeni özellik durur
 
 **Bozuk:** —
 
@@ -162,8 +178,9 @@ taşımayı sağ tıkla iptal ← 2'yi geçerse yeni özellik durur
 - Varsayılanlar ölçülerek değişti: `TiltPerCm` 0,04 → **0,08**, `PlatformMass` 0 → **12**.
   0,04'te devrilme pratikte imkânsız; PlatformMass 0'da kenara konan tek nesne oyunu bitirir.
 - AVM (36) bilerek ağır: yanlış köşeye konunca tek başına devirir — eğitimin "taşı" dersi bu.
-- Aile figürü 160 cm (asset spec), Ev 100 cm: insanlar evden uzun. Spec'in bilinçli kararı ama ekranda
-  tuhaf duruyor — Asil'e sorulacak.
+- Aile figürü 160 cm (asset spec), Ev 100 cm: insanlar evden uzun ve ekranda belirgin şekilde tuhaf
+  (`SL_L1_1_aile_yuruyor`). Öneri: aile 70–80 cm (ev boyunun ~%75'i). Karar Asil'de; `ResidentHeightCm`
+  ve `ASLFamily::HeightCm`.
 - Figürlere evin MID'i verilince motor aynı MID'i paylaştırıyor: figürü boyamak evi boyuyordu. Ayrı
   `UMaterialInstanceDynamic::Create` ile çözüldü. Aynı tuzak her "parçanın rengini ayrı ver" işinde.
 - `CollapseAngle` 75'te platformun altı ekranı kaplıyordu → 45.
@@ -176,9 +193,10 @@ sebebi, CoM, ayarlar).
 
 | Tuş | Ne yapar |
 |---|---|
-| 1–4 | Ev · Hastane · AVM · Yol (görevle açılır) |
+| Çekmece (sağ kenar) / Tab | Aç-kapa, karta tıkla: seç. 1–4 kısayol |
 | Sol tık | Seçiliyken koy · boştayken bir binayı kaldır (taşı) |
-| R | Elindekini 90° döndür |
+| R / Q | Elindekini saat yönünde / tersine 90° çevir (kapının yönü) |
+| Tekerlek | Yakınlaş / uzaklaş |
 | Sağ tık / Esc | Bırak · taşırken eski yerine koy |
 | Backspace | Son konanı geri al |
 | F5 / Space | Baştan (Space yalnızca devrilince ya da bölüm bitince) |
