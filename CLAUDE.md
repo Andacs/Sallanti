@@ -152,12 +152,20 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
   kapı önü dolu / elde) > platform hangi yana yatıyor > görevin ne istediği. `ASLHUD::BuildHint`.
 - **Kamera:** tekerlekle 1100–3400 cm arası yakınlaş/uzaklaş (çarpımsal adım, yumuşak).
 - **Şehir planı:** istif kapalı (`bAllowStacking`), dolu hücre geçersiz.
+- **Tahta (14 Ekim, Blender taslağı):** 13×13 hücre, 50 cm → 650 cm. Yeşil karolar + kahverengi derz
+  (`TileGap` 8 cm). Bina gri **plakada** (ayak izi − derz), gövde plakadan `BodyInsetCm` içeride.
+  **Yol** plakasız karo; komşu yollara ve kapısı kendine bakan binaya derzi kapatan uzantı çıkarır,
+  birleşik şerit olur (`ASLPlatform::RefreshConnections`). Plakayı ve yolu kod çiziyor, modelciden
+  yalnızca bina gövdesi gelir.
+- **Bağlantı efekti:** bir binanın kapısına yol değdiği an bina halka + parlama, yol karoları kapıdan
+  uzaklaştıkça sırayla parlar (`ASLLevelDirector::UpdateConnectionFx`, `ASLPlaceable::PlayConnectFx`).
+  Malzeme `M_Ghost`; yeni asset yok.
 - **1. bölüm = eğitim / vertical slice** (`ASLLevelDirector`, görevler veri):
   1. Ev kur (yalnızca Ev açık) → 2. aile kameraya bakan kenardan yürüyüp eve girer →
   3. Hastane (açılır) → 4. AVM (açılır) → 5. Yol açılır; Ev, Hastane, AVM aynı yol ağına değsin.
   Bitince "BÖLÜM TAMAMLANDI", Space tekrar.
-- Katalog (`USLBuildComponent::Slots`): Ev 2×2×2 kütle 8 (3 kişi), Hastane 2×2×3 12, AVM 3×3×4 36,
-  Yol 1×1 düz 0,5. Ölçüler 08_ASSET_SPEC'ten; Mert'in mesh'leri `Slots[i].Mesh`'e bağlanır.
+- Katalog (`USLBuildComponent::Slots`): Ev **1×1×1 kütle 2** (3 kişi), Hastane 2×2×3 12, AVM 3×3×4 36,
+  Yol 1×1 düz 0,5. Mert'in mesh'leri `Slots[i].Mesh`'e bağlanır (mesh varken kod kapı çizmez).
 
 **Çalışıyor ve ekranda görüldü:** boş proje paketi (Shipping) açılıyor · temiz klon derleniyor ·
 **1. bölüm baştan sona** (`SLTestLevel1`, 14 Ekim): kilitli slot reddi, ailenin yürüyüp yerleşmesi,
@@ -174,18 +182,21 @@ imleç kullanıcı tarafından oynatıldığı için gerçek fare güvenilmez) �
 
 **Bozuk:** —
 
+**Tuzaklar (bu projede ödendi):** `M_Cardboard`/`M_Ghost`'ta "Used with Instanced Static Meshes" bayrağı
+yoktu → karolar varsayılan gri malzemeyle çizildi (`Tools/malzeme_ism_bayragi.py` açtı). Otomatik pozlama
+karton renklerini yıkıyordu → kamera `ExposureBias` −1,5 (ölçüldü: karo 119,155,72, derz 114,84,51).
+
 **Gözlemler:**
 - Varsayılanlar ölçülerek değişti: `TiltPerCm` 0,04 → **0,08**, `PlatformMass` 0 → **12**.
   0,04'te devrilme pratikte imkânsız; PlatformMass 0'da kenara konan tek nesne oyunu bitirir.
 - AVM (36) bilerek ağır: yanlış köşeye konunca tek başına devirir — eğitimin "taşı" dersi bu.
-- Aile figürü 160 cm (asset spec), Ev 100 cm: insanlar evden uzun ve ekranda belirgin şekilde tuhaf
-  (`SL_L1_1_aile_yuruyor`). Öneri: aile 70–80 cm (ev boyunun ~%75'i). Karar Asil'de; `ResidentHeightCm`
-  ve `ASLFamily::HeightCm`.
+- Aile figürü spec'te 160 cm; ev 50 cm'e inince geçici **35 cm** yapıldı (`ResidentHeightCm`,
+  `ASLFamily::HeightCm`). Kesin boy Asil'in kararı.
 - Figürlere evin MID'i verilince motor aynı MID'i paylaştırıyor: figürü boyamak evi boyuyordu. Ayrı
   `UMaterialInstanceDynamic::Create` ile çözüldü. Aynı tuzak her "parçanın rengini ayrı ver" işinde.
 - `CollapseAngle` 75'te platformun altı ekranı kaplıyordu → 45.
 - Platform kraft kahvesi değil krem görünüyor (otomatik pozlama). Mert'in lighting işi.
-- Kamera spec'te 1400 cm'di; 600 cm'lik platform sığmıyordu → 2200.
+- Kamera spec'te 1400 cm'di; 600 cm'lik platform sığmıyordu → 2200; tahta 650'ye çıkınca 2400.
 
 **Oynamak / ölçmek:** `Build\oyna.bat` (önce `derle.bat`). Oyun ekranı (`ASLHUD`): denge barı,
 görevler (sağ üst), slot çubuğu (alt), uyarı/bölüm mesajı. H: geliştirici paneli (hücre, geçersizlik
@@ -200,7 +211,7 @@ sebebi, CoM, ayarlar).
 | Sağ tık / Esc | Bırak · taşırken eski yerine koy |
 | Backspace | Son konanı geri al |
 | F5 / Space | Baştan (Space yalnızca devrilince ya da bölüm bitince) |
-| G / H | Izgara hep açık · geliştirici paneli |
+| H | Geliştirici paneli |
 
 Konsol (`~`): `SLKnobs` ayarları listeler, `SLSet <Ad> <Değer>` derlemeden değiştirir. Kalıcı değildir.
 `SLTestLevel1` bölümü otomatik oynayıp ölçer, ekran görüntüleri `Saved/Screenshots/WindowsEditor/SL_L1_*.png`;

@@ -156,7 +156,7 @@ table.matrix td[colspan]{background:var(--chip);text-align:center}
         <tbody>
           <tr><td class="n">Gün 0</td><td>Proje, Git+LFS, derleme, ilk paket, CLAUDE.md</td><td>Klonla, editörü aç, <code>paketle.bat</code>'ı bir kez kendisi çalıştır</td><td>Blender küp testi, export preset, <code>T_Cardboard_D</code></td><td>Küp testini kendi makinesinde tekrarla, preset'i al</td></tr>
           <tr><td class="n">0–1</td><td>Tek cümle, kesme listesi, sahiplik ilanı</td><td>"Seviye bende" ilanı; istek kuyruğunu aç</td><td>Asil'le asset listesini böl</td><td>Karton İstanbul mood board (1 sayfa)</td></tr>
-          <tr><td class="n">1–3</td><td>Kamera + platform + sallanma (sıra 1–2)</td><td>Seviye yarım sayfası; HUD wireframe</td><td>Platform mesh'i 600×600</td><td>4 slot nesnesinin konsepti</td></tr>
+          <tr><td class="n">1–3</td><td>Kamera + platform + sallanma (sıra 1–2)</td><td>Seviye yarım sayfası; HUD wireframe</td><td>Bina gövdeleri (Ev 32×32×50)</td><td>4 slot nesnesinin konsepti</td></tr>
           <tr><td class="n">3–10</td><td>Hayalet, ızgara, yerleştirme, eğim (sıra 3–6)</td><td>Font + ikon dokuları; <code>WBP_HUD</code> iskeleti</td><td>4 slot nesnesi + <code>UBX_</code> collision</td><td>Dekor insan figürü 160 cm</td></tr>
           <tr><td class="n">10–12</td><td colspan="4"><b>Herkes oynar.</b> Karar: mekanik eğlenceli mi? Değilse şimdi pivot.</td></tr>
           <tr><td class="n">12–18</td><td colspan="4"><b>Uyku.</b> Herkes birlikte, en az 6 saat. Vardiya yok.</td></tr>
@@ -237,9 +237,9 @@ table.matrix td[colspan]{background:var(--chip);text-align:center}
         <li data-id="m-doku" data-t="T_Cardboard_D: 1024×1024 tileable karton dokusu" data-d="1 UV tile = 1 m. Oluk her nesnede aynı büyüklükte görünmeli."></li>
         <li class="phase">0–10. saat</li>
         <li data-id="m-bolus" data-t="Asil'le asset listesini böl, kim neyi yapıyor yaz"></li>
-        <li data-id="m-platform" data-t="Platform mesh'i: 600×600, en çok 2000 tris" data-d="Pivot üst yüzeyin ortasında değil, tabanın ortasında. Andaç'ın platform kodu sonra bu mesh'e geçer."></li>
-        <li data-id="m-slot" data-t="4 slot nesnesi, gri kutuların yerine" data-d="50×50×50 · 50×50×100 · 100×100×100 · 100×100×150. Her biri en çok 300/1500 tris."></li>
-        <li data-id="m-ubx" data-t="Her mesh'e UBX_ collision kutusu" data-d="UBX_SM_Ad_01, aynı FBX içinde. Bounding box ile birebir. Auto-convex kule titretir."></li>
+        <li data-id="m-platform" data-t="Platform mesh'i (P2): 650×650×20, en çok 2000 tris" data-d="Pivot üst yüzün ortasında. Karoları ve derzleri oyun çiziyor; mesh yalnızca yan yüz ve alt için."></li>
+        <li data-id="m-slot" data-t="Bina gövdeleri, gri kutuların yerine" data-d="Ev 32×32×50 · Hastane 82×82×150 · AVM 132×132×200. Plakayı ve yolu oyun çiziyor. Ayrıntı: Tasarımcılardan istenenler."></li>
+        <li data-id="m-ubx" data-t="Her mesh'e UBX_ collision kutusu" data-d="UBX_SM_Ad_01, aynı FBX içinde. Bounding box ile birebir. İmleç binayı bu kutuyla seçiyor."></li>
         <li class="phase">18–30. saat</li>
         <li data-id="m-mi" data-t="Material instance'lar: MI_Cardboard_Kraft, _Dark, _White" data-d="M_Cardboard hazır, Tint ve Roughness parametreleri var. Yeni doku üretme, renk parametreyle."></li>
         <li data-id="m-isik" data-t="Lighting pass (Yiğit'ten &quot;seviye sende&quot; alınca)" data-d="Sıcak, cozy taban. Bitince kaydet, push et, &quot;seviye bitti&quot; de."></li>
@@ -407,10 +407,10 @@ table.matrix td[colspan]{background:var(--chip);text-align:center}
       <div class="tbl"><table>
         <thead><tr><th>Nesne</th><th>Ölçü (modül)</th><th>cm</th><th>Kütle</th><th>Not</th></tr></thead>
         <tbody>
-          <tr><td>Ev</td><td class="n">2×2×2</td><td class="n">100×100×100</td><td class="n">8</td><td>3 kişilik aile gelir</td></tr>
+          <tr><td>Ev</td><td class="n">1×1×1</td><td class="n">plaka 42×42, gövde 32×32×50</td><td class="n">2</td><td>3 kişilik aile gelir</td></tr>
           <tr><td>Hastane</td><td class="n">2×2×3</td><td class="n">100×100×150</td><td class="n">12</td><td></td></tr>
           <tr><td>AVM</td><td class="n">3×3×4</td><td class="n">150×150×200</td><td class="n">36</td><td>Bilerek ağır: eğitimin taşıma dersi</td></tr>
-          <tr><td>Yol</td><td class="n">1×1 düz</td><td class="n">50×50×4</td><td class="n">0,5</td><td>Üstüne bir şey konmaz</td></tr>
+          <tr><td>Yol</td><td class="n">1×1 düz</td><td class="n">42×42×2,5 + derz uzantıları</td><td class="n">0,5</td><td>Komşu yollara ve kapısı bakan binaya birleşir</td></tr>
         </tbody>
       </table></div>
       <h3>Aile görevi verir</h3>
@@ -431,6 +431,8 @@ table.matrix td[colspan]{background:var(--chip);text-align:center}
           <tr><td>Devriliyor</td><td>"Ağır bir binaya tıklayıp kaldır"</td></tr>
         </tbody>
       </table></div>
+      <h3>Tahta, plaka, yol, bağlantı</h3>
+      <p>Tahta 13×13 hücre (50 cm), yeşil karolar ve kahverengi derzler; ortada bir hücre var. Her bina gri bir plakanın üstünde durur. Yol karoları yan yana gelince aradaki derz kapanır ve tek şerit olur; kapısı yola bakan binanın plakasıyla da birleşir. Bir binanın kapısına yol değdiği an binadan yeşil bir halka yayılır ve yol kapıdan uzaklaştıkça sırayla parlar.</p>
       <p class="note">Şehir planı: binalar üst üste konmaz, dolu hücre kırmızı. Taşıma sırasında bina elden bırakılana kadar ağırlığı platformdan kalkar. Devrilme geri sayımı işlerken bir binayı kaldırmak platformu kurtarır.</p>
     </section>
 
@@ -486,27 +488,26 @@ table.matrix td[colspan]{background:var(--chip);text-align:center}
       <div class="tbl"><table>
         <thead><tr><th>Dosya</th><th>Ölçü (cm, G×D×Y)</th><th>Modül</th><th>Pivot</th><th>Kapı</th><th>Tris</th><th>Kim</th><th></th></tr></thead>
         <tbody>
-          <tr><td><code>SM_Zemin_Platform</code></td><td class="n">600×600×20</td><td class="n">12×12</td><td><b>Üst yüzün ortası</b> (istisna)</td><td>—</td><td class="n">2000</td><td>Mert</td><td>P1</td></tr>
-          <tr><td><code>SM_Bina_Ev01</code></td><td class="n">100×100×100</td><td class="n">2×2×2</td><td>Tabanın ortası</td><td class="n">≈30×55</td><td class="n">1500</td><td>Mert</td><td>P1</td></tr>
-          <tr><td><code>SM_Bina_Hastane01</code></td><td class="n">100×100×150</td><td class="n">2×2×3</td><td>Tabanın ortası</td><td class="n">≈30×80</td><td class="n">1500</td><td>Mert</td><td>P1</td></tr>
-          <tr><td><code>SM_Bina_AVM01</code></td><td class="n">150×150×200</td><td class="n">3×3×4</td><td>Tabanın ortası</td><td class="n">≈45×90</td><td class="n">1500</td><td>Mert</td><td>P1</td></tr>
-          <tr><td><code>SM_Zemin_Yol01</code></td><td class="n">50×50×4</td><td class="n">1×1</td><td>Tabanın ortası</td><td>—</td><td class="n">50</td><td>Mert</td><td>P1</td></tr>
+          <tr><td><code>SM_Bina_Ev01</code> (gövde)</td><td class="n">32×32×50</td><td class="n">1×1</td><td>Tabanın ortası</td><td class="n">≈11×27</td><td class="n">800</td><td>Mert</td><td>P1</td></tr>
+          <tr><td><code>SM_Bina_Hastane01</code> (gövde)</td><td class="n">82×82×150</td><td class="n">2×2</td><td>Tabanın ortası</td><td class="n">≈28×80</td><td class="n">1500</td><td>Mert</td><td>P1</td></tr>
+          <tr><td><code>SM_Bina_AVM01</code> (gövde)</td><td class="n">132×132×200</td><td class="n">3×3</td><td>Tabanın ortası</td><td class="n">≈45×90</td><td class="n">1500</td><td>Mert</td><td>P1</td></tr>
+          <tr><td><code>SM_Zemin_Platform</code></td><td class="n">650×650×20</td><td class="n">13×13</td><td><b>Üst yüzün ortası</b> (istisna)</td><td>—</td><td class="n">2000</td><td>Mert</td><td>P2</td></tr>
           <tr><td><code>SM_Dekor_InsanYetiskin01</code>, <code>…02</code></td><td>boy kararı Asil'de</td><td>—</td><td>İki ayağın ortası, Z=0</td><td>—</td><td class="n">3000</td><td>Asil</td><td>P1</td></tr>
           <tr><td><code>SM_Dekor_InsanCocuk01</code></td><td>yetişkinin ~%70'i</td><td>—</td><td>İki ayağın ortası, Z=0</td><td>—</td><td class="n">3000</td><td>Asil</td><td>P1</td></tr>
-          <tr><td><code>SM_Bina_Ev02</code></td><td class="n">100×100×100</td><td class="n">2×2×2</td><td>Tabanın ortası</td><td class="n">≈30×55</td><td class="n">1500</td><td>Asil</td><td>P2</td></tr>
-          <tr><td><code>SM_Zemin_Yol_Kose01</code>, <code>_T01</code>, <code>_Kavsak01</code></td><td class="n">50×50×4</td><td class="n">1×1</td><td>Tabanın ortası</td><td>—</td><td class="n">50</td><td>Mert</td><td>P2</td></tr>
+          <tr><td><code>SM_Bina_Ev02</code> (gövde)</td><td class="n">32×32×50</td><td class="n">1×1</td><td>Tabanın ortası</td><td class="n">≈11×27</td><td class="n">800</td><td>Asil</td><td>P2</td></tr>
         </tbody>
       </table></div>
       <ul>
-        <li><b>Ölçü çatı dahil.</b> Ev 100 cm ise çatının tepesi 100'de biter. Hiçbir parça ayak izinin dışına 2 cm'den fazla taşmaz; taşan parça komşu hücreye girer ve oyuncu "neden konmuyor" der.</li>
+        <li><b>Yalnızca bina gövdesi.</b> Tahta 13×13 hücre (50 cm), yeşil karo + kahverengi derz; binanın altındaki gri plakayı, yolları ve yolların birleşmesini <b>oyun kendisi çiziyor</b>. Gövde ölçüsü = hücre × 50 − 8 cm derz − 2×5 cm pay (Ev 1×1 → 32×32). Gövde plakanın üstüne, Z=0'dan başlar.</li>
+        <li><b>Ölçü çatı dahil.</b> Ev 50 cm ise çatının tepesi 50'de biter. Hiçbir parça ayak izinin dışına 2 cm'den fazla taşmaz; taşan parça komşu hücreye girer ve oyuncu "neden konmuyor" der.</li>
         <li><b>Kapı ön yüzde, ortada.</b> Blender'da ön görünümde (<code>Numpad 1</code>) görünen yüz, yani <b>−Y yüzü</b>. Bu yüz Unreal'de +X olur ve oyun kapıyı oraya bekler; yol bu yüzün önündeki hücreye bağlanır. Kapı 2 cm içe girintili, dışarı taşmaz.</li>
         <li><b>Dört yüz de bitmiş olacak.</b> Oyuncu binayı R / Q ile dört yöne çeviriyor; arka yüz boş kalmaz.</li>
         <li><b>Kapının rengi vertex color ile.</b> Tek doku + tek materyal kuralı yüzünden kapıyı ayrı materyal yapmayın: kapı yüzlerine koyu vertex color (≈ <code>#2E1C12</code>), geri kalanı beyaz.</li>
-        <li><b>Platform istisnası:</b> pivot tabanın değil <b>üst yüzün</b> ortasında (yüzey Z=0, alt yüz Z=−20). Oyun binaları Z=0'a oturtuyor ve platformu üst yüzünün ortasından eğiyor. Izgara çizgileri dokuya çizilmez, oyun kendisi çiziyor.</li>
-        <li><b>Yol:</b> şeritsiz ya da dört yöne simetrik; yan yana konan karolar dikişsiz birleşmeli. Köşe/T/kavşak (P2) ancak kod otomatik seçmeyi öğrenince kullanılabilir.</li>
-        <li><b>İnsanlar:</b> spec 160 cm diyor ama ev 100 cm; ekranda aile evden uzun ve tuhaf duruyor (<code>SL_L1_1_aile_yuruyor</code>). Öneri 70–80 cm. Animasyon yok, oyun figürleri kaydırıyor; <b>karton figür</b> (ince, tabanlı, düz renkli) kaymayı doğal gösterir ve karton diline uyar.</li>
+        <li><b>Platform (P2):</b> karolar ve derzler oyun tarafından çiziliyor; platform mesh'i yalnızca yan yüz ve alt için (650×650×20, pivot <b>üst yüzün</b> ortası). Karo ve derz dokuya çizilmez.</li>
+        <li><b>Yol:</b> oyun çiziyor ve birleştiriyor. Mert'ten yalnızca yol, plaka, karo ve derz için renk (hex) isteniyor.</li>
+        <li><b>İnsanlar:</b> ev 50 cm; aile şu an geçici 35 cm (yetişkin), çocuk %70. Kesin boy Asil'de. Animasyon yok, oyun figürleri kaydırıyor; <b>karton figür</b> (ince, tabanlı, düz renkli) kaymayı doğal gösterir ve karton diline uyar.</li>
         <li><b>Collision:</b> her mesh'te <code>UBX_&lt;MeshAdı&gt;_01</code> kutu, bounding box ile aynı. İnsanlarda da tek kutu.</li>
-        <li><b>Gün 0 doğrulaması:</b> −Y yüzüne kırmızı bir kare boyanmış 100×100×100 küpü export edin. Unreal'de kare <b>+X</b>'te ve küp 100 birimse ayar doğru; değilse üretime başlamadan düzeltin.</li>
+        <li><b>Gün 0 doğrulaması:</b> −Y yüzüne kırmızı bir kare boyanmış 32×32×50 küpü export edin. Unreal'de kare <b>+X</b>'te ve ölçüler aynıysa ayar doğru; değilse üretime başlamadan düzeltin.</li>
       </ul>
 
       <h3>Doku ve materyal (Mert)</h3>
@@ -515,7 +516,7 @@ table.matrix td[colspan]{background:var(--chip);text-align:center}
         <tbody>
           <tr><td><code>T_Cardboard_D</code></td><td class="n">1024×1024</td><td>Tileable karton, oluk görünür. 1 UV tile = 1 m. Renk nötr açık kahve; oyun tonu <code>Tint</code> ile veriyor.</td><td>P1</td></tr>
           <tr><td><code>T_Cardboard_N</code></td><td class="n">1024×1024</td><td>Oluk normal haritası, sRGB kapalı.</td><td>P2</td></tr>
-          <tr><td>Renk listesi</td><td>—</td><td>Ev, Hastane, AVM, Yol, platform ve aile için birer karton tonu (hex). <code>MI_Cardboard_*</code> instance'larını Mert kurar.</td><td>P1</td></tr>
+          <tr><td>Renk listesi</td><td>—</td><td>Ev, Hastane, AVM gövdeleri, yol, plaka, karo (yeşil), derz (kahverengi) ve aile için birer ton (hex). Şu an: karo <code>#4D8C24</code>, derz <code>#4D2E17</code>, plaka <code>#B8B8B3</code>.</td><td>P1</td></tr>
         </tbody>
       </table></div>
 
@@ -596,15 +597,14 @@ table.matrix td[colspan]{background:var(--chip);text-align:center}
       <h2>Tasarım teslimleri <span class="hand">P1, ekranda görülünce tikle</span></h2>
       <ul class="list">
         <li class="phase">Mert</li>
-        <li data-id="d-kup" data-t="Gün 0 küpü: −Y yüzü Unreal'de +X, 100 birim"></li>
-        <li data-id="d-platform" data-t="SM_Zemin_Platform 600×600×20, pivot üst yüz ortası"></li>
-        <li data-id="d-ev" data-t="SM_Bina_Ev01 100×100×100, kapı −Y yüzünde"></li>
-        <li data-id="d-hastane" data-t="SM_Bina_Hastane01 100×100×150"></li>
-        <li data-id="d-avm" data-t="SM_Bina_AVM01 150×150×200"></li>
-        <li data-id="d-yol" data-t="SM_Zemin_Yol01 50×50×4, dikişsiz"></li>
+        <li data-id="d-kup" data-t="Gün 0 küpü: −Y yüzü Unreal'de +X, ölçü aynı"></li>
+        <li data-id="d-ev" data-t="SM_Bina_Ev01 gövde 32×32×50, kapı −Y yüzünde"></li>
+        <li data-id="d-hastane" data-t="SM_Bina_Hastane01 gövde 82×82×150"></li>
+        <li data-id="d-avm" data-t="SM_Bina_AVM01 gövde 132×132×200"></li>
+        <li data-id="d-yol" data-t="Yol, plaka, karo, derz renkleri (hex)"></li>
         <li data-id="d-doku" data-t="T_Cardboard_D 1024 tileable + renk listesi"></li>
         <li class="phase">Asil</li>
-        <li data-id="d-insanboy" data-t="Aile boyu kararı (spec 160 cm, öneri 70–80)"></li>
+        <li data-id="d-insanboy" data-t="Aile boyu kararı (ev 50 cm; şu an geçici 35)"></li>
         <li data-id="d-insan" data-t="İki yetişkin + bir çocuk figürü"></li>
         <li data-id="d-dil" data-t="Arayüz görsel dili: karton paneller, balon, çekmece için bir sayfa"></li>
         <li class="phase">Yiğit</li>
@@ -806,13 +806,11 @@ AmbientSway = sin(t × 2π / SwayPeriod) × SwayAmplitude</pre>
         <div class="tbl"><table>
           <thead><tr><th>Kategori</th><th>cm (G×D×Y)</th><th>Tris</th></tr></thead>
           <tbody>
-            <tr><td>Küçük nesne</td><td class="n">50×50×50</td><td class="n">300</td></tr>
-            <tr><td>Orta nesne</td><td class="n">50×50×100</td><td class="n">300</td></tr>
-            <tr><td>Küçük bina</td><td class="n">100×100×100</td><td class="n">1500</td></tr>
-            <tr><td>Orta bina</td><td class="n">100×100×150</td><td class="n">1500</td></tr>
-            <tr><td>Büyük bina</td><td class="n">150×150×200</td><td class="n">1500</td></tr>
+            <tr><td>Ev (gövde, 1×1)</td><td class="n">32×32×50</td><td class="n">800</td></tr>
+            <tr><td>Hastane (gövde, 2×2)</td><td class="n">82×82×150</td><td class="n">1500</td></tr>
+            <tr><td>AVM (gövde, 3×3)</td><td class="n">132×132×200</td><td class="n">1500</td></tr>
             <tr><td>İnsan</td><td class="n">160 boy</td><td class="n">3000</td></tr>
-            <tr><td>Platform</td><td class="n">600×600</td><td class="n">2000</td></tr>
+            <tr><td>Platform (13×13)</td><td class="n">650×650</td><td class="n">2000</td></tr>
           </tbody>
         </table></div>
         <ul>
