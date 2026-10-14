@@ -133,57 +133,60 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
 
 ## Bilinen durum
 
-**Tasarım değişikliği (14 Ekim, ekip kararı):** binalar **sabit**, fiziğe bırakılmaz; platformla
-birlikte eğilir. Eğim `WarnTilt`'i (8°) geçince platform kırmızı atar ("DENGE SINIRDA"); doğru dizilirse
-eğim düşer ve uyarı kalkar. `FailTilt` (10°) `FailSeconds` (1,5 sn) kesintisiz aşılırsa platform
-binalarla birlikte `CollapseAngle`'a (45°) devrilir, oyun biter, Space/F5 yeniden başlatır.
-Uyarı/kaybetme kararları **sallanma hariç** eğime bakar. Eski adım 7 (fiziğe bırakma) kaldırıldı,
-`5ec0385`'te duruyor.
+**Tasarım (14 Ekim, ekip kararları):**
+- Binalar **sabit**, fiziğe bırakılmaz; platformla birlikte eğilir. Eski "fiziğe bırakma" `5ec0385`'te.
+- Eğim `WarnTilt` 8° → platform kırmızı atar. `FailTilt` 10° `FailSeconds` 1,5 sn kesintisiz aşılırsa
+  platform binalarla birlikte 45°'ye devrilir, oyun biter. Kararlar sallanma hariç eğime bakar.
+- **Taşıma (replace):** boştayken sol tık bir binayı kaldırır. Elde tutulurken ağırlığı dengeden
+  çıkar — devrilme sayacı işliyorken kaldırmak kurtarır. Sağ tık eski yerine koyar.
+- **Denge barı** üstte ortada (yeşil / sarı 8° / kırmızı 10°, devrilirken geri sayım şeridi).
+- **Şehir planı:** istif kapalı (`bAllowStacking`), dolu hücre geçersiz.
+- **1. bölüm = eğitim / vertical slice** (`ASLLevelDirector`, görevler veri):
+  1. Ev kur (yalnızca Ev açık) → 2. aile kameraya bakan kenardan yürüyüp eve girer →
+  3. Hastane (açılır) → 4. AVM (açılır) → 5. Yol açılır; Ev, Hastane, AVM aynı yol ağına değsin.
+  Bitince "BÖLÜM TAMAMLANDI", Space tekrar.
+- Katalog (`USLBuildComponent::Slots`): Ev 2×2×2 kütle 8 (3 kişi), Hastane 2×2×3 12, AVM 3×3×4 36,
+  Yol 1×1 düz 0,5. Ölçüler 08_ASSET_SPEC'ten; Mert'in mesh'leri `Slots[i].Mesh`'e bağlanır.
 
-**Çalışıyor ve ekranda görüldü:** boş proje paketi (Shipping) açılıyor, `L_Ana` ışık/atmosfer
-görünüyor · temiz klon derleniyor ve editör açılıyor · **uygulama sırası 1–6** (`SLSelfTest`):
-izometrik kamera, sallanma, hayalet, ızgara + geçerlilik rengi, yerleştirme + istif, CoM → eğim,
-gerçek fare ışını · **uyarı → kurtarma → devrilme → kilit** (`SLTest8`; sayılar elle hesapla aynı:
-7,78 dengede, 8,29 uyarı, karşı bina 0,28, köşe 10,61, 1,50 sn'de devrildi, sonra yerleştirme kilitli)
-· test paneli, ızgara, geri al, `SLSet`.
+**Çalışıyor ve ekranda görüldü:** boş proje paketi (Shipping) açılıyor · temiz klon derleniyor ·
+**1. bölüm baştan sona** (`SLTestLevel1`, 14 Ekim): kilitli slot reddi, ailenin yürüyüp yerleşmesi,
+yanlış AVM ile DEVRİLİYOR, gerçek fareyle AVM'yi kaldırıp kurtarma, yeni yerine koyma, yolla bağlama,
+bölüm sonu. Sayılar elle hesapla aynı (3,2° / 2,5° / 12° / 2,47°, bağlantı 6. karoda).
 
-**Derlendi, ekranda görülmedi:** Space ile yeniden başlatma, F5, G, H tuşları (kodlu, elle denenmedi)
-← 2'yi geçerse yeni özellik durur
+**Derlendi, ekranda görülmedi:** Space/F5 ile yeniden başlatma, G, H, R (taşırken döndürme),
+taşımayı sağ tıkla iptal ← 2'yi geçerse yeni özellik durur
 
 **Bozuk:** —
 
 **Gözlemler:**
-- Varsayılanlar spec'ten ölçülerek değişti: `TiltPerCm` 0,04 → **0,08**, `PlatformMass` 0 → **12**.
-  0,04'te PlatformMass > 0 iken devrilme için CoM'un kenara 50 cm gelmesi gerekiyor (pratikte imkânsız);
-  PlatformMass 0'da kenara konan tek kutu oyunu bitiriyor. 0,08/12 ile uyarı, kurtarma, devrilme üçü de olur.
-- `SLSelfTest`'in (1–6) yorumlarındaki beklenen sayılar eski varsayılanlarla (0,04 / 0) ölçüldü.
-- `CollapseAngle` 75'te kameradan uzağa devrilmede platformun altı ekranı kaplıyordu → 45.
-  Uzağa devrilmede 35°'den sonra alt yüz görünür (kamera eğimi); 45'te binalar yine seçiliyor.
-- Uyarı nabzı ilk sürümde UYARI anında neredeyse görünmüyordu → `WarnStrengthMin` 0,6, nabız yarım genlik.
-- Sallanma ±1,5° görsel; kararları etkilemez.
-- `TiltSpeed` 25 °/sn → eğim 0,4 sn'de oturuyor; "ağır" değil "atik" hissettiriyor.
+- Varsayılanlar ölçülerek değişti: `TiltPerCm` 0,04 → **0,08**, `PlatformMass` 0 → **12**.
+  0,04'te devrilme pratikte imkânsız; PlatformMass 0'da kenara konan tek nesne oyunu bitirir.
+- AVM (36) bilerek ağır: yanlış köşeye konunca tek başına devirir — eğitimin "taşı" dersi bu.
+- Aile figürü 160 cm (asset spec), Ev 100 cm: insanlar evden uzun. Spec'in bilinçli kararı ama ekranda
+  tuhaf duruyor — Asil'e sorulacak.
+- Figürlere evin MID'i verilince motor aynı MID'i paylaştırıyor: figürü boyamak evi boyuyordu. Ayrı
+  `UMaterialInstanceDynamic::Create` ile çözüldü. Aynı tuzak her "parçanın rengini ayrı ver" işinde.
+- `CollapseAngle` 75'te platformun altı ekranı kaplıyordu → 45.
 - Platform kraft kahvesi değil krem görünüyor (otomatik pozlama). Mert'in lighting işi.
 - Kamera spec'te 1400 cm'di; 600 cm'lik platform sığmıyordu → 2200.
 
-**Oynamak / ölçmek:** `Build\oyna.bat` (önce `derle.bat`). Ekranda test paneli (`ASLTestHUD`):
-seçili slot, hücre/seviye, geçerli mi, eğim çubuğu (sarı WarnTilt, kırmızı FailTilt), durum ve
-devrilme sayacı, CoM. Ortadaki uyarı/devrildi mesajı panel gizliyken de görünür.
-Izgara yerleştirirken görünür.
+**Oynamak / ölçmek:** `Build\oyna.bat` (önce `derle.bat`). Oyun ekranı (`ASLHUD`): denge barı,
+görevler (sağ üst), slot çubuğu (alt), uyarı/bölüm mesajı. H: geliştirici paneli (hücre, geçersizlik
+sebebi, CoM, ayarlar).
 
 | Tuş | Ne yapar |
 |---|---|
-| 1–4 | Kutu · Orta nesne · Küçük bina · Orta bina |
-| Sol tık / R / Sağ tık, Esc | Koy / 90° döndür / bırak |
-| Backspace | Son nesneyi geri al |
-| F5 | Baştan (seviyeyi yeniden yükler) |
-| Space | Devrildikten sonra tekrar |
-| G | Izgara hep açık / yalnızca yerleştirirken |
-| H | Test panelini gizle |
+| 1–4 | Ev · Hastane · AVM · Yol (görevle açılır) |
+| Sol tık | Seçiliyken koy · boştayken bir binayı kaldır (taşı) |
+| R | Elindekini 90° döndür |
+| Sağ tık / Esc | Bırak · taşırken eski yerine koy |
+| Backspace | Son konanı geri al |
+| F5 / Space | Baştan (Space yalnızca devrilince ya da bölüm bitince) |
+| G / H | Izgara hep açık · geliştirici paneli |
 
-Konsol (`~`): `SLKnobs` bütün ayarları listeler, `SLSet <Ad> <Değer>` derlemeden değiştirir
-(`SLSet PlatformMass 10`, `SLSet TiltSpeed 8`, `SLSet Distance 2600`). Kalıcı değildir: beğenilen
-değer koddaki varsayılana ya da Blueprint alt sınıfına yazılır. `SLSelfTest` 1–6.yı, `SLTest8` uyarı/devrilmeyi otomatik ölçer,
-ekran görüntüleri `Saved/Screenshots/WindowsEditor/SL_*.png`; `SLReport` anlık eğim/CoM'u loga yazar.
+Konsol (`~`): `SLKnobs` ayarları listeler, `SLSet <Ad> <Değer>` derlemeden değiştirir. Kalıcı değildir.
+`SLTestLevel1` bölümü otomatik oynayıp ölçer, ekran görüntüleri `Saved/Screenshots/WindowsEditor/SL_L1_*.png`;
+`SLReport` anlık eğim/CoM/görevi loga yazar. Eski `SLSelfTest`/`SLTest8` eski kataloga bağlıydı, kaldırıldı.
 
 Spec çakışması: kesme listesi "R ile yeniden başlat" diyor, girdi tablosu R'yi döndürmeye veriyor.
 R döndürme kaldı, yeniden başlatma F5.

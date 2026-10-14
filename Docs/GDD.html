@@ -391,6 +391,54 @@ table.matrix td[colspan]{background:var(--chip);text-align:center}
       <div class="prog"><i></i></div>
     </section>
 
+    <section class="card" id="bolum1">
+      <h2>1. Bölüm: İlk mahalle <span class="hand">eğitim · vertical slice</span></h2>
+      <p>Oyuncu metin okumadan öğrenir: her görev tek bir şey öğretir ve yeni nesneyi o görev açar.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>#</th><th>Görev</th><th>Açılan</th><th>Öğrettiği</th></tr></thead>
+        <tbody>
+          <tr><td class="n">1</td><td>Aile geliyor: onlara bir ev kur</td><td>Ev</td><td>Yerleştirme, ızgara, kenara koyunca platformun yatması</td></tr>
+          <tr><td class="n">2</td><td>Aile eve yerleşsin</td><td>—</td><td>Dünya yaşıyor: 3 kişilik aile kameraya bakan kenardan yürüyüp eve girer</td></tr>
+          <tr><td class="n">3</td><td>Bir hastane kur</td><td>Hastane</td><td>Dengeleme: ikinci bina evin ağırlığını karşılar</td></tr>
+          <tr><td class="n">4</td><td>Bir alışveriş merkezi kur</td><td>AVM</td><td>Taşıma: AVM çok ağır, yanlış yerde platformu devirir; tıklayıp kaldırmak kurtarır</td></tr>
+          <tr><td class="n">5</td><td>Evi, hastaneyi ve AVM'yi yollarla bağla</td><td>Yol</td><td>Planlama: yollar binalara yan yana değmeli, hepsi aynı ağda</td></tr>
+        </tbody>
+      </table></div>
+      <div class="tbl"><table>
+        <thead><tr><th>Nesne</th><th>Ölçü (modül)</th><th>cm</th><th>Kütle</th><th>Not</th></tr></thead>
+        <tbody>
+          <tr><td>Ev</td><td class="n">2×2×2</td><td class="n">100×100×100</td><td class="n">8</td><td>3 kişilik aile gelir</td></tr>
+          <tr><td>Hastane</td><td class="n">2×2×3</td><td class="n">100×100×150</td><td class="n">12</td><td></td></tr>
+          <tr><td>AVM</td><td class="n">3×3×4</td><td class="n">150×150×200</td><td class="n">36</td><td>Bilerek ağır: eğitimin taşıma dersi</td></tr>
+          <tr><td>Yol</td><td class="n">1×1 düz</td><td class="n">50×50×4</td><td class="n">0,5</td><td>Üstüne bir şey konmaz</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">Şehir planı: binalar üst üste konmaz, dolu hücre kırmızı. Taşıma sırasında bina elden bırakılana kadar ağırlığı platformdan kalkar. Devrilme geri sayımı işlerken bir binayı kaldırmak platformu kurtarır.</p>
+    </section>
+
+    <section class="card taped" id="bolum1is" data-group>
+      <h2>1. Bölüm işleri <span class="hand">vertical slice</span></h2>
+      <ul class="list">
+        <li class="phase">Kod (Andaç)</li>
+        <li data-id="b1-tasima" data-t="Taşıma (replace): binayı kaldır, başka yere koy" data-d="Elde tutulurken ağırlığı dengeden çıkar."></li>
+        <li data-id="b1-bar" data-t="Denge barı" data-d="Yeşil / sarı 8° / kırmızı 10°, devrilirken geri sayım."></li>
+        <li data-id="b1-gorev" data-t="Görev listesi ve bölüm sonu" data-d="Görevler veri: 2. bölüm kodsuz kurulur."></li>
+        <li data-id="b1-aile" data-t="Aile gelip eve yerleşiyor"></li>
+        <li data-id="b1-yol" data-t="Yol ağı kontrolü" data-d="Üç bina aynı yol ağına değince görev biter."></li>
+        <li data-id="b1-elle" data-t="Space/F5, G, H ve taşırken R ile sağ tık elle denendi"></li>
+        <li class="phase">Model (Mert, Asil)</li>
+        <li data-id="b1-m-ev" data-t="SM_Bina_Ev 100×100×100 + UBX"></li>
+        <li data-id="b1-m-hastane" data-t="SM_Bina_Hastane 100×100×150 + UBX"></li>
+        <li data-id="b1-m-avm" data-t="SM_Bina_AVM 150×150×200 + UBX"></li>
+        <li data-id="b1-m-yol" data-t="SM_Yol 50×50, ince, uçları birleşen" data-d="Düz parça; köşe ve kavşak varyasyonu zaman kalırsa."></li>
+        <li data-id="b1-m-aile" data-t="Aile figürü (3 kişi)" data-d="Spec 160 cm diyor, ev 100 cm: insanlar evden uzun görünüyor. Boy kararı Asil'de."></li>
+        <li class="phase">Seviye ve UI (Yiğit)</li>
+        <li data-id="b1-y-wbp" data-t="WBP_HUD: denge barı, görev listesi, slot çubuğu" data-d="Değerler hazır: ASLPlatform, ASLLevelDirector, USLBuildComponent (BlueprintReadOnly)."></li>
+        <li data-id="b1-y-metin" data-t="Görev metinlerini gözden geçir" data-d="ASLLevelDirector > Tasks, kod gerekmez."></li>
+      </ul>
+      <div class="prog"><i></i></div>
+    </section>
+
     <section class="card taped" id="teslim" data-group>
       <h2>Teslim kontrolü <span class="hand">son 12 saat</span></h2>
       <ul class="list">
@@ -501,8 +549,8 @@ AmbientSway = sin(t × 2π / SwayPeriod) × SwayAmplitude</pre>
           <thead><tr><th>Girdi</th><th>Eylem</th></tr></thead>
           <tbody>
             <tr><td>Fare</td><td>Hayaleti konumlandır</td></tr>
-            <tr><td>Sol tık</td><td>Yerleştir</td></tr>
-            <tr><td>Sağ tık / Esc</td><td>İptal</td></tr>
+            <tr><td>Sol tık</td><td>Yerleştir · boştayken bir binayı kaldır (taşı)</td></tr>
+            <tr><td>Sağ tık / Esc</td><td>İptal · taşırken eski yerine</td></tr>
             <tr><td class="n">1 2 3 4</td><td>Slot seç</td></tr>
             <tr><td class="n">R</td><td>90° döndür</td></tr>
           </tbody>
@@ -521,8 +569,9 @@ AmbientSway = sin(t × 2π / SwayPeriod) × SwayAmplitude</pre>
           <tr><td><code>ASLPlaceable</code></td><td>Yerleştirilen nesne: kütle, boyut, bağlanma/bırakılma</td></tr>
           <tr><td><code>USLBuildComponent</code></td><td>Hayalet, ışın, geçerlilik, yerleştirme. <code>ESLBuildState</code>: Idle / Placing / Blocked</td></tr>
           <tr><td><code>ASLPlayerController</code></td><td>Girdi, slot seçimi</td></tr>
-          <tr><td><code>ASLGameMode</code></td><td>Kazanma/kaybetme, tur süresi, yeniden başlatma</td></tr>
-          <tr><td><code>USLHUDWidget</code></td><td>Slot çubuğu, denge göstergesi, sayaç</td></tr>
+          <tr><td><code>ASLGameMode</code></td><td>Devrilme ve bölüm sonu, yeniden başlatma</td></tr>
+          <tr><td><code>ASLLevelDirector</code></td><td>Bölümün görev listesi (veri), slot kilitleri, ailenin gelişi, yol ağı kontrolü</td></tr>
+          <tr><td><code>ASLHUD</code></td><td>Denge barı, görevler, slot çubuğu, mesajlar. Yiğit'in <code>WBP_HUD</code>'u gelince yalnızca test paneli kalır</td></tr>
         </tbody>
       </table></div>
     </section>
