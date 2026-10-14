@@ -150,7 +150,15 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
   evin üstünden konuşur; görev bitince teşekkür (`DoneSpeech`).
 - **Eğitim ipuçları** (barın altında): devriliyor > hayalet (konmaz / devirir / sınıra gelir / kapı dışarı /
   kapı önü dolu / elde) > platform hangi yana yatıyor > görevin ne istediği. `ASLHUD::BuildHint`.
-- **Kamera:** tekerlekle 1100–3400 cm arası yakınlaş/uzaklaş (çarpımsal adım, yumuşak).
+- **Kamera:** −45° (−35'te yol yaparken binaların arkası görünmüyordu), 2900 cm. Tekerlek 1100–3600 cm
+  yakınlaştırır. **Sağ tık basılı sürükle = haritayı kaydır** (bakış noktası tahtanın dışına çıkmaz);
+  sürüklemeden bırakılan sağ tık eskisi gibi iptal. C = ortala. Hareket bulanıklığı kapalı.
+- **Yol görünüşü:** düz/T/kavşak kare karo; iki dik yön = çeyrek daire viraj; tek yön = yuvarlak uç.
+  Bina yola bağlanınca kapıdan yola açık renkli giriş yolu (kaldırım). Plaka–gövde payı 8 cm.
+- **Ses:** 12 yer tutucu efekt (`Tools/sesleri_uret.py` sentezler → `Art/Audio`, `Tools/sesleri_import.py`
+  → `/Game/Sallanti/Audio`). Gerçek ses aynı adla `Art/Audio`'ya konup import betiği tekrar çalıştırılır
+  (betik eskisini siler, üstüne import etmez). `ASLGameMode::PlaySfx`: kare başına tek ses, en önemlisi;
+  önemli sesten sonra 0,4 sn önemsizler susar ("bir olay, bir ses"). Gıcırtı döngüsü eğimle yükselir.
 - **Şehir planı:** istif kapalı (`bAllowStacking`), dolu hücre geçersiz.
 - **Tahta (14 Ekim, Blender taslağı):** 13×13 hücre, 50 cm → 650 cm. Yeşil karolar + kahverengi derz
   (`TileGap` 8 cm). Bina gri **plakada** (ayak izi − derz), gövde plakadan `BodyInsetCm` içeride.
@@ -206,9 +214,10 @@ sebebi, CoM, ayarlar).
 |---|---|
 | Çekmece (sağ kenar) / Tab | Aç-kapa, karta tıkla: seç. 1–4 kısayol |
 | Sol tık | Seçiliyken koy · boştayken bir binayı kaldır (taşı) |
+| Sağ tık sürükle / C | Haritayı kaydır / ortala |
 | R / Q | Elindekini saat yönünde / tersine 90° çevir (kapının yönü) |
 | Tekerlek | Yakınlaş / uzaklaş |
-| Sağ tık / Esc | Bırak · taşırken eski yerine koy |
+| Sağ tık (sürüklemeden) / Esc | Bırak · taşırken eski yerine koy |
 | Backspace | Son konanı geri al |
 | F5 / Space | Baştan (Space yalnızca devrilince ya da bölüm bitince) |
 | H | Geliştirici paneli |

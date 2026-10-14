@@ -432,7 +432,7 @@ table.matrix td[colspan]{background:var(--chip);text-align:center}
         </tbody>
       </table></div>
       <h3>Tahta, plaka, yol, bağlantı</h3>
-      <p>Tahta 13×13 hücre (50 cm), yeşil karolar ve kahverengi derzler; ortada bir hücre var. Her bina gri bir plakanın üstünde durur. Yol karoları yan yana gelince aradaki derz kapanır ve tek şerit olur; kapısı yola bakan binanın plakasıyla da birleşir. Bir binanın kapısına yol değdiği an binadan yeşil bir halka yayılır ve yol kapıdan uzaklaştıkça sırayla parlar.</p>
+      <p>Tahta 13×13 hücre (50 cm), yeşil karolar ve kahverengi derzler; ortada bir hücre var. Her bina gri bir plakanın üstünde durur. Yol karoları yan yana gelince aradaki derz kapanır ve tek şerit olur; dönüşlerde kavis çizer, çıkmaz uçları yuvarlaktır. Kapısı yola bakan bina bağlanınca kapıdan yola açık renkli bir giriş yolu belirir. Bir binanın kapısına yol değdiği an binadan yeşil bir halka yayılır ve yol kapıdan uzaklaştıkça sırayla parlar.</p>
       <p class="note">Şehir planı: binalar üst üste konmaz, dolu hücre kırmızı. Taşıma sırasında bina elden bırakılana kadar ağırlığı platformdan kalkar. Devrilme geri sayımı işlerken bir binayı kaldırmak platformu kurtarır.</p>
     </section>
 
@@ -569,6 +569,7 @@ table.matrix td[colspan]{background:var(--chip);text-align:center}
       </table></div>
 
       <h3>Ses (P2, sahibi belli değil)</h3>
+      <p>Oyunda şu an aşağıdaki adlarla <b>sentezlenmiş yer tutucu sesler</b> çalıyor. Gerçek ses aynı adla <code>Art/Audio/</code>'ya konur, <code>Tools/sesleri_import.py</code> çalıştırılır; kod değişmez. Yer tutucuların listesi: <code>SFX_Yerlestir</code>, <code>SFX_YolKoy</code>, <code>SFX_Kaldir</code>, <code>SFX_Gecersiz</code>, <code>SFX_Baglanti</code>, <code>SFX_Gorev</code>, <code>SFX_Bolum</code>, <code>SFX_Gicirti_Dongu</code>, <code>SFX_Devrilme</code>, <code>SFX_Konusma</code>, <code>SFX_Cekmece</code>, <code>SFX_UI_Tik</code>.</p>
       <div class="tbl"><table>
         <thead><tr><th>Dosya</th><th>Ne zaman</th><th>Uzunluk</th></tr></thead>
         <tbody>
@@ -721,8 +722,8 @@ AmbientSway = sin(t × 2π / SwayPeriod) × SwayAmplitude</pre>
             <tr><td>Projeksiyon</td><td>Perspective</td></tr>
             <tr><td>FOV</td><td class="n">30°</td></tr>
             <tr><td>Yaw</td><td class="n">45°</td></tr>
-            <tr><td>Pitch</td><td class="n">−35°</td></tr>
-            <tr><td>Mesafe</td><td class="n">2200 cm</td></tr>
+            <tr><td>Pitch</td><td class="n">−45°</td></tr>
+            <tr><td>Mesafe</td><td class="n">2900 cm (1100–3600)</td></tr>
             <tr><td>Bakış noktası</td><td class="n">+40 cm Z</td></tr>
           </tbody>
         </table></div>
@@ -732,14 +733,15 @@ AmbientSway = sin(t × 2π / SwayPeriod) × SwayAmplitude</pre>
             <tr><td>Fare</td><td>Hayaleti konumlandır</td></tr>
             <tr><td>Çekmece / Tab</td><td>Aç-kapa, karta tıkla: seç</td></tr>
             <tr><td>Sol tık</td><td>Yerleştir · boştayken bir binayı kaldır (taşı)</td></tr>
-            <tr><td>Sağ tık / Esc</td><td>İptal · taşırken eski yerine</td></tr>
+            <tr><td>Sağ tık sürükle</td><td>Haritayı kaydır (C: ortala)</td></tr>
+            <tr><td>Sağ tık (kısa) / Esc</td><td>İptal · taşırken eski yerine</td></tr>
             <tr><td class="n">1 2 3 4</td><td>Slot seç</td></tr>
             <tr><td class="n">R / Q</td><td>90° çevir (kapının yönü)</td></tr>
             <tr><td>Tekerlek</td><td>Yakınlaş / uzaklaş</td></tr>
           </tbody>
         </table></div>
       </div>
-      <p>Sabit izometrik, döndürme ve zoom yok. Platform eğilince kamera eğilmez. Girdi Enhanced Input.</p>
+      <p>İzometrik, döndürme yok. Tekerlek yakınlaştırır, sağ tıkla sürükleyince harita kayar. Platform eğilince kamera eğilmez. Girdi Enhanced Input.</p>
       <p class="note">Spec mesafeyi 1400 cm veriyordu. Ölçüldü: 16:9 kadrajda 600 cm'lik platform dikeyde %153 taşıyor. 2200 cm'de platform kadrajın %87'sini kaplıyor ve kulelere pay kalıyor.</p>
     </section>
 
