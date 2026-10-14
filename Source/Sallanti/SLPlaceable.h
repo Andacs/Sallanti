@@ -67,9 +67,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Nesne")
 	float PlateHeightCm = 2.f;
 
-	/** Govdenin plaka kenarindan iceri payi, cm (her yandan). */
+	/** Govdenin plaka kenarindan iceri payi, cm (her yandan). 5'ten 8'e: plaka-bina arasi daha genis (14 Eki). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Nesne")
-	float BodyInsetCm = 5.f;
+	float BodyInsetCm = 8.f;
+
+	/** Kapidan yola uzanan giris yolu (kaldirim) rengi; yalnizca bina yola bagliyken gorunur. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Giris")
+	FLinearColor EntrancePathColor = FLinearColor(0.86f, 0.82f, 0.72f);
+
+	/** Viraj kac parcayla cizilir (cok = daha yuvarlak). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Yol", meta = (ClampMin = "2", ClampMax = "16"))
+	int32 CurveSegments = 12;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Nesne")
 	FLinearColor Tint = FLinearColor(0.62f, 0.45f, 0.28f);
@@ -104,8 +112,13 @@ public:
 	/** Bina yola baglaninca (ya da yol akisi buraya gelince). Delay: yol boyunca sirayla parlasin diye. */
 	void PlayConnectFx(float DelaySeconds = 0.f, bool bRing = true);
 
-	/** Yol: hangi yonlere uzanti (bit 0 +X, 1 +Y, 2 -X, 3 -Y; platform hucre ekseni). */
+	/** Yol: hangi yonlere uzanti (bit 0 +X, 1 +Y, 2 -X, 3 -Y; platform hucre ekseni).
+	 *  Iki dik yon = viraj (kavisli), tek yon = cikmaz (yuvarlak uc), digerleri kare karo. */
 	void SetRoadLinks(uint8 Mask);
+
+	/** Bina: kapisina yol degiyor mu? Degiyorsa kapidan yola giris yolu gorunur. */
+	void SetEntranceConnected(bool bConnected);
+	bool IsEntranceConnected() const { return bEntranceConnected; }
 	uint8 GetRoadLinks() const { return RoadLinkMask; }
 
 	// --- Aile ---
@@ -213,6 +226,16 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> RoadLinkMIDs;
 
+	/** Yolun sekli: viraj parcalari ya da cikmaz yarim karo + disk. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UStaticMeshComponent>> RoadShape;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UMaterialInstanceDynamic>> RoadShapeMIDs;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UStaticMeshComponent>> EntrancePaths;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UStaticMeshComponent> FxRing;
 
@@ -221,6 +244,7 @@ private:
 
 	void BuildEntrance();
 	void BuildRoadLinks();
+	void BuildRoadShape();
 	UStaticMeshComponent* MakePart(const FLinearColor& Color, bool bForGhost, UStaticMesh* InMesh = nullptr);
 	bool TickResidents(float DeltaSeconds);
 	bool TickFx(float DeltaSeconds);
@@ -235,6 +259,8 @@ private:
 	TArray<FVector> ResidentOffsets; // her figurun yol uzerindeki yan kaymasi
 	TArray<int32> ResidentStep;
 	uint8 RoadLinkMask = 0;
+	uint8 RoadShapeMask = 0xFF; // son kurulan sekil (0xFF: hic kurulmadi)
+	bool bEntranceConnected = false;
 	bool bGhost = false;
 	bool bResidentsStarted = false;
 

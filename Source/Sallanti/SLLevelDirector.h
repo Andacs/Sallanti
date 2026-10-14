@@ -138,6 +138,7 @@ private:
 	TWeakObjectPtr<ASLPlaceable> FamilyHome;
 
 	FString DoneText;
+	FString LastSpeech;
 	float DoneUntil = -1.f;
 
 	int32 UnlockedForTask = -1;

@@ -100,6 +100,10 @@ void ASLLevelDirector::UpdateConnectionFx()
 		{
 			Door = Door ? Door : RoadAt(E);
 		}
+		if (B->IsEntranceConnected() != (Door != nullptr))
+		{
+			B->SetEntranceConnected(Door != nullptr); // kapidan yola giris yolu
+		}
 		if (!Door)
 		{
 			continue;
@@ -129,6 +133,7 @@ void ASLLevelDirector::UpdateConnectionFx()
 			}
 		}
 		UE_LOG(LogSLLevel, Log, TEXT("SL_CONNECT %s yola baglandi, %d yol karosu parladi"), *B->TypeId.ToString(), Queue.Num());
+		ASLGameMode::PlaySfx(this, TEXT("SFX_Baglanti"), 3);
 	}
 	ConnectedBuildings = MoveTemp(Now);
 }
@@ -394,6 +399,17 @@ void ASLLevelDirector::Tick(float DeltaSeconds)
 	SpawnFamily();
 	ApplyUnlocks();
 	UpdateConnectionFx();
+	{
+		// Balon degisince kisa miriltı (aile konusuyor).
+		FString Speech;
+		FVector Anchor;
+		const bool bHas = GetSpeech(Speech, Anchor);
+		if (bHas && Speech != LastSpeech)
+		{
+			ASLGameMode::PlaySfx(this, TEXT("SFX_Konusma"), 0);
+		}
+		LastSpeech = bHas ? Speech : FString();
+	}
 	StartFamilies();
 	if (bLevelComplete || !Tasks.IsValidIndex(CurrentTask))
 	{
@@ -414,6 +430,7 @@ void ASLLevelDirector::Tick(float DeltaSeconds)
 			return; // son gorev tamam ama platform devriliyor: once dengele
 		}
 		UE_LOG(LogSLLevel, Log, TEXT("SL_TASK_DONE %d: %s"), CurrentTask + 1, *Tasks[CurrentTask].Text);
+		ASLGameMode::PlaySfx(this, bLast ? TEXT("SFX_Bolum") : TEXT("SFX_Gorev"), bLast ? 5 : 4);
 		if (!Tasks[CurrentTask].DoneSpeech.IsEmpty())
 		{
 			DoneText = Tasks[CurrentTask].DoneSpeech;

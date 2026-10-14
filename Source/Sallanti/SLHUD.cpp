@@ -79,6 +79,15 @@ TArray<FString> ASLHUD::Wrap(const FString& S, float MaxWidth, float Scale)
 	return Lines;
 }
 
+void ASLHUD::SetDrawerOpen(bool bOpen)
+{
+	if (bOpen != bDrawerWanted)
+	{
+		ASLGameMode::PlaySfx(this, TEXT("SFX_Cekmece"), 0);
+	}
+	bDrawerWanted = bOpen;
+}
+
 void ASLHUD::Flash(const FString& S, float Seconds)
 {
 	FlashText = S;
@@ -556,12 +565,14 @@ bool ASLHUD::HandleMouseDown(const FVector2D& Mouse)
 			if (!B->IsSlotUnlocked(I))
 			{
 				Flash(TEXT("Bu bina henüz kilitli: ailenin istediği görevi bitirince açılır."));
+				ASLGameMode::PlaySfx(this, TEXT("SFX_Gecersiz"), 0, 0.8f);
 				return true;
 			}
 			B->SelectSlot(I);
+			ASLGameMode::PlaySfx(this, TEXT("SFX_UI_Tik"), 0);
 			if (bCloseDrawerOnSelect)
 			{
-				bDrawerWanted = false; // platform gorunsun
+				bDrawerWanted = false; // platform gorunsun (kapanis sesi yok: bir olay, bir ses)
 			}
 			return true;
 		}
@@ -578,5 +589,5 @@ void ASLHUD::HandleMouseUp(const FVector2D& Mouse)
 	}
 	bDragging = false;
 	// Tiklama (surukleme degil): ac/kapa. Surukleme: yarisini gectiyse acik kalir.
-	bDrawerWanted = bDragMoved ? DrawerOpen > 0.4f : !bDrawerWanted;
+	SetDrawerOpen(bDragMoved ? DrawerOpen > 0.4f : !bDrawerWanted);
 }

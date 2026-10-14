@@ -31,13 +31,14 @@ public:
 	float Yaw = 45.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera", meta = (Units = "Degrees"))
-	float Pitch = -35.f;
+	/** -35'te yol yaparken binalarin arkasi gorunmuyordu (Andac, 14 Eki). -45: daha yukaridan. */
+	float Pitch = -45.f;
 
 	/** Bakilan noktaya (platform merkezi) baslangic uzakligi, cm. Spec 1400 diyordu; olculdu: 1400'de
 	 *  600 cm'lik platform 16:9 kadraja sigmiyor (dikeyde %153); 2200'de %87. Tahta 650 cm'e cikinca
 	 *  ayni oran icin 2200 * 650/600 ~ 2400. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
-	float Distance = 2400.f;
+	float Distance = 2900.f; // -45'te 650 cm tahta + 150 cm bina dikeyde kadrajin ~%90'i (hesaplandi)
 
 	/** Yakinlastirma siniri, cm. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
@@ -65,6 +66,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
 	float ExposureBias = -1.5f;
 
+	/** Sag tikla surukleyince harita kayar. Kayma siniri, cm (bakis noktasi tahtanin bu kadar disina cikmaz). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
+	float PanLimit = 325.f;
+
+	/** Surukleme hissi: 1 = imlecin altindaki nokta parmakla birlikte gider. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
+	float PanSpeed = 1.f;
+
+	/** Ekranda (DX, DY) piksel surukleme -> bakis noktasini kaydirir. ViewportW: ekran genisligi, px. */
+	void PanByScreen(float DX, float DY, float ViewportW);
+	void ResetPan() { PanOffset = FVector2D::ZeroVector; ApplyCamera(); }
+	FVector2D GetPanOffset() const { return PanOffset; }
+
 	/** Tekerlek: + yakinlastir, - uzaklastir (tik sayisi). */
 	void Zoom(float Ticks);
 
@@ -75,5 +89,6 @@ public:
 	void ApplyCamera();
 
 private:
-	float TargetDistance = 2400.f;
+	float TargetDistance = 2900.f;
+	FVector2D PanOffset = FVector2D::ZeroVector;
 };

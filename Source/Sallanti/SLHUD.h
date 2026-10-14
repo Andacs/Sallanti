@@ -51,8 +51,8 @@ public:
 	bool HandleMouseDown(const FVector2D& Mouse);
 	void HandleMouseUp(const FVector2D& Mouse);
 
-	void ToggleDrawer() { bDrawerWanted = !bDrawerWanted; }
-	void SetDrawerOpen(bool bOpen) { bDrawerWanted = bOpen; }
+	void ToggleDrawer() { SetDrawerOpen(!bDrawerWanted); }
+	void SetDrawerOpen(bool bOpen);
 	bool IsDrawerOpen() const { return DrawerOpen > 0.5f; }
 	bool IsDrawerWanted() const { return bDrawerWanted; }
 

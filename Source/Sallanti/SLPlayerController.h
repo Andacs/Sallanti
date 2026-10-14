@@ -53,13 +53,21 @@ public:
 	UFUNCTION(Exec)
 	void SLTestLevel1();
 
+	/** Sag tikin "tiklama" sayilmasi icin en fazla surukleme, px. Fazlasi haritayi kaydirir. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
+	float PanClickThresholdPx = 6.f;
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void SetupInputComponent() override;
+	virtual void PlayerTick(float DeltaTime) override;
 
 private:
 	void OnPlace();
 	void OnPlaceReleased();
+	void OnPanPressed();
+	void OnPanReleased();
+	void OnCenterCamera();
 	void OnZoom(const struct FInputActionValue& Value);
 	void OnToggleDrawer();
 	void OnCancel();
@@ -86,6 +94,10 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UInputMappingContext> Mapping;
+
+	bool bPanning = false;
+	float PanMoved = 0.f;
+	FVector2D LastPanMouse = FVector2D::ZeroVector;
 
 	FTimerHandle SelfTestTimer;
 	int32 SelfTestIndex = 0;

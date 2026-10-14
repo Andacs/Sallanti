@@ -71,7 +71,11 @@ void ASLPlayerController::SetupInputComponent()
 	ZoomAction->ValueType = EInputActionValueType::Axis1D;
 	Mapping->MapKey(ZoomAction, EKeys::MouseWheelAxis);
 	EIC->BindAction(ZoomAction, ETriggerEvent::Triggered, this, &ASLPlayerController::OnZoom);
-	Bind(TEXT("IA_Cancel"), { EKeys::RightMouseButton, EKeys::Escape }, &ASLPlayerController::OnCancel);
+	Bind(TEXT("IA_Cancel"), { EKeys::Escape }, &ASLPlayerController::OnCancel);
+	// Sag tik: basili tutup surukle = haritayi kaydir; surukleme olmadan birak = elindekini birak (iptal).
+	UInputAction* PanAction = Bind(TEXT("IA_Pan"), { EKeys::RightMouseButton }, &ASLPlayerController::OnPanPressed);
+	EIC->BindAction(PanAction, ETriggerEvent::Completed, this, &ASLPlayerController::OnPanReleased);
+	Bind(TEXT("IA_CenterCam"), { EKeys::C }, &ASLPlayerController::OnCenterCamera);
 	Bind(TEXT("IA_Rotate"), { EKeys::R }, &ASLPlayerController::OnRotate);
 	Bind(TEXT("IA_RotateBack"), { EKeys::Q }, &ASLPlayerController::OnRotateBack);
 	Bind(TEXT("IA_Slot1"), { EKeys::One }, &ASLPlayerController::OnSlot1);
@@ -178,6 +182,56 @@ void ASLPlayerController::SLKnobs()
 			const FString Msg = FString::Printf(TEXT("%s.%s = %s"), *Target->GetClass()->GetName(), *It->GetName(), *Val);
 			ClientMessage(Msg);
 			UE_LOG(LogSLInput, Log, TEXT("SL_KNOB %s"), *Msg);
+		}
+	}
+}
+
+void ASLPlayerController::OnPanPressed()
+{
+	bPanning = true;
+	PanMoved = 0.f;
+	GetMousePosition(LastPanMouse.X, LastPanMouse.Y);
+}
+
+void ASLPlayerController::OnPanReleased()
+{
+	bPanning = false;
+	if (PanMoved < PanClickThresholdPx)
+	{
+		Build->Cancel(); // surukleme degil tiklama: eskisi gibi iptal
+	}
+}
+
+void ASLPlayerController::OnCenterCamera()
+{
+	if (ASLCameraPawn* Cam = Cast<ASLCameraPawn>(GetPawn()))
+	{
+		Cam->ResetPan();
+	}
+}
+
+void ASLPlayerController::PlayerTick(float DeltaTime)
+{
+	Super::PlayerTick(DeltaTime);
+	if (!bPanning)
+	{
+		return;
+	}
+	FVector2D Mouse;
+	if (!GetMousePosition(Mouse.X, Mouse.Y))
+	{
+		return;
+	}
+	const FVector2D D = Mouse - LastPanMouse;
+	LastPanMouse = Mouse;
+	PanMoved += D.Size();
+	if (PanMoved >= PanClickThresholdPx && !D.IsNearlyZero())
+	{
+		int32 VX = 0, VY = 0;
+		GetViewportSize(VX, VY);
+		if (ASLCameraPawn* Cam = Cast<ASLCameraPawn>(GetPawn()))
+		{
+			Cam->PanByScreen(D.X, D.Y, static_cast<float>(VX));
 		}
 	}
 }
@@ -371,8 +425,13 @@ void ASLPlayerController::TestLevel1Step()
 	case 39: Shot(TEXT("L1_6_hastane_cevrildi")); break;
 	case 40: OnPlace(); break;
 	case 41: Shot(TEXT("L1_6b_hastane_baglandi")); break;
-	case 43: Shot(TEXT("L1_7_tamamlandi")); break;
-	case 45:
+	case 43: Shot(TEXT("L1_7_tamamlandi")); if (Cam) { Cam->PanByScreen(-300.f, 0.f, 1280.f); }
+		UE_LOG(LogSLInput, Log, TEXT("SL_PAN kaydirma (%.0f, %.0f)"), Cam ? Cam->GetPanOffset().X : 0.f, Cam ? Cam->GetPanOffset().Y : 0.f); break;
+	case 44: Shot(TEXT("L1_8_kaydirildi")); OnCenterCamera();
+		UE_LOG(LogSLInput, Log, TEXT("SL_PAN merkez (%.0f, %.0f)"), Cam ? Cam->GetPanOffset().X : 0.f, Cam ? Cam->GetPanOffset().Y : 0.f); break;
+	case 45: if (Cam) { Cam->Zoom(7.f); } break;                                   // yakin plan: viraj ve giris yolu
+	case 47: Shot(TEXT("L1_9_yakin_yol")); break;
+	case 49:
 		GetWorldTimerManager().ClearTimer(SelfTestTimer);
 		UE_LOG(LogSLInput, Log, TEXT("SL_TESTL1_DONE"));
 		ConsoleCommand(TEXT("quit"));

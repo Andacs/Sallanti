@@ -169,6 +169,29 @@ void ASLPlaceable::BuildEntrance()
 		DoorMesh->SetRelativeLocation(FVector(BodyHalfX() + 1.f, 0.f, PlateHeightCm + 0.5f * DoorH));
 	}
 
+	// Giris yolu (kaldirim): kapidan plaka kenarini asip derzin ortasina kadar; orada yolun uzantisiyla
+	// bulusur. Tek genislikte kapi eninin ~2 kati; cift genislikte iki giris hucresini de tutacak kadar.
+	for (UStaticMeshComponent* P : EntrancePaths)
+	{
+		if (P)
+		{
+			P->DestroyComponent();
+		}
+	}
+	EntrancePaths.Reset();
+	if (!bGhost)
+	{
+		const float From = BodyHalfX();
+		const float To = 0.5f * PlateSizeX() + 0.5f * TileGap + 1.f;
+		const float PathW = (SizeCells.Y % 2) ? FMath::Clamp(2.f * BodyHalfY() * 0.6f, 14.f, 40.f) : GridSize;
+		const float PathH = PlateHeightCm + 0.8f;
+		UStaticMeshComponent* Path = MakePart(EntrancePathColor, false);
+		Path->SetRelativeScale3D(FVector(To - From, PathW, PathH) / 100.f);
+		Path->SetRelativeLocation(FVector(0.5f * (From + To), 0.f, 0.5f * PathH));
+		Path->SetVisibility(bEntranceConnected);
+		EntrancePaths.Add(Path);
+	}
+
 	// Kapi onu hucreleri: yuzun ortasi; cift genislikte ortadaki iki hucre. Karonun ustunde, yolun altinda.
 	const float HalfX = 0.5f * SizeCells.X * GridSize;
 	const int32 W = SizeCells.Y;
@@ -216,14 +239,111 @@ void ASLPlaceable::BuildRoadLinks()
 	}
 }
 
+void ASLPlaceable::SetEntranceConnected(bool bConnected)
+{
+	bEntranceConnected = bConnected;
+	for (UStaticMeshComponent* P : EntrancePaths)
+	{
+		if (P)
+		{
+			P->SetVisibility(bConnected);
+		}
+	}
+}
+
+void ASLPlaceable::BuildRoadShape()
+{
+	for (UStaticMeshComponent* S : RoadShape)
+	{
+		if (S)
+		{
+			S->DestroyComponent();
+		}
+	}
+	RoadShape.Reset();
+	RoadShapeMIDs.Reset();
+	RoadShapeMask = RoadLinkMask;
+	if (!bFlat || bGhost || !GetWorld())
+	{
+		return; // bina/hayalet: govdeye dokunma (olculdu: tasinan binanin govdesi gizli kaliyordu)
+	}
+	const float Core = PlateSizeX();        // yol eni = karo eni
+	const float Half = 0.5f * GridSize;      // hucre yarisi
+	const float Z = 0.5f * FlatHeightCm;
+	auto AddPiece = [this](UStaticMesh* InMesh) -> UStaticMeshComponent*
+	{
+		UStaticMeshComponent* P = MakePart(Tint, false, InMesh);
+		RoadShape.Add(P);
+		RoadShapeMIDs.Add(Cast<UMaterialInstanceDynamic>(P->GetMaterial(0)));
+		return P;
+	};
+	const FVector2D Dirs[4] = { {1, 0}, {0, 1}, {-1, 0}, {0, -1} };
+	TArray<int32> On;
+	for (int32 I = 0; I < 4; ++I)
+	{
+		if ((RoadLinkMask >> I) & 1)
+		{
+			On.Add(I);
+		}
+	}
+
+	const bool bCorner = On.Num() == 2 && (On[1] - On[0]) % 2 == 1; // komsu bitler = dik iki yon
+	if (bCorner)
+	{
+		// Viraj: iki kenar ortasini birlestiren ceyrek daire. Merkez iki yonun kosesinde (a+b)*Half,
+		// yaricap Half; yol eni Core. Kare karo gizlenir (collision kalir, imlec yine tutar).
+		const FVector2D A = Dirs[On[0]], B = Dirs[On[1]];
+		const FVector2D C = (A + B) * Half;
+		const float Start = FMath::Atan2(-B.Y, -B.X); // C'den A kenar ortasina: -B yonu
+		float End = FMath::Atan2(-A.Y, -A.X);
+		float Sweep = FMath::FindDeltaAngleRadians(Start, End);
+		const int32 N = FMath::Max(2, CurveSegments);
+		const float Step = Sweep / N;
+		// Parca boyu dis kenara gore: merkez cizgisine gore olunca dis kenarda dis dis bosluk kaliyordu.
+		const float Chord = 2.f * (Half + 0.5f * Core) * FMath::Sin(FMath::Abs(Step) * 0.5f) + 1.f;
+		for (int32 I = 0; I < N; ++I)
+		{
+			const float T = Start + Step * (I + 0.5f);
+			const FVector2D P = C + Half * FVector2D(FMath::Cos(T), FMath::Sin(T));
+			UStaticMeshComponent* Seg = AddPiece(nullptr);
+			Seg->SetRelativeScale3D(FVector(Chord, Core, FlatHeightCm) / 100.f);
+			Seg->SetRelativeLocation(FVector(P.X, P.Y, Z));
+			Seg->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(T) + 90.f, 0.f));
+		}
+		Mesh->SetVisibility(false); // collision kalir: imlec yine tutar
+	}
+	else if (On.Num() == 1 && DiscMesh)
+	{
+		// Cikmaz: uzanti tarafina yarim karo + ortada disk = yuvarlak uc (Blender taslagindaki gibi).
+		const FVector2D D = Dirs[On[0]];
+		const float HalfCore = 0.5f * Core;
+		UStaticMeshComponent* HalfBox = AddPiece(nullptr);
+		const bool bAlongX = D.X != 0;
+		HalfBox->SetRelativeScale3D(FVector(bAlongX ? HalfCore : Core, bAlongX ? Core : HalfCore, FlatHeightCm) / 100.f);
+		HalfBox->SetRelativeLocation(FVector(D.X * 0.5f * HalfCore, D.Y * 0.5f * HalfCore, Z));
+		UStaticMeshComponent* Disc = AddPiece(DiscMesh);
+		Disc->SetRelativeScale3D(FVector(Core, Core, FlatHeightCm) / 100.f);
+		Disc->SetRelativeLocation(FVector(0.f, 0.f, Z));
+		Mesh->SetVisibility(false);
+	}
+	else
+	{
+		Mesh->SetVisibility(true); // duz, T, kavsak, tek basina: kare karo (eldeyken aktor zaten gizli)
+	}
+}
+
 void ASLPlaceable::SetRoadLinks(uint8 Mask)
 {
 	RoadLinkMask = Mask;
+	if (RoadShapeMask != Mask)
+	{
+		BuildRoadShape();
+	}
 	for (int32 I = 0; I < RoadLinks.Num(); ++I)
 	{
 		if (RoadLinks[I])
 		{
-			RoadLinks[I]->SetVisibility(!bHeld && ((Mask >> I) & 1));
+			RoadLinks[I]->SetVisibility((Mask >> I) & 1);
 		}
 	}
 }
@@ -311,7 +431,7 @@ void ASLPlaceable::SetHeld(bool bInHeld)
 	// Gizle, sifira olcekleme (04_UNREAL_TUZAKLARI: sifir olcek -> NaN -> donma).
 	SetActorHiddenInGame(bInHeld);
 	SetActorEnableCollision(!bInHeld); // elde tutulan, imlec isinini engellemesin
-	if (bInHeld)
+	if (bInHeld && bFlat)
 	{
 		SetRoadLinks(0);
 	}
@@ -352,6 +472,10 @@ void ASLPlaceable::SetSurfaceTint(const FLinearColor& C)
 	{
 		if (MID) { MID->SetVectorParameterValue(TEXT("Tint"), C); }
 		for (UMaterialInstanceDynamic* L : RoadLinkMIDs)
+		{
+			if (L) { L->SetVectorParameterValue(TEXT("Tint"), C); }
+		}
+		for (UMaterialInstanceDynamic* L : RoadShapeMIDs)
 		{
 			if (L) { L->SetVectorParameterValue(TEXT("Tint"), C); }
 		}

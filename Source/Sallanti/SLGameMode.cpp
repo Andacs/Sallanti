@@ -7,12 +7,26 @@
 #include "SLPlayerController.h"
 #include "SLHUD.h"
 #include "EngineUtils.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
+#include "UObject/ConstructorHelpers.h"
+
+DEFINE_LOG_CATEGORY_STATIC(LogSLSfx, Log, All);
 
 ASLGameMode::ASLGameMode()
 {
 	DefaultPawnClass = ASLCameraPawn::StaticClass();
 	PlayerControllerClass = ASLPlayerController::StaticClass();
 	HUDClass = ASLHUD::StaticClass(); // Yigit'in WBP_HUD'u gelene kadar oyun ekrani
+
+	// Sert referans: paketlemede sesler cook'a girsin (yalnizca adla yuklenen asset cook'tan kacabilir).
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.TickGroup = TG_PostUpdateWork; // kare sonunda: o karenin butun istekleri toplandi
+#define SL_SFX(N) { static ConstructorHelpers::FObjectFinder<USoundBase> F(TEXT("/Game/Sallanti/Audio/" #N "." #N)); if (F.Succeeded()) { Sounds.Add(TEXT(#N), F.Object); } }
+	SL_SFX(SFX_Yerlestir) SL_SFX(SFX_YolKoy) SL_SFX(SFX_Kaldir) SL_SFX(SFX_Gecersiz) SL_SFX(SFX_Baglanti)
+	SL_SFX(SFX_Gorev) SL_SFX(SFX_Bolum) SL_SFX(SFX_Gicirti_Dongu) SL_SFX(SFX_Devrilme) SL_SFX(SFX_Konusma)
+	SL_SFX(SFX_Cekmece) SL_SFX(SFX_UI_Tik)
+#undef SL_SFX
 }
 
 ASLPlatform* ASLGameMode::GetPlatform()
@@ -42,6 +56,41 @@ ASLPlatform* ASLGameMode::GetPlatform()
 		Platform->OnCollapsed.AddUniqueDynamic(this, &ASLGameMode::HandleCollapsed);
 	}
 	return Platform;
+}
+
+void ASLGameMode::PlaySfx(const UObject* WorldContext, FName Name, int32 Priority, float Volume, float Pitch)
+{
+	const UWorld* World = WorldContext ? WorldContext->GetWorld() : nullptr;
+	ASLGameMode* GM = World ? World->GetAuthGameMode<ASLGameMode>() : nullptr;
+	if (GM && Priority < GM->ShadowPriority && World->GetRealTimeSeconds() < GM->ShadowUntil)
+	{
+		return; // az once daha onemli bir ses caldi
+	}
+	if (GM && Priority > GM->QueuedSfx.Priority)
+	{
+		GM->QueuedSfx = { Name, Priority, Volume, Pitch };
+	}
+}
+
+void ASLGameMode::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	if (QueuedSfx.Priority < 0)
+	{
+		return;
+	}
+	if (const TObjectPtr<USoundBase>* S = Sounds.Find(QueuedSfx.Name); S && *S)
+	{
+		UGameplayStatics::PlaySound2D(this, *S, QueuedSfx.Volume * MasterSfxVolume, QueuedSfx.Pitch);
+		ShadowPriority = QueuedSfx.Priority;
+		ShadowUntil = GetWorld()->GetRealTimeSeconds() + SfxShadowSeconds;
+		UE_LOG(LogSLSfx, Log, TEXT("SL_SFX %s (oncelik %d)"), *QueuedSfx.Name.ToString(), QueuedSfx.Priority);
+	}
+	else
+	{
+		UE_LOG(LogSLSfx, Warning, TEXT("SL_SFX yok: %s"), *QueuedSfx.Name.ToString());
+	}
+	QueuedSfx = FQueuedSfx();
 }
 
 void ASLGameMode::StartPlay()

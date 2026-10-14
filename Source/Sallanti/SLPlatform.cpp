@@ -1,6 +1,10 @@
 #include "SLPlatform.h"
 
+#include "SLGameMode.h"
 #include "SLPlaceable.h"
+#include "Components/AudioComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -347,6 +351,7 @@ void ASLPlatform::Tick(float DeltaSeconds)
 
 	UpdateBalanceState(DeltaSeconds);
 	UpdateDeckWarning(DeltaSeconds);
+	UpdateCreak();
 
 #if !UE_BUILD_SHIPPING
 	if (bDebugDraw)
@@ -406,6 +411,43 @@ void ASLPlatform::UpdateDeckWarning(float DeltaSeconds)
 	}
 }
 
+void ASLPlatform::UpdateCreak()
+{
+	const bool bWant = BalanceState == ESLBalanceState::Warning || BalanceState == ESLBalanceState::Failing;
+	if (!bWant)
+	{
+		if (Creak && Creak->IsPlaying())
+		{
+			Creak->FadeOut(0.3f, 0.f);
+		}
+		return;
+	}
+	const ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
+	const TObjectPtr<USoundBase>* Snd = GM ? GM->Sounds.Find(TEXT("SFX_Gicirti_Dongu")) : nullptr;
+	if (!Snd || !*Snd)
+	{
+		return;
+	}
+	const bool bFail = BalanceState == ESLBalanceState::Failing;
+	const float Vol = (bFail ? CreakVolumeMax : FMath::Lerp(CreakVolumeMin, CreakVolumeMax, WarnAlpha)) * GM->MasterSfxVolume;
+	const float Pitch = bFail ? 1.3f : FMath::Lerp(0.9f, 1.15f, WarnAlpha);
+	if (!Creak)
+	{
+		// Sessiz baslatilan ses fade baslamadan cull ediliyor (04_UNREAL_TUZAKLARI): gercek sesle baslat.
+		Creak = UGameplayStatics::SpawnSound2D(this, *Snd, Vol, Pitch, 0.f, nullptr, false, false);
+	}
+	if (Creak)
+	{
+		if (!Creak->IsPlaying())
+		{
+			Creak->SetVolumeMultiplier(Vol);
+			Creak->Play();
+		}
+		Creak->SetVolumeMultiplier(Vol);
+		Creak->SetPitchMultiplier(Pitch);
+	}
+}
+
 void ASLPlatform::Collapse()
 {
 	BalanceState = ESLBalanceState::Collapsed;
@@ -415,5 +457,10 @@ void ASLPlatform::Collapse()
 	CollapseVelocity = TiltSpeed * 0.5f; // eldeki egimden yumusak devam
 	UE_LOG(LogTemp, Log, TEXT("SL_COLLAPSE egim %.2f deg, %.2f sn FailTilt (%.1f) ustunde, yon (%.2f, %.2f)"),
 		Deg, FailTimer, FailTilt, CollapseDir.X, CollapseDir.Y);
+	if (Creak)
+	{
+		Creak->Stop();
+	}
+	ASLGameMode::PlaySfx(this, TEXT("SFX_Devrilme"), 6);
 	OnCollapsed.Broadcast();
 }

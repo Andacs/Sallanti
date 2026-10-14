@@ -8,6 +8,7 @@
 
 class ASLPlaceable;
 class UInstancedStaticMeshComponent;
+class UAudioComponent;
 class UMaterialInstanceDynamic;
 class UStaticMeshComponent;
 
@@ -138,6 +139,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Devrilme")
 	float FailingPulseHz = 6.f;
 
+	/** Gicirti dongusunun sesi: WarnTilt'te Min, FailTilt'te Max. Devriliyorken Max ve perde yukarida. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Ses", meta = (ClampMin = "0.05", ClampMax = "2"))
+	float CreakVolumeMin = 0.25f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Ses", meta = (ClampMin = "0.05", ClampMax = "2"))
+	float CreakVolumeMax = 0.9f;
+
 	/** Platform govdesinin (derzlerin) rengi. Uyari bundan ve karolardan WarnColor'a dogru atar. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Devrilme")
 	FLinearColor DeckTint = FLinearColor(0.30f, 0.18f, 0.09f);
@@ -238,6 +246,7 @@ private:
 	void BuildGrid();
 	void UpdateBalanceState(float DeltaSeconds);
 	void UpdateDeckWarning(float DeltaSeconds);
+	void UpdateCreak();
 	void Collapse();
 	void ApplyTiltRotation(const FVector2D& TiltDeg);
 
@@ -246,6 +255,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> TileMID;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> Creak;
 
 	/** Nesnelerin yer/yon ozeti; degisince yol baglantilari yenilenir. */
 	uint32 ConnectionSignature = 0;

@@ -105,6 +105,10 @@ void USLBuildComponent::SpawnGhostFor(const FSLSlot& Slot)
 
 void USLBuildComponent::SelectSlot(int32 Index)
 {
+	if (bBuildEnabled && Slots.IsValidIndex(Index) && !IsSlotUnlocked(Index))
+	{
+		ASLGameMode::PlaySfx(this, TEXT("SFX_Gecersiz"), 0, 0.8f);
+	}
 	if (!bBuildEnabled || !Slots.IsValidIndex(Index) || !IsSlotUnlocked(Index))
 	{
 		return;
@@ -323,7 +327,8 @@ bool USLBuildComponent::TryPlace()
 	UpdateGhost();
 	if (State != ESLBuildState::Placing)
 	{
-		return false; // gecersiz: ses/uyari yok, kirmizi hayalet yeterli
+		ASLGameMode::PlaySfx(this, TEXT("SFX_Gecersiz"), 0, 0.6f); // spec: uyari metni yok; kisa vizilti yeterli
+		return false;
 	}
 
 	if (Moving)
@@ -335,6 +340,7 @@ bool USLBuildComponent::TryPlace()
 		P->SetHeld(false);
 		DestroyGhost();
 		State = ESLBuildState::Idle;
+		ASLGameMode::PlaySfx(this, P->bFlat ? TEXT("SFX_YolKoy") : TEXT("SFX_Yerlestir"), 1);
 		UE_LOG(LogSLBuild, Log, TEXT("SL_MOVE %s (%d,%d) yon %d -> (%d,%d) yon %d"), *P->TypeId.ToString(),
 			MovingOrigCell.X, MovingOrigCell.Y, MovingOrigFacing, GhostCellMin.X, GhostCellMin.Y, GhostFacing);
 		return true;
@@ -358,6 +364,8 @@ bool USLBuildComponent::TryPlace()
 	Platform->RegisterPlaceable(P);
 	PlacedStack.Add(P);
 	++PlacedCount;
+	// Pitch hafif oynasin: art arda konan yollar makineli tufek gibi duyulmasin.
+	ASLGameMode::PlaySfx(this, P->bFlat ? TEXT("SFX_YolKoy") : TEXT("SFX_Yerlestir"), 1, 1.f, FMath::FRandRange(0.94f, 1.06f));
 	FString Ent;
 	for (const FIntPoint& E : P->GetEntranceCells())
 	{
@@ -388,6 +396,7 @@ bool USLBuildComponent::PickUp(ASLPlaceable* Target)
 	MovingOrigFacing = Target->Facing;
 	GhostFacing = Target->Facing;
 	Target->SetHeld(true); // agirligi bu kareden itibaren dengeden cikar
+	ASLGameMode::PlaySfx(this, TEXT("SFX_Kaldir"), 1);
 
 	const int32 SlotIdx = FindSlotById(Target->TypeId);
 	FSLSlot Shape = Slots.IsValidIndex(SlotIdx) ? Slots[SlotIdx] : FSLSlot();
