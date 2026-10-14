@@ -1,0 +1,501 @@
+<title>Sallantı GDD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Caveat:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: kraft-paper sheet; a left sticky "board" with the balance meter + section index, main column of spec cards taped on; checklists are stamped cardboard tags. */
+:root{
+  --bg:#e9dcc4;          /* kraft */
+  --sheet:#f6efe1;       /* white board */
+  --ink:#2c2418;         /* marker ink */
+  --muted:#6f5f47;
+  --line:#cbb894;
+  --accent:#b8451f;      /* box-tape red-brown */
+  --tape:#d8c38f;
+  --ok:#3f7a3a;
+  --warn:#a8641a;
+  --chip:#efe4cf;
+  --f-display:"Archivo Black","Arial Black",Impact,sans-serif;
+  --f-body:"Atkinson Hyperlegible",system-ui,"Segoe UI",sans-serif;
+  --f-hand:"Caveat","Comic Sans MS",cursive;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1d1913;--sheet:#2a241b;--ink:#efe6d4;--muted:#b4a588;--line:#4b3f2e;--accent:#e2774d;--tape:#6b5a33;--ok:#7dbb72;--warn:#e0a252;--chip:#352d22;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1d1913;--sheet:#2a241b;--ink:#efe6d4;--muted:#b4a588;--line:#4b3f2e;--accent:#e2774d;--tape:#6b5a33;--ok:#7dbb72;--warn:#e0a252;--chip:#352d22;color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 var(--f-body);padding-inline:16px;padding-block:24px 64px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:860px){.wrap{grid-template-columns:minmax(0,1fr)}.side{position:static!important}}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;line-height:1.1;text-wrap:balance;margin:0}
+h1{font-size:clamp(2.4rem,6vw,3.6rem);letter-spacing:-.01em}
+h2{font-size:1.5rem}
+h3{font-size:1.05rem;margin-top:1.2em}
+p{margin:.5em 0;max-width:68ch}
+a{color:var(--accent)}
+code,.mono{font-family:var(--f-mono);font-size:.86em}
+code{background:var(--chip);padding:.1em .35em;border-radius:3px}
+pre{font-family:var(--f-mono);font-size:.85rem;background:var(--chip);padding:12px 14px;border-radius:4px;overflow-x:auto;margin:.6em 0}
+.hand{font-family:var(--f-hand);font-size:1.35rem;color:var(--accent);line-height:1.1}
+.eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+
+/* side board */
+.side{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);display:flex;flex-direction:column;gap:18px}
+.meter{background:var(--sheet);border:1px solid var(--line);padding:16px;border-radius:4px}
+.meter svg{width:100%;height:auto;display:block}
+.meter .num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:1.9rem;font-weight:600}
+.meter .sub{color:var(--muted);font-size:.85rem}
+.toc{display:flex;flex-direction:column;gap:2px;font-size:.92rem}
+.toc a{color:var(--ink);text-decoration:none;padding:4px 8px;border-radius:3px;display:flex;justify-content:space-between;gap:8px}
+.toc a:hover,.toc a:focus-visible{background:var(--sheet);outline:none}
+.toc .cnt{font-family:var(--f-mono);font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.sync{font-size:.8rem;color:var(--muted);padding:0 8px}
+.sync b{color:var(--ink)}
+
+/* main */
+main{display:flex;flex-direction:column;gap:26px;min-width:0}
+.hero{padding:6px 0 4px}
+.hero .line{font-size:1.2rem;max-width:56ch;margin-top:.6em}
+.facts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.facts span{background:var(--sheet);border:1px solid var(--line);border-radius:999px;padding:3px 12px;font-size:.85rem}
+.card{background:var(--sheet);border:1px solid var(--line);border-radius:4px;padding:22px 24px;position:relative;min-width:0}
+.card.taped::before{content:"";position:absolute;top:-10px;left:28px;width:92px;height:20px;background:var(--tape);opacity:.85;transform:rotate(-2deg)}
+.card > h2{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.card > h2 .hand{font-size:1.25rem}
+.tbl{overflow-x:auto;margin:.6em 0}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+td.n{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.note{border-left:3px solid var(--accent);padding:6px 12px;margin:.8em 0;color:var(--muted);max-width:70ch}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+
+/* checklists */
+.list{list-style:none;padding:0;margin:.6em 0 0;display:flex;flex-direction:column}
+.item{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:start;padding:9px 4px;border-bottom:1px dashed var(--line)}
+.item:last-child{border-bottom:0}
+.item input{appearance:none;-webkit-appearance:none;width:22px;height:22px;margin:1px 0 0;border:2px solid var(--ink);border-radius:3px;background:transparent;cursor:pointer;position:relative}
+.item input:checked{background:var(--ok);border-color:var(--ok)}
+.item input:checked::after{content:"";position:absolute;left:6px;top:1px;width:6px;height:12px;border:solid var(--sheet);border-width:0 3px 3px 0;transform:rotate(45deg)}
+.item input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.item input:disabled{cursor:not-allowed;opacity:.6}
+.item label{cursor:pointer}
+.item .t{font-weight:700}
+.item .d{display:block;color:var(--muted);font-size:.88rem;margin-top:1px}
+.item.done .t{text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:var(--ok)}
+.who{font-size:.76rem;color:var(--muted);text-align:right;white-space:nowrap;padding-top:3px}
+.who .tag{display:inline-block;font-family:var(--f-mono);background:var(--chip);border-radius:3px;padding:0 6px;margin-left:4px;color:var(--ink)}
+.prog{height:8px;background:var(--chip);border-radius:999px;overflow:hidden;margin-top:10px}
+.prog i{display:block;height:100%;background:var(--ok);width:0;transition:width .3s}
+.decision{color:var(--accent);font-weight:700}
+@media (prefers-reduced-motion:reduce){.prog i,#plank{transition:none!important}}
+@media (max-width:520px){.item{grid-template-columns:28px minmax(0,1fr)}.who{grid-column:2;text-align:left}}
+</style>
+
+<div class="wrap">
+  <aside class="side">
+    <div class="meter" aria-live="polite">
+      <div class="eyebrow">Denge göstergesi</div>
+      <svg viewBox="0 0 240 110" role="img" aria-label="Tamamlanan işler oranı">
+        <polygon points="120,96 106,108 134,108" fill="var(--ink)"/>
+        <g id="plank" style="transform-origin:120px 92px;transition:transform .6s cubic-bezier(.3,1.6,.5,1)">
+          <rect x="20" y="86" width="200" height="8" fill="var(--accent)"/>
+          <rect x="34" y="62" width="24" height="24" fill="var(--tape)" stroke="var(--ink)" stroke-width="1.5"/>
+          <rect x="62" y="70" width="16" height="16" fill="var(--tape)" stroke="var(--ink)" stroke-width="1.5"/>
+          <rect x="150" y="50" width="30" height="36" fill="var(--tape)" stroke="var(--ink)" stroke-width="1.5"/>
+          <rect x="184" y="66" width="20" height="20" fill="var(--tape)" stroke="var(--ink)" stroke-width="1.5"/>
+        </g>
+      </svg>
+      <div class="num" id="pct">0%</div>
+      <div class="sub"><span id="doneN">0</span> / <span id="allN">0</span> madde tamam. Platform eksik iş kadar eğik.</div>
+    </div>
+    <nav class="toc" id="toc" aria-label="Bölümler"></nav>
+    <div class="sync" id="sync">Bağlanıyor…</div>
+  </aside>
+
+  <main>
+    <header class="hero">
+      <div class="eyebrow">Game jam · Unreal 5.8 · 4 kişi · 48 saat</div>
+      <h1>Sallantı</h1>
+      <p class="line">Sallanan bir platformun üstüne şehir kuruyorsun. Her koyduğun şey dengeyi bozuyor.</p>
+      <p class="hand">“Sallanan dünyada dengeyi ve düzeni sağlamaya çalışan başkan”</p>
+      <div class="facts">
+        <span>İzometrik 3D</span><span>Karton · cozy · lowpoly</span><span>İstanbul</span><span>13+ · hedef 13–21</span><span>Tur 60–120 sn</span><span>Teknik ad: <code>Sallanti</code>, önek <code>SL</code></span>
+      </div>
+    </header>
+
+    <!-- ============ CHECKLISTS ============ -->
+    <section class="card taped" id="kararlar" data-group>
+      <h2>Açık kararlar <span class="hand">ilk saatte kapanacak</span></h2>
+      <ul class="list">
+        <li data-id="k-ad" data-t="Oyunun vitrin adı" data-d="Teknik ad Sallanti sabit; ekranda görünen ad ayrı olabilir."></li>
+        <li data-id="k-kazan" data-t="Kazanma koşulu seçildi" data-d="TargetObjectCount (12 nesne) ya da SurviveSeconds. İkisinden biri, ikisi birden değil."></li>
+        <li data-id="k-kaybet" data-t="Kaybetme koşulu onaylandı" data-d="Önerilen: eğim FailTilt'i FailSeconds boyunca aşar ya da nesne FailZ altına düşer."></li>
+        <li data-id="k-yigit-bp" data-t="Yiğit Blueprint yapabiliyor mu soruldu" data-d="Evetse UI/HUD tamamen Yiğit'e geçer."></li>
+        <li data-id="k-devir" data-t="Yerleştirme, environment ve paketleme Yiğit'e devredildi" data-d="Andaç'ta yalnızca mekanik kodu kalır."></li>
+        <li data-id="k-isik" data-t="Lighting penceresi kararlaştırıldı" data-d="Önerilen: Mert'e seviye penceresi verilir, o sırada Yiğit .umap'e dokunmaz."></li>
+        <li data-id="k-paket" data-t="Paketleme ve teslimin sahibi belli"></li>
+        <li data-id="k-kesme" data-t="Kesme listesi ekiple onaylandı" data-d="Aşağıdaki 'Kesilenler' tablosu."></li>
+      </ul>
+      <div class="prog"><i></i></div>
+    </section>
+
+    <section class="card taped" id="gun0" data-group>
+      <h2>Gün 0 kurulumu <span class="hand">jam saatinden yenmez</span></h2>
+      <ul class="list">
+        <li data-id="g-proje" data-t="C++ proje oluşturuldu, adı sabit" data-d="C:\Dev\Sallanti, UE 5.8.0, modül Sallanti."></li>
+        <li data-id="g-surum" data-t="Motor sürümü ekipte birebir aynı" data-d="5.8.0 (CL 55116800). 5.8 ile 5.8.1 aynı değil."></li>
+        <li data-id="g-lfs" data-t=".gitignore + .gitattributes (LFS) ilk binary'den önce commit edildi"></li>
+        <li data-id="g-pointer" data-t="Test .uasset'in LFS pointer olduğu git show ile doğrulandı"></li>
+        <li data-id="g-remote" data-t="Uzak depo açıldı, ilk push süresi ölçüldü"></li>
+        <li data-id="g-klon" data-t="Herkes klonlayıp push edebildi" data-d="Mert, Asil, Yiğit: her biri bir kez."></li>
+        <li data-id="g-lfsherkes" data-t="git lfs install herkeste çalıştırıldı"></li>
+        <li data-id="g-derle" data-t="Derleme komutu editör kapalıyken geçti" data-d="Build\derle.bat · -waitmutex -NoXGE -MaxParallelActions=2"></li>
+        <li data-id="g-paket" data-t="Boş projenin tam paketi alındı, süre ölçüldü"></li>
+        <li data-id="g-paketac" data-t="Paket açıldı ve çalıştığı görüldü"></li>
+        <li data-id="g-konfig" data-t="Teslim konfigürasyonu seçildi ve o konfigürasyonla paketlendi"></li>
+        <li data-id="g-klasor" data-t="Content/Sallanti ve Content/Vendor ayrıldı"></li>
+        <li data-id="g-yasak" data-t="Paket klasörü yeniden adlandırma yasağı ekibe söylendi"></li>
+        <li data-id="g-karakter" data-t="Karakter + animasyon seti indirildi ve içe aktarıldı"></li>
+        <li data-id="g-ses" data-t="Ses paketi indirildi"></li>
+        <li data-id="g-font" data-t="UI fontu içe aktarıldı, Türkçe glifler doğrulandı" data-d="ş ğ ı İ ö ü ç. UFont, UFontFace değil."></li>
+        <li data-id="g-emoji" data-t="UI metinlerinde emoji yok kuralı ekibe söylendi"></li>
+        <li data-id="g-claudemd" data-t="CLAUDE.md dolduruldu ve commit edildi"></li>
+        <li data-id="g-ekipkural" data-t="03_EKIP_KURALLARI.md depoya kopyalandı"></li>
+      </ul>
+      <div class="prog"><i></i></div>
+    </section>
+
+    <section class="card taped" id="sira" data-group>
+      <h2>Uygulama sırası <span class="hand">her adım ekranda görülür</span></h2>
+      <ul class="list">
+        <li data-id="u1" data-t="1 · İzometrik kamera + boş platform" data-d="Görülen: sahne duruyor."></li>
+        <li data-id="u2" data-t="2 · ASLPlatform sürekli sallanma" data-d="Görülen: platform nefes alıyor."></li>
+        <li data-id="u3" data-t="3 · Işın + hayalet mesh" data-d="Görülen: imleçle platformda gezen hayalet."></li>
+        <li data-id="u4" data-t="4 · Izgaraya yapışma + geçerlilik rengi" data-d="Görülen: hayalet oturuyor, kenarda kırmızı."></li>
+        <li data-id="u5" data-t="5 · Yerleştirme: nesne doğuyor, bağlanıyor" data-d="Görülen: kule kuruluyor."></li>
+        <li data-id="u6" data-t="6 · Ağırlık merkezi → eğim" data-d="KARAR ANI: platform koyduğun yere eğiliyor. Eğlenceli değilse 7–10'a geçmeden pivot."></li>
+        <li data-id="u6k" data-t="6 · Karar verildi: mekanik eğlenceli mi?" data-d="Ekip oynadı, evet/hayır yazıldı."></li>
+        <li data-id="u7" data-t="7 · ReleaseTilt → fiziğe bırakma" data-d="Görülen: her şey kayıp düşüyor."></li>
+        <li data-id="u8" data-t="8 · Kaybetme + yeniden başlatma" data-d="Döngü kapandı. Buraya gelindiyse oyun teslim edilebilir."></li>
+        <li data-id="u9" data-t="9 · Kazanma koşulu + sayaç" data-d="Oyun bitirilebilir."></li>
+        <li data-id="u10" data-t="10 · Ses + HUD göstergesi" data-d="Üç kanal tamam."></li>
+      </ul>
+      <div class="prog"><i></i></div>
+    </section>
+
+    <section class="card taped" id="teslim" data-group>
+      <h2>Teslim kontrolü <span class="hand">son 12 saat</span></h2>
+      <ul class="list">
+        <li data-id="t-36" data-t="36. saatten sonra yeni özellik yok" data-d="Yalnızca hata ve paketleme."></li>
+        <li data-id="t-gorulmedi" data-t="'Derlendi, ekranda görülmedi' listesi 2'nin altında"></li>
+        <li data-id="t-paket" data-t="Son paket alındı ve başka bir makinede açıldı"></li>
+        <li data-id="t-sayfa" data-t="Jam sayfası açıklaması İngilizce yazıldı"></li>
+        <li data-id="t-yukle" data-t="Paket jam sayfasına yüklendi"></li>
+      </ul>
+      <div class="prog"><i></i></div>
+    </section>
+
+    <!-- ============ SPEC ============ -->
+    <section class="card" id="ekip">
+      <h2>Ekip ve sahiplik</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Kişi</th><th>Alan</th><th>Sahip olduğu dosya</th></tr></thead>
+        <tbody>
+          <tr><td><b>Andaç</b></td><td>Tek programcı: mekanik ve sistem kodu. Karakter kurulumu en sona.</td><td><code>Source/</code>, <code>L_Test</code></td></tr>
+          <tr><td><b>Yiğit</b></td><td>UI–UX–HUD, level ve environment fikri, yerleştirme, environment yerleştirme, paketleme</td><td><b>Ana seviye (.umap)</b></td></tr>
+          <tr><td><b>Mert</b></td><td>Model, topoloji, texture, lighting (ışık penceresinde)</td><td><code>Content/Sallanti/</code> mesh'leri</td></tr>
+          <tr><td><b>Asil</b></td><td>Concept tasarım + modeller</td><td><code>Content/Sallanti/</code> mesh'leri</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">Projenin tek darboğazı tek programcı. Kod gerektirmeyen her iş Andaç'ın üstünden alınır. Andaç ana seviyeyi kaydetmez; testleri <code>L_Test</code>'te yapar ve oradan ana seviyeye hiçbir şey taşınmaz.</p>
+    </section>
+
+    <section class="card" id="dongu">
+      <h2>Çekirdek döngü</h2>
+      <p class="hand" style="font-size:1.6rem">nesne seç → sürükle → yerleştir → denge bozulur → düzelt</p>
+      <div class="two">
+        <div>
+          <h3>Kaybetme</h3>
+          <p>Eğim <code>FailTilt</code>'i <code>FailSeconds</code> boyunca kesintisiz aşarsa yapı devrilir. Ya da bir nesne <code>FailZ</code> altına düşerse. Süre şartı anlık salınımda haksız kaybı önler.</p>
+        </div>
+        <div>
+          <h3>Kazanma</h3>
+          <p><code>TargetObjectCount</code> nesne yerleştirildi ve eğim <code>FailTilt</code> altında. Alternatif: <code>SurviveSeconds</code> ayakta kal. Biri seçilecek.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="denge">
+      <h2>Denge sistemi <span class="hand">oyunun kalbi</span></h2>
+      <p>Platform fizik ekleminde değil. Ağırlık merkezi hesaplanır, dönüş kinematik sürülür: deterministik, ayarlanabilir, patlamaz.</p>
+<pre>CoM         = Σ(kütle × ofsetXY) / Σ(kütle)
+HedefEğim   = clamp(CoM × TiltPerCm, −MaxTilt, +MaxTilt)
+Eğim       → HedefEğim'e TiltSpeed ile yaklaşır
+AmbientSway = sin(t × 2π / SwayPeriod) × SwayAmplitude</pre>
+      <h3>Nesneler eğimde</h3>
+      <p><span class="decision">Seçilen: A.</span> Nesne platforma <code>AttachToComponent</code> ile bağlı, fizik kapalı. Eğim <code>ReleaseTilt</code>'i geçince fizik açılır ve nesne kayıp düşer. Titreme yok, an dramatik. Sürekli simüle fizik (B) ancak A bitip zaman kalırsa.</p>
+      <p class="note">Ağırlık merkezi ve eğim yalnızca <code>ASLPlatform</code>'da hesaplanır. HUD, ses, kaybetme kontrolü oradan okur.</p>
+    </section>
+
+    <section class="card" id="yerlestir">
+      <h2>Sürükle ve yerleştir</h2>
+      <div class="two">
+        <div>
+          <h3>Akış</h3>
+          <ol>
+            <li>Slot seç (tık ya da 1–4)</li>
+            <li>İmleç altında yarı saydam hayalet</li>
+            <li>Hayalet imleçten platforma ışınla konumlanır</li>
+            <li>Geçerli: yeşilimsi. Geçersiz: kırmızımsı</li>
+            <li>Sol tık: nesne doğar, bağlanır, kütlesi dengeye katılır</li>
+            <li><b>R</b>: 90° döndür · <b>Esc / sağ tık</b>: iptal</li>
+          </ol>
+        </div>
+        <div>
+          <h3>Geçersiz</h3>
+          <ul>
+            <li>Işın platforma değmiyor</li>
+            <li>Hayalet kutusu başka nesneyle çakışıyor</li>
+            <li>Taban platform kenarından taşıyor</li>
+          </ul>
+          <p>Ses ya da metin uyarısı yok, kırmızı yeter.</p>
+          <h3>Izgara</h3>
+          <p><b>50 cm</b>. Boşluksuz oturan parçalar fizikte stabil.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="kamera">
+      <h2>Kamera ve girdi</h2>
+      <div class="two">
+        <div class="tbl"><table>
+          <thead><tr><th>Kamera</th><th>Değer</th></tr></thead>
+          <tbody>
+            <tr><td>Projeksiyon</td><td>Perspective</td></tr>
+            <tr><td>FOV</td><td class="n">30°</td></tr>
+            <tr><td>Yaw</td><td class="n">45°</td></tr>
+            <tr><td>Pitch</td><td class="n">−35°</td></tr>
+            <tr><td>Mesafe</td><td class="n">1400 cm</td></tr>
+          </tbody>
+        </table></div>
+        <div class="tbl"><table>
+          <thead><tr><th>Girdi</th><th>Eylem</th></tr></thead>
+          <tbody>
+            <tr><td>Fare</td><td>Hayaleti konumlandır</td></tr>
+            <tr><td>Sol tık</td><td>Yerleştir</td></tr>
+            <tr><td>Sağ tık / Esc</td><td>İptal</td></tr>
+            <tr><td class="n">1 2 3 4</td><td>Slot seç</td></tr>
+            <tr><td class="n">R</td><td>90° döndür</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <p>Sabit izometrik, döndürme ve zoom yok. Platform eğilince kamera eğilmez. Girdi Enhanced Input.</p>
+    </section>
+
+    <section class="card" id="siniflar">
+      <h2>Sınıflar <span class="hand">önek JM → SL</span></h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Sınıf</th><th>Sorumluluk</th></tr></thead>
+        <tbody>
+          <tr><td><code>ASLPlatform</code></td><td>Eğimi hesaplar ve uygular. Ağırlık merkezinin tek sahibi</td></tr>
+          <tr><td><code>ASLPlaceable</code></td><td>Yerleştirilen nesne: kütle, boyut, bağlanma/bırakılma</td></tr>
+          <tr><td><code>USLBuildComponent</code></td><td>Hayalet, ışın, geçerlilik, yerleştirme. <code>ESLBuildState</code>: Idle / Placing / Blocked</td></tr>
+          <tr><td><code>ASLPlayerController</code></td><td>Girdi, slot seçimi</td></tr>
+          <tr><td><code>ASLGameMode</code></td><td>Kazanma/kaybetme, tur süresi, yeniden başlatma</td></tr>
+          <tr><td><code>USLHUDWidget</code></td><td>Slot çubuğu, denge göstergesi, sayaç</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="card" id="degerler">
+      <h2>Ayarlanabilir değerler <span class="hand">hepsi EditAnywhere, hepsi tahmin</span></h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Sınıf</th><th>Değer</th><th>Varsayılan</th><th>Ne yapar</th></tr></thead>
+        <tbody>
+          <tr><td>Platform</td><td><code>TiltPerCm</code></td><td class="n">0.04 °/cm</td><td>CoM ofseti → eğim</td></tr>
+          <tr><td>Platform</td><td><code>MaxTilt</code></td><td class="n">12°</td><td>Eğim üst sınırı</td></tr>
+          <tr><td>Platform</td><td><code>TiltSpeed</code></td><td class="n">25 °/sn</td><td>Hedefe yaklaşma hızı</td></tr>
+          <tr><td>Platform</td><td><code>SwayAmplitude</code></td><td class="n">1.5°</td><td>Dünya sallanması</td></tr>
+          <tr><td>Platform</td><td><code>SwayPeriod</code></td><td class="n">4.0 sn</td><td>Sallanma periyodu</td></tr>
+          <tr><td>Platform</td><td><code>ReleaseTilt</code></td><td class="n">8°</td><td>Fiziğe bırakma eşiği</td></tr>
+          <tr><td>Platform</td><td><code>FailTilt</code></td><td class="n">10°</td><td>Kaybetme eşiği</td></tr>
+          <tr><td>Platform</td><td><code>FailSeconds</code></td><td class="n">1.5 sn</td><td>Eşiğin kesintisiz süresi</td></tr>
+          <tr><td>Platform</td><td><code>FailZ</code></td><td class="n">−200 cm</td><td>Altı kayıp</td></tr>
+          <tr><td>Placeable</td><td><code>Mass</code></td><td class="n">1.0</td><td>Dengeye katkı</td></tr>
+          <tr><td>Placeable</td><td><code>GridSize</code></td><td class="n">50 cm</td><td>Izgara adımı</td></tr>
+          <tr><td>GameMode</td><td><code>TargetObjectCount</code></td><td class="n">12</td><td>Kazanma nesne sayısı</td></tr>
+          <tr><td>GameMode</td><td><code>RoundSeconds</code></td><td class="n">120</td><td>Tur üst sınırı</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">Bir değeri iki kez tahminle değiştirdiysen dur ve ölç.</p>
+    </section>
+
+    <section class="card" id="geribildirim">
+      <h2>Geri bildirim: üç kanal</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Kanal</th><th>Ne yapıyor</th></tr></thead>
+        <tbody>
+          <tr><td><b>Görsel</b></td><td>Platformun eğilmesi. İzometrikte küçük eğim tek başına fark edilmez</td></tr>
+          <tr><td><b>Nesne durumu</b></td><td><code>ReleaseTilt</code> geçilince kayma/devrilme. En güçlü kanal</td></tr>
+          <tr><td><b>Ses</b></td><td>Karton gıcırtısı, eğimle yükselir</td></tr>
+          <tr><td><b>HUD</b> (bonus)</td><td>Denge çubuğu ya da eğilen ok</td></tr>
+        </tbody>
+      </table></div>
+      <p>Eğim <code>FailTilt</code>'e yaklaşırken ses ve HUD belirginleşir; oyuncu kaybetmeden önce uyarılır.</p>
+    </section>
+
+    <section class="card" id="asset">
+      <h2>Asset kuralları <span class="hand">Mert + Asil için bağlayıcı</span></h2>
+      <div class="two">
+        <div class="tbl"><table>
+          <thead><tr><th>Kategori</th><th>cm (G×D×Y)</th><th>Tris</th></tr></thead>
+          <tbody>
+            <tr><td>Küçük nesne</td><td class="n">50×50×50</td><td class="n">300</td></tr>
+            <tr><td>Orta nesne</td><td class="n">50×50×100</td><td class="n">300</td></tr>
+            <tr><td>Küçük bina</td><td class="n">100×100×100</td><td class="n">1500</td></tr>
+            <tr><td>Orta bina</td><td class="n">100×100×150</td><td class="n">1500</td></tr>
+            <tr><td>Büyük bina</td><td class="n">150×150×200</td><td class="n">1500</td></tr>
+            <tr><td>İnsan</td><td class="n">160 boy</td><td class="n">3000</td></tr>
+            <tr><td>Platform</td><td class="n">600×600</td><td class="n">2000</td></tr>
+          </tbody>
+        </table></div>
+        <ul>
+          <li>Her boyut 50 cm'nin katı</li>
+          <li>Pivot tabanın ortası, Z = 0</li>
+          <li>Collision: elle <code>UBX_&lt;Mesh&gt;_01</code> kutusu</li>
+          <li>Bevel ve subdivision yok</li>
+          <li>Tek doku <code>T_Cardboard_D</code>, 1 UV tile = 1 m</li>
+          <li>Tek materyal slotu; materyali modelci yapmaz</li>
+          <li>İsim: <code>SM_&lt;Kategori&gt;_&lt;Ad&gt;</code></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="card" id="kesilen">
+      <h2>Kesilenler</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Kesilen</th><th>Yerine</th></tr></thead>
+        <tbody>
+          <tr><td>Envanter + select-slot</td><td>Sabit 4 nesne, 4 buton</td></tr>
+          <tr><td>NPC / AI</td><td>Hareketsiz dekor insanlar</td></tr>
+          <tr><td>Ayrı state system</td><td><code>ESLBuildState</code> enum</td></tr>
+          <tr><td>Karakter animasyonu</td><td>Başkan görünmeyebilir, imleç yeter</td></tr>
+          <tr><td>Yıkım parçacıkları</td><td>Nesne sadece devrilir</td></tr>
+          <tr><td>Menü</td><td>Doğrudan oyun, <b>R</b> ile yeniden başlat</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="card" id="kurallar">
+      <h2>Sert kurallar</h2>
+      <ol>
+        <li>Proje ve modül yeniden adlandırılmaz.</li>
+        <li>Ana seviyenin tek sahibi Yiğit. Seviyenin kopyası açılmaz.</li>
+        <li><code>Content/Vendor/</code> dokunulmaz, paket klasörleri yeniden adlandırılmaz.</li>
+        <li>Pull ve checkout öncesi editör kapanır.</li>
+        <li>UI metinlerinde emoji yok. Görünür bir şey sıfıra ölçeklenmez, gizlenir.</li>
+        <li>Ekranda görülmeyen şey bitmiş sayılmaz.</li>
+      </ol>
+    </section>
+  </main>
+</div>
+
+<script>
+(function(){
+  var groups=[].slice.call(document.querySelectorAll('[data-group]'));
+  var state={};              // id -> {done, by, at}
+  var db=null, user=null, myId=null, canWrite=true, mode='local';
+  var LS='sallanti-gdd-checks';
+
+  // build items
+  document.querySelectorAll('.list li[data-id]').forEach(function(li){
+    var id=li.dataset.id;
+    li.className='item';
+    var cb=document.createElement('input'); cb.type='checkbox'; cb.id='cb-'+id;
+    var lab=document.createElement('label'); lab.htmlFor=cb.id;
+    var t=document.createElement('span'); t.className='t'; t.textContent=li.dataset.t; lab.appendChild(t);
+    if(li.dataset.d){var d=document.createElement('span'); d.className='d'; d.textContent=li.dataset.d; lab.appendChild(d);}
+    var who=document.createElement('div'); who.className='who';
+    li.appendChild(cb); li.appendChild(lab); li.appendChild(who);
+    cb.addEventListener('change',function(){toggle(id,cb.checked,cb);});
+  });
+
+  // toc
+  var toc=document.getElementById('toc');
+  document.querySelectorAll('main section[id]').forEach(function(s){
+    var a=document.createElement('a'); a.href='#'+s.id;
+    var n=document.createElement('span'); n.textContent=s.querySelector('h2').firstChild.textContent.trim(); a.appendChild(n);
+    if(s.hasAttribute('data-group')){var c=document.createElement('span'); c.className='cnt'; c.dataset.for=s.id; a.appendChild(c);}
+    toc.appendChild(a);
+  });
+
+  function fmt(iso){try{var d=new Date(iso);return d.toLocaleDateString('tr-TR',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});}catch(e){return '';}}
+
+  async function render(){
+    var ids=[]; Object.keys(state).forEach(function(k){if(state[k]&&state[k].by)ids.push(state[k].by);});
+    var ps={}; if(user&&ids.length){try{ps=await user.profiles(ids);}catch(e){}}
+    var all=0,done=0;
+    document.querySelectorAll('.list li[data-id]').forEach(function(li){
+      var s=state[li.dataset.id]||{}; var cb=li.querySelector('input'); var who=li.querySelector('.who');
+      cb.checked=!!s.done; cb.disabled=!canWrite; li.classList.toggle('done',!!s.done);
+      who.textContent='';
+      if(s.done){
+        var nm=s.by&&ps[s.by]?(ps[s.by].name||'Biri'):(s.byLabel||'');
+        if(s.at){who.appendChild(document.createTextNode(fmt(s.at)));}
+        if(nm){var tg=document.createElement('span');tg.className='tag';tg.textContent=nm;who.appendChild(tg);}
+      }
+      all++; if(s.done)done++;
+    });
+    groups.forEach(function(g){
+      var lis=g.querySelectorAll('li[data-id]'),d=0; lis.forEach(function(li){if((state[li.dataset.id]||{}).done)d++;});
+      g.querySelector('.prog i').style.width=(lis.length?d/lis.length*100:0)+'%';
+      var c=toc.querySelector('[data-for="'+g.id+'"]'); if(c)c.textContent=d+'/'+lis.length;
+    });
+    var pct=all?Math.round(done/all*100):0;
+    document.getElementById('pct').textContent=pct+'%';
+    document.getElementById('doneN').textContent=done;
+    document.getElementById('allN').textContent=all;
+    document.getElementById('plank').style.transform='rotate('+((1-done/(all||1))*14).toFixed(2)+'deg)';
+  }
+
+  function setSync(html){var el=document.getElementById('sync');el.textContent='';el.insertAdjacentHTML('beforeend',html);}
+
+  async function toggle(id,val,cb){
+    var rec={done:val,at:new Date().toISOString()};
+    if(myId)rec.by=myId;
+    if(mode==='db'){
+      var prev=state[id]; state[id]=rec; render();
+      try{await db.doc('checks/'+id).set(rec);}
+      catch(e){
+        state[id]=prev; render();
+        if(e&&e.code==='invalid_argument'){canWrite=false;render();setSync('Bu sayfada işaretleme iznin yok. Sahibinden <b>Contributor</b> erişimi iste.');}
+        else setSync('Kaydedilemedi, tekrar dene.');
+      }
+    }else{
+      state[id]=rec; rec.byLabel='bu cihaz';
+      try{localStorage.setItem(LS,JSON.stringify(state));}catch(e){}
+      render();
+    }
+  }
+
+  // local fallback first
+  try{var raw=localStorage.getItem(LS); if(raw)state=JSON.parse(raw)||{};}catch(e){}
+  setSync('Yalnızca bu cihazda kaydediliyor.');
+  render();
+
+  (async function(){
+    if(!window.claude||!window.claude.use)return;
+    try{ db=await window.claude.use('db'); user=await window.claude.use('user'); }catch(e){}
+    if(!db){return;}
+    mode='db'; state={};
+    if(user){try{myId=await user.id();}catch(e){} try{var cw=await user.can('data.write'); if(cw===false)canWrite=false;}catch(e){}}
+    setSync(canWrite?'<b>Ortak liste.</b> Tikler bütün ekipte görünür.':'Salt okunur. İşaretlemek için Contributor erişimi gerekiyor.');
+    render();
+    db.collection('checks').onSnapshot(function(snap){
+      var next={}; snap.docs.forEach(function(d){if(d.exists)next[d.id]=d.data();});
+      state=next; render();
+    },function(){setSync('Bağlantı koptu. Sayfayı yenile.');});
+  })();
+})();
+</script>
