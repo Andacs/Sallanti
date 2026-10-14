@@ -7,3 +7,5 @@ Saved/
 *.slnx
 # paket ciktisi
 Build/Package/
+Build/Windows/
+Build/*.log
