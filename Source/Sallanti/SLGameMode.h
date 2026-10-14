@@ -7,6 +7,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "SLGameMode.generated.h"
 
+class ASLLevelDirector;
 class ASLPlatform;
 
 UCLASS()
@@ -17,23 +18,30 @@ class SALLANTI_API ASLGameMode : public AGameModeBase
 public:
 	ASLGameMode();
 
-	/** Platform devrildi mi? (adim 8: kaybetme) */
+	/** Platform devrildi mi? */
 	UFUNCTION(BlueprintPure, Category = "Sallanti")
 	bool IsGameOver() const { return bGameOver; }
+
+	/** Bolumun butun gorevleri bitti mi? */
+	UFUNCTION(BlueprintPure, Category = "Sallanti")
+	bool IsLevelComplete() const { return bLevelComplete; }
+
+	/** Oyun bitti ya da bolum bitti: Space yeniden baslatir. */
+	bool IsRoundOver() const { return bGameOver || bLevelComplete; }
+
+	/** Seviyedeki bolum yoneticisi; yoksa 1. bolum varsayilanlariyla dogurulur. */
+	ASLLevelDirector* GetDirector();
+	const ASLLevelDirector* GetDirector() const { return Director; }
+
+	/** Yonetici son gorev bitince cagirir. */
+	void HandleLevelComplete();
 
 	/** Seviyedeki platform; yoksa dunya merkezine dogurulur. */
 	ASLPlatform* GetPlatform();
 	const ASLPlatform* GetPlatform() const { return Platform; }
 
-	/** Adim 9: kazanmak icin gereken nesne. Henuz kullanilmiyor. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Tur")
-	int32 TargetObjectCount = 12;
-
-	/** Adim 9: tur ust siniri. Henuz kullanilmiyor. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Tur", meta = (Units = "Seconds"))
-	float RoundSeconds = 120.f;
-
 protected:
+	virtual void StartPlay() override;
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 
 private:
@@ -43,5 +51,9 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<ASLPlatform> Platform;
 
+	UPROPERTY(Transient)
+	TObjectPtr<ASLLevelDirector> Director;
+
 	bool bGameOver = false;
+	bool bLevelComplete = false;
 };

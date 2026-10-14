@@ -3,8 +3,9 @@
 #include "SLBuildComponent.h"
 #include "SLCameraPawn.h"
 #include "SLGameMode.h"
+#include "SLLevelDirector.h"
 #include "SLPlatform.h"
-#include "SLTestHUD.h"
+#include "SLHUD.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/GameViewportClient.h"
@@ -79,7 +80,7 @@ void ASLPlayerController::OnAgain()
 {
 	// Space yalnizca oyun bittiyse yeniden baslatir; oynarken yanlislikla basilirsa bir sey olmaz.
 	const ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
-	if (GM && GM->IsGameOver())
+	if (GM && GM->IsRoundOver())
 	{
 		RestartLevel();
 	}
@@ -97,7 +98,7 @@ void ASLPlayerController::OnToggleGrid()
 
 void ASLPlayerController::OnToggleHelp()
 {
-	if (ASLTestHUD* HUD = GetHUD<ASLTestHUD>())
+	if (ASLHUD* HUD = GetHUD<ASLHUD>())
 	{
 		HUD->bShowTestPanel = !HUD->bShowTestPanel;
 	}
@@ -179,7 +180,16 @@ void ASLPlayerController::SLKnobs()
 	}
 }
 
-void ASLPlayerController::OnPlace() { Build->TryPlace(); }
+void ASLPlayerController::OnPlace()
+{
+	// Elde bir sey yoksa sol tik tasima baslatir: tiklanan nesne kaldirilir.
+	if (Build->State == ESLBuildState::Idle && !Build->IsMoving())
+	{
+		Build->TryPickUpUnderCursor();
+		return;
+	}
+	Build->TryPlace();
+}
 void ASLPlayerController::OnCancel() { Build->Cancel(); }
 void ASLPlayerController::OnRotate() { Build->RotateGhost(); }
 void ASLPlayerController::OnSlot1() { Build->SelectSlot(0); }
@@ -193,6 +203,13 @@ void ASLPlayerController::SLGhost(int32 Slot, float LocalX, float LocalY)
 	{
 		Build->SelectSlot(Slot - 1);
 	}
+	if (Build->SelectedSlot != Slot - 1)
+	{
+		// Kilitli slot: secim reddedildi. Onceki slotla devam etmesin.
+		Build->Cancel();
+		UE_LOG(LogSLInput, Log, TEXT("SL_GHOST slot=%d KILITLI"), Slot);
+		return;
+	}
 	Build->SetAimOverride(FVector2D(LocalX, LocalY));
 	UE_LOG(LogSLInput, Log, TEXT("SL_GHOST slot=%d aim=(%.0f,%.0f) cell=(%d,%d) level=%d state=%s"),
 		Slot, LocalX, LocalY, Build->GetGhostCellMin().X, Build->GetGhostCellMin().Y, Build->GetGhostLevel(),
@@ -202,7 +219,7 @@ void ASLPlayerController::SLGhost(int32 Slot, float LocalX, float LocalY)
 void ASLPlayerController::SLPlace(int32 Slot, float LocalX, float LocalY)
 {
 	SLGhost(Slot, LocalX, LocalY);
-	const bool bPlaced = Build->TryPlace();
+	const bool bPlaced = Build->SelectedSlot == Slot - 1 && Build->TryPlace();
 	UE_LOG(LogSLInput, Log, TEXT("SL_PLACE_RESULT %s count=%d"), bPlaced ? TEXT("OK") : TEXT("BLOCKED"), Build->PlacedCount);
 }
 
@@ -220,6 +237,11 @@ void ASLPlayerController::Shot(const TCHAR* Name)
 void ASLPlayerController::MouseAtLocal(int32 Slot, const FVector& Local)
 {
 	Build->SelectSlot(Slot - 1);
+	MoveMouseToLocal(Local);
+}
+
+void ASLPlayerController::MoveMouseToLocal(const FVector& Local)
+{
 	Build->ClearAimOverride();
 	const ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
 	const ASLPlatform* P = GM ? GM->GetPlatform() : nullptr;
@@ -245,92 +267,37 @@ void ASLPlayerController::LogGhost(const TCHAR* Label)
 		*UEnum::GetValueAsString(Build->State));
 }
 
-void ASLPlayerController::SLTest8()
+void ASLPlayerController::SLTestLevel1()
 {
 	SelfTestIndex = 0;
-	// Olcum kosullari: sallanma kapali (esik gecisini karistirmasin). Kutle/egim varsayilanlarla ayni,
-	// ama varsayilan degisirse test beklenen sayilari tutsun diye acikca yaziliyor.
-	SLSet(TEXT("SwayAmplitude"), TEXT("0"));
-	SLSet(TEXT("PlatformMass"), TEXT("12"));
-	SLSet(TEXT("TiltPerCm"), TEXT("0.08"));
-	GetWorldTimerManager().SetTimer(SelfTestTimer, this, &ASLPlayerController::Test8Step, 0.5f, true, 1.0f);
+	SLSet(TEXT("SwayAmplitude"), TEXT("0")); // esik gecislerini sallanma karistirmasin
+	GetWorldTimerManager().SetTimer(SelfTestTimer, this, &ASLPlayerController::TestLevel1Step, 0.5f, true, 1.0f);
 }
 
-void ASLPlayerController::Test8Step()
+void ASLPlayerController::TestLevel1Step()
 {
 	const int32 I = SelfTestIndex++;
 	SLReport();
-	// Beklenen hedef egim (PlatformMass 12, TiltPerCm 0.08):
-	//  3 kutu -125: 2.0 | +X bina: 7.8 | +X kutu: 8.3 UYARI | -X bina: 0.2 DUZELDI
-	//  kose bina: 6.5 | kose ikinci bina: 10.6 DEVRILIYOR -> 1.5 sn sonra DEVRILDI
+	// Beklenen (PlatformMass 12, TiltPerCm 0.08): Ev (-100,0) 3.2 | Hastane (150,0) 2.5 |
+	// AVM (175,225) hedef 12 -> DEVRILIYOR | AVM'yi fareyle kaldir -> 2.5 | (25,25)'e koy -> 2.5 |
+	// yol (3..8, 4) -> 6. karoda uc bina bagli -> BOLUM TAMAMLANDI.
 	switch (I)
 	{
-	case 1: case 2: case 3: SLPlace(1, -110.f, 10.f); break;
-	case 4: SLPlace(4, 250.f, 0.f); break;
-	case 5: SLPlace(1, 275.f, 25.f); break;
-	case 7: Shot(TEXT("T8_1_uyari")); break;
-	case 8: SLPlace(4, -250.f, 0.f); break;
-	case 10: Shot(TEXT("T8_2_duzeldi")); break;
-	case 11: SLPlace(4, 250.f, 250.f); break;
-	case 12: SLPlace(4, 250.f, 250.f); break;
-	case 13: Shot(TEXT("T8_3_devriliyor")); break;
-	case 16: Shot(TEXT("T8_4_devrildi_anı")); break;
-	case 18: Shot(TEXT("T8_5_devrildi")); SLPlace(1, 0.f, 0.f); break; // kilitli olmali: BLOCKED/yok
-	case 22:
+	case 1: SLPlace(1, -100.f, 0.f); break;                  // Ev
+	case 2: Shot(TEXT("L1_1_aile_yuruyor")); SLPlace(2, 150.f, 0.f); break; // Hastane henuz kilitli
+	case 8: Shot(TEXT("L1_2_aile_yerlesti")); SLPlace(2, 150.f, 0.f); break; // Hastane
+	case 9: SLPlace(3, 150.f, 225.f); break;                 // AVM yanlis yere
+	case 10: Build->Cancel(); MoveMouseToLocal(FVector(175.f, 225.f, 200.f)); Shot(TEXT("L1_3_devriliyor")); break;
+	case 11: OnPlace(); LogGhost(TEXT("tasima_fare")); break; // bosta sol tik: AVM'yi kaldir
+	case 12: Build->SetAimOverride(FVector2D(25.f, 25.f)); Shot(TEXT("L1_4_elde")); break;
+	case 13: OnPlace(); break;                               // yeni yerine
+	case 14: Shot(TEXT("L1_5_tasindi")); break;
+	case 15: case 16: case 17: case 18: case 19: case 20:
+		SLPlace(4, -300.f + (3 + (I - 15) + 0.5f) * 50.f, -75.f); break; // yol hucre (3..8, 4)
+	case 22: Shot(TEXT("L1_6_tamamlandi")); break;
+	case 24:
 		GetWorldTimerManager().ClearTimer(SelfTestTimer);
-		UE_LOG(LogSLInput, Log, TEXT("SL_TEST8_DONE"));
-		ConsoleCommand(TEXT("quit"));
-		break;
-	default: break;
-	}
-}
-
-void ASLPlayerController::SLSelfTest()
-{
-	SelfTestIndex = 0;
-	GetWorldTimerManager().SetTimer(SelfTestTimer, this, &ASLPlayerController::SelfTestStep, 0.5f, true, 1.0f);
-}
-
-void ASLPlayerController::SelfTestStep()
-{
-	// 0.5 sn'lik adimlar. Sallanma periyodu 4 sn: t=1 tepe (+), t=3 dip (-).
-	const int32 I = SelfTestIndex++;
-	SLReport();
-	switch (I)
-	{
-	case 0: Shot(TEXT("1_kamera_platform")); break;
-	case 2: Shot(TEXT("2a_sallanma")); break;
-	case 6: Shot(TEXT("2b_sallanma")); break;
-	case 9: SLGhost(1, 0.f, 0.f); break;
-	case 10: Shot(TEXT("3_hayalet_merkez")); break;
-	case 11: SLGhost(1, 37.f, 12.f); break;
-	case 12: SLGhost(3, 290.f, 0.f); break;
-	case 13: Shot(TEXT("4_hayalet_kenar")); break;
-	case 14: SLGhost(3, 150.f, -150.f); break;
-	case 15: Shot(TEXT("4b_hayalet_gecerli")); break;
-	case 16: SLPlace(1, 225.f, 0.f); break;
-	case 17: SLPlace(1, 225.f, 0.f); break;
-	case 18: SLPlace(1, 225.f, 0.f); break;
-	case 19: SLPlace(2, 275.f, 50.f); break;
-	case 20: SLPlace(3, 400.f, 0.f); break; // disarida: BLOCKED beklenir
-	case 21: Build->Cancel(); Shot(TEXT("5_kule")); break;
-	case 26: Shot(TEXT("6_egim")); break;
-	case 28: SLPlace(4, -225.f, 0.f); break; // karsi tarafa agir bina: egim donmeli
-	case 33: Shot(TEXT("6b_karsi_agirlik")); break;
-	// Gercek fare yolu: imleci bilinen bir yerel noktanin ekran konumuna koy, isin kodu bulsun.
-	case 34: MouseAtLocal(1, FVector(60.f, -190.f, 0.f)); break;          // kameraya yakin, onu bos: beklenen (7,2) seviye 0
-	case 35: LogGhost(TEXT("fare_zemin")); Shot(TEXT("7a_fare_zemin")); break;
-	case 36: MouseAtLocal(1, FVector(225.f, 25.f, 150.f)); break;          // kulenin ustu: (10,6) seviye 3
-	case 37: LogGhost(TEXT("fare_kule_ustu")); Shot(TEXT("7b_fare_kule_ustu")); break;
-	case 38: OnPlace(); break;                                              // sol tik yolu
-	case 39: SLReport(); Shot(TEXT("7c_fare_yerlesti")); break;
-	// Test paneli araclari: canli ayar ve geri alma.
-	case 40: SLKnobs(); SLSet(TEXT("PlatformMass"), TEXT("10")); break;  // CoM = Sum(m*r)/(Sum(m)+10) kuculmeli
-	case 42: OnUndo(); break;                                             // kule tepesindeki kutu gider
-	case 44: Shot(TEXT("8_test_paneli")); break;
-	case 46:
-		GetWorldTimerManager().ClearTimer(SelfTestTimer);
-		UE_LOG(LogSLInput, Log, TEXT("SL_SELFTEST_DONE"));
+		UE_LOG(LogSLInput, Log, TEXT("SL_TESTL1_DONE"));
 		ConsoleCommand(TEXT("quit"));
 		break;
 	default: break;
@@ -354,4 +321,9 @@ void ASLPlayerController::SLReport()
 		P->GetWorldZOfLocal(FVector(H, 0, 0)), P->GetWorldZOfLocal(FVector(-H, 0, 0)),
 		P->GetWorldZOfLocal(FVector(0, H, 0)), P->GetWorldZOfLocal(FVector(0, -H, 0)),
 		Build->PlacedCount, *UEnum::GetValueAsString(P->BalanceState), P->FailTimer);
+	if (const ASLLevelDirector* D = GM->GetDirector())
+	{
+		UE_LOG(LogSLInput, Log, TEXT("SL_TASK %d/%d progress %d/%d complete=%d moving=%d"),
+			D->CurrentTask + 1, D->Tasks.Num(), D->Progress, D->ProgressGoal, D->bLevelComplete ? 1 : 0, Build->IsMoving() ? 1 : 0);
+	}
 }

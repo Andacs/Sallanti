@@ -1,17 +1,18 @@
 #include "SLGameMode.h"
 
 #include "SLCameraPawn.h"
+#include "SLLevelDirector.h"
 #include "SLPlatform.h"
 #include "SLBuildComponent.h"
 #include "SLPlayerController.h"
-#include "SLTestHUD.h"
+#include "SLHUD.h"
 #include "EngineUtils.h"
 
 ASLGameMode::ASLGameMode()
 {
 	DefaultPawnClass = ASLCameraPawn::StaticClass();
 	PlayerControllerClass = ASLPlayerController::StaticClass();
-	HUDClass = ASLTestHUD::StaticClass(); // Yigit'in WBP_HUD'u gelene kadar gelistirici paneli
+	HUDClass = ASLHUD::StaticClass(); // Yigit'in WBP_HUD'u gelene kadar oyun ekrani
 }
 
 ASLPlatform* ASLGameMode::GetPlatform()
@@ -43,8 +44,52 @@ ASLPlatform* ASLGameMode::GetPlatform()
 	return Platform;
 }
 
+void ASLGameMode::StartPlay()
+{
+	Super::StartPlay();
+	GetDirector();
+}
+
+ASLLevelDirector* ASLGameMode::GetDirector()
+{
+	if (Director || !GetWorld())
+	{
+		return Director;
+	}
+	for (TActorIterator<ASLLevelDirector> It(GetWorld()); It; ++It)
+	{
+		Director = *It;
+		return Director;
+	}
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	Director = GetWorld()->SpawnActor<ASLLevelDirector>(ASLLevelDirector::StaticClass(), FTransform::Identity, Params);
+	return Director;
+}
+
+void ASLGameMode::HandleLevelComplete()
+{
+	if (bGameOver)
+	{
+		return;
+	}
+	bLevelComplete = true;
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (ASLPlayerController* PC = Cast<ASLPlayerController>(It->Get()))
+		{
+			PC->Build->DisableBuilding();
+		}
+	}
+	UE_LOG(LogTemp, Log, TEXT("SL_LEVEL_DONE bolum tamamlandi"));
+}
+
 void ASLGameMode::HandleCollapsed()
 {
+	if (bLevelComplete)
+	{
+		return;
+	}
 	bGameOver = true;
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{

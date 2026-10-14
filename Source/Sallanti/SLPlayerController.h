@@ -48,13 +48,10 @@ public:
 	UFUNCTION(Exec)
 	void SLKnobs();
 
-	/** Adim 8 olcumu: uyari -> karsi agirlikla duzelme -> asiri yuk -> devrilme ve kilit. Sonda cikar. */
+	/** 1. bolumu bastan sona oynar: ev + aile, kilitli slot, yanlis AVM -> devriliyor, fareyle tasima ->
+	 *  kurtarma, yollarla baglama -> bolum sonu. Her adimda ekran goruntusu + SL_REPORT. Sonda cikar. */
 	UFUNCTION(Exec)
-	void SLTest8();
-
-	/** Uygulama sirasi 1-6'yi sirayla calistirir; her adimda ekran goruntusu + SL_REPORT. Sonda cikar. */
-	UFUNCTION(Exec)
-	void SLSelfTest();
+	void SLTestLevel1();
 
 protected:
 	virtual void BeginPlay() override;
@@ -77,9 +74,9 @@ private:
 	/** SLSet/SLKnobs'un dolastigi nesneler: platform, BuildComponent, kamera pawn'i. */
 	TArray<UObject*> GetKnobTargets() const;
 
-	void SelfTestStep();
-	void Test8Step();
+	void TestLevel1Step();
 	void MouseAtLocal(int32 Slot, const FVector& Local);
+	void MoveMouseToLocal(const FVector& Local);
 	void LogGhost(const TCHAR* Label);
 	void Shot(const TCHAR* Name);
 

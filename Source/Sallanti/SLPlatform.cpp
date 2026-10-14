@@ -111,9 +111,9 @@ void ASLPlatform::RecomputeCenterOfMass()
 	for (const TWeakObjectPtr<ASLPlaceable>& Weak : Placeables)
 	{
 		const ASLPlaceable* P = Weak.Get();
-		if (!P)
+		if (!P || P->bHeld)
 		{
-			continue; // geri alinmis
+			continue; // geri alinmis ya da oyuncunun elinde: dengeye katilmaz
 		}
 		const FVector Rel = P->GetRootComponent()->GetRelativeLocation();
 		Weighted += P->Mass * FVector2D(Rel.X, Rel.Y);
@@ -130,7 +130,7 @@ int32 ASLPlatform::GetStackLevel(FIntPoint CellMin, FIntPoint Footprint) const
 	for (const TWeakObjectPtr<ASLPlaceable>& Weak : Placeables)
 	{
 		const ASLPlaceable* P = Weak.Get();
-		if (!P || P->GetAttachParentActor() != this)
+		if (!P || P->bHeld || P->GetAttachParentActor() != this)
 		{
 			continue;
 		}
@@ -140,10 +140,43 @@ int32 ASLPlatform::GetStackLevel(FIntPoint CellMin, FIntPoint Footprint) const
 		const bool bOverlapY = CellMin.Y < OMin.Y + OSize.Y && OMin.Y < CellMin.Y + Footprint.Y;
 		if (bOverlapX && bOverlapY)
 		{
-			Level = FMath::Max(Level, P->Level + P->SizeCells.Z);
+			Level = FMath::Max(Level, P->Level + P->GetStackHeight());
 		}
 	}
 	return Level;
+}
+
+bool ASLPlatform::IsAreaFree(FIntPoint CellMin, FIntPoint Footprint, const ASLPlaceable* Ignore) const
+{
+	for (const TWeakObjectPtr<ASLPlaceable>& Weak : Placeables)
+	{
+		const ASLPlaceable* P = Weak.Get();
+		if (!P || P == Ignore || P->bHeld)
+		{
+			continue;
+		}
+		const FIntPoint OMin = P->CellMin;
+		const FIntPoint OSize = P->GetFootprint();
+		if (CellMin.X < OMin.X + OSize.X && OMin.X < CellMin.X + Footprint.X
+			&& CellMin.Y < OMin.Y + OSize.Y && OMin.Y < CellMin.Y + Footprint.Y)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+ASLPlaceable* ASLPlatform::FindPlaceableAt(const FIntPoint& Cell) const
+{
+	for (const TWeakObjectPtr<ASLPlaceable>& Weak : Placeables)
+	{
+		ASLPlaceable* P = Weak.Get();
+		if (P && !P->bHeld && P->CoversCell(Cell))
+		{
+			return P;
+		}
+	}
+	return nullptr;
 }
 
 float ASLPlatform::GetWorldZOfLocal(const FVector& Local) const
@@ -216,7 +249,7 @@ void ASLPlatform::Tick(float DeltaSeconds)
 	if (bDebugDraw)
 	{
 		const FVector ComWorld = TiltPivot->GetComponentTransform().TransformPosition(FVector(CenterOfMass.X, CenterOfMass.Y, 2.f));
-		// Sayilar ASLTestHUD'da; burada sadece CoM'un platformdaki yeri.
+		// Sayilar ASLHUD test panelinde; burada sadece CoM'un platformdaki yeri.
 		DrawDebugSphere(GetWorld(), ComWorld, 12.f, 8, FColor::Magenta, false, -1.f, SDPG_Foreground);
 	}
 #endif

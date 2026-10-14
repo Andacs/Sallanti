@@ -207,6 +207,22 @@ public:
 	/** Ayak izi [Min, Min+Size) hucrelerinin ustundeki en yuksek seviye (hucre cinsinden). */
 	int32 GetStackLevel(FIntPoint CellMin, FIntPoint Footprint) const;
 
+	/** Ayak izindeki hucrelerin hepsi bos mu? Ignore (tasinan nesne) ve elde tutulanlar sayilmaz. */
+	bool IsAreaFree(FIntPoint CellMin, FIntPoint Footprint, const ASLPlaceable* Ignore = nullptr) const;
+
+	/** Hucrede duran (elde olmayan) nesne; yoksa nullptr. */
+	ASLPlaceable* FindPlaceableAt(const FIntPoint& Cell) const;
+
+	/** Yerel XY -> hucre indeksi. */
+	FIntPoint LocalToCell(const FVector2D& Local) const
+	{
+		return FIntPoint(FMath::FloorToInt((Local.X + HalfExtent) / GridSize), FMath::FloorToInt((Local.Y + HalfExtent) / GridSize));
+	}
+
+	/** false = sehir plani: her nesne zemine, bos hucrelere (1. bolum). true = ust uste istif. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Platform")
+	bool bAllowStacking = false;
+
 	/** Debug/olcum: yerel bir noktanin su anki dunya Z'si. */
 	float GetWorldZOfLocal(const FVector& Local) const;
 
