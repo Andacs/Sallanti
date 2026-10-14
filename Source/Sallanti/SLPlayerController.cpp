@@ -248,9 +248,8 @@ void ASLPlayerController::LogGhost(const TCHAR* Label)
 void ASLPlayerController::SLTest8()
 {
 	SelfTestIndex = 0;
-	// Olcum kosullari: sallanma kapali (esik gecisini karistirmasin), platform kutlesi 12.
-	// TiltPerCm 0.08: spec'in 0.04'unde FailTilt 10 icin CoM >= 250 cm gerekiyor, PlatformMass>0 iken
-	// pratikte erisilemiyor (olculdu). Bu deger yalnizca testin; varsayilan degismedi.
+	// Olcum kosullari: sallanma kapali (esik gecisini karistirmasin). Kutle/egim varsayilanlarla ayni,
+	// ama varsayilan degisirse test beklenen sayilari tutsun diye acikca yaziliyor.
 	SLSet(TEXT("SwayAmplitude"), TEXT("0"));
 	SLSet(TEXT("PlatformMass"), TEXT("12"));
 	SLSet(TEXT("TiltPerCm"), TEXT("0.08"));

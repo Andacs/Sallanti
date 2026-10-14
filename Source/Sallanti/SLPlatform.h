@@ -65,17 +65,20 @@ public:
 
 	// --- Denge (09_MEKANIK_SPEC 7. bolum; hepsi baslangic tahmini) ---
 
-	/** Agirlik merkezi ofseti -> egim, derece/cm. */
+	/** Agirlik merkezi ofseti -> egim, derece/cm. Spec 0.04 diyordu; olculdu: PlatformMass>0 iken 0.04'te
+	 *  FailTilt (10) icin CoM'un 250 cm'ye (kenara 50 cm) gelmesi gerekiyor, devrilme pratikte imkansiz.
+	 *  0.08 + PlatformMass 12 ile uyari, kurtarma ve devrilme ucu de oluyor (SLTest8). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Denge")
-	float TiltPerCm = 0.04f;
+	float TiltPerCm = 0.08f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Denge", meta = (Units = "Degrees"))
 	float MaxTilt = 12.f;
 
 	/** Platformun merkezdeki kendi kutlesi: CoM = Sum(m*r) / (PlatformMass + Sum(m)).
-	 *  0 = spec formulu; ilk kutu tek basina tam egim verir. Buyudukce ilk nesneler hafif kalir, yuk birikir. */
+	 *  0 = spec formulu: ilk kutu tek basina tam egim verir, kenardaki tek kutu oyunu bitirir (olculdu).
+	 *  Buyudukce ilk nesneler hafif kalir, yuk birikerek eger. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Denge", meta = (ClampMin = "0"))
-	float PlatformMass = 0.f;
+	float PlatformMass = 12.f;
 
 	/** Hedef egime yaklasma hizi, derece/sn. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Denge")

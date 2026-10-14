@@ -137,7 +137,7 @@ table.matrix td[colspan]{background:var(--chip);text-align:center}
       <ul class="list">
         <li data-id="k-ad" data-t="Oyunun vitrin adı" data-d="Teknik ad Sallanti sabit; ekranda görünen ad ayrı olabilir."></li>
         <li data-id="k-kazan" data-t="Kazanma koşulu seçildi" data-d="TargetObjectCount (12 nesne) ya da SurviveSeconds. İkisinden biri, ikisi birden değil."></li>
-        <li data-id="k-kaybet" data-t="Kaybetme koşulu onaylandı" data-d="Önerilen: eğim FailTilt'i FailSeconds boyunca aşar ya da nesne FailZ altına düşer."></li>
+        <li data-id="k-kaybet" data-t="Kaybetme koşulu onaylandı" data-d="14 Ekim kararı: eğim FailTilt'i (10°) FailSeconds (1,5 sn) boyunca aşarsa platform binalarla birlikte devrilir."></li>
         <li data-id="k-yigit-bp" data-t="Yiğit Blueprint yapabiliyor mu soruldu" data-d="Evetse UI/HUD tamamen Yiğit'e geçer."></li>
         <li data-id="k-devir" data-t="Yerleştirme, environment ve paketleme Yiğit'e devredildi" data-d="Andaç'ta yalnızca mekanik kodu kalır."></li>
         <li data-id="k-isik" data-t="Lighting penceresi kararlaştırıldı" data-d="Önerilen: Mert'e seviye penceresi verilir, o sırada Yiğit .umap'e dokunmaz."></li>
@@ -383,8 +383,8 @@ table.matrix td[colspan]{background:var(--chip);text-align:center}
         <li data-id="u5" data-t="5 · Yerleştirme: nesne doğuyor, bağlanıyor" data-d="Görülen: kule kuruluyor."></li>
         <li data-id="u6" data-t="6 · Ağırlık merkezi → eğim" data-d="KARAR ANI: platform koyduğun yere eğiliyor. Eğlenceli değilse 7–10'a geçmeden pivot."></li>
         <li data-id="u6k" data-t="6 · Karar verildi: mekanik eğlenceli mi?" data-d="Ekip oynadı, evet/hayır yazıldı."></li>
-        <li data-id="u7" data-t="7 · ReleaseTilt → fiziğe bırakma" data-d="Görülen: her şey kayıp düşüyor."></li>
-        <li data-id="u8" data-t="8 · Kaybetme + yeniden başlatma" data-d="Döngü kapandı. Buraya gelindiyse oyun teslim edilebilir."></li>
+        <li data-id="u7" data-t="7 · Uyarı: WarnTilt'te platform kırmızı atar" data-d="Görülen: sınıra yaklaşınca nabız, doğru dizince geçiyor. (Eski adım 7, fiziğe bırakma, 14 Ekim'de kaldırıldı.)"></li>
+        <li data-id="u8" data-t="8 · Devrilme + yeniden başlatma" data-d="FailTilt 1,5 sn aşılınca platform devrilir, oyun biter, Space/F5 tekrar. Buraya gelindiyse oyun teslim edilebilir."></li>
         <li data-id="u9" data-t="9 · Kazanma koşulu + sayaç" data-d="Oyun bitirilebilir."></li>
         <li data-id="u10" data-t="10 · Ses + HUD göstergesi" data-d="Üç kanal tamam."></li>
       </ul>
@@ -424,7 +424,7 @@ table.matrix td[colspan]{background:var(--chip);text-align:center}
       <div class="two">
         <div>
           <h3>Kaybetme</h3>
-          <p>Eğim <code>FailTilt</code>'i <code>FailSeconds</code> boyunca kesintisiz aşarsa yapı devrilir. Ya da bir nesne <code>FailZ</code> altına düşerse. Süre şartı anlık salınımda haksız kaybı önler.</p>
+          <p>Eğim <code>FailTilt</code>'i (10°) <code>FailSeconds</code> (1,5 sn) boyunca kesintisiz aşarsa platform, üstündeki binalarla birlikte devrilir ve oyun biter. O 1,5 saniye kurtarma penceresi: karşı ağırlık koyan oyuncu kurtulur. Karar sallanma hariç eğime bakar; anlık salınımda kaybetmek haksız.</p>
         </div>
         <div>
           <h3>Kazanma</h3>
@@ -440,8 +440,18 @@ table.matrix td[colspan]{background:var(--chip);text-align:center}
 HedefEğim   = clamp(CoM × TiltPerCm, −MaxTilt, +MaxTilt)
 Eğim       → HedefEğim'e TiltSpeed ile yaklaşır
 AmbientSway = sin(t × 2π / SwayPeriod) × SwayAmplitude</pre>
-      <h3>Nesneler eğimde</h3>
-      <p><span class="decision">Seçilen: A.</span> Nesne platforma <code>AttachToComponent</code> ile bağlı, fizik kapalı. Eğim <code>ReleaseTilt</code>'i geçince fizik açılır ve nesne kayıp düşer. Titreme yok, an dramatik. Sürekli simüle fizik (B) ancak A bitip zaman kalırsa.</p>
+      <h3>Binalar sabit, platform devrilir <span class="decision">14 Ekim kararı</span></h3>
+      <p>Binalar platforma bağlı ve fiziksiz; hiç kaymaz, platformla birlikte eğilir. Oyunu okutan şey platformun kendisi:</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Eğim</th><th>Durum</th><th>Oyuncu ne görür</th></tr></thead>
+        <tbody>
+          <tr><td class="n">&lt; 8°</td><td>Dengede</td><td>Karton platform, hafif sallanma</td></tr>
+          <tr><td class="n">8–10°</td><td>Uyarı</td><td>Platform kırmızıya doğru atar, 10°'ye yaklaştıkça hızlanır. Doğru dizince eğim düşer, uyarı geçer</td></tr>
+          <tr><td class="n">&gt; 10°</td><td>Devriliyor</td><td>Hızlı kırmızı nabız ve 1,5 sn'lik geri sayım. Karşı ağırlıkla hâlâ kurtarılabilir</td></tr>
+          <tr><td class="n">1,5 sn sonra</td><td>Devrildi</td><td>Platform binalarla birlikte hızlanarak 45°'ye devrilir, yerleştirme kilitlenir, Space/F5 tekrar</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">Eski plan (nesneler eşikte fiziğe bırakılıp kayar) uygulandı, ekranda görüldü ve ekip kararıyla kaldırıldı. Kod git geçmişinde duruyor.</p>
       <p class="note">Ağırlık merkezi ve eğim yalnızca <code>ASLPlatform</code>'da hesaplanır. HUD, ses, kaybetme kontrolü oradan okur.</p>
     </section>
 
@@ -522,18 +532,17 @@ AmbientSway = sin(t × 2π / SwayPeriod) × SwayAmplitude</pre>
       <div class="tbl"><table>
         <thead><tr><th>Sınıf</th><th>Değer</th><th>Varsayılan</th><th>Ne yapar</th></tr></thead>
         <tbody>
-          <tr><td>Platform</td><td><code>TiltPerCm</code></td><td class="n">0.04 °/cm</td><td>CoM ofseti → eğim</td></tr>
+          <tr><td>Platform</td><td><code>TiltPerCm</code></td><td class="n">0.08 °/cm</td><td>CoM ofseti → eğim. Spec 0.04 diyordu; ölçüldü: 0.04'te devrilme pratikte imkânsız</td></tr>
           <tr><td>Platform</td><td><code>MaxTilt</code></td><td class="n">12°</td><td>Eğim üst sınırı</td></tr>
-          <tr><td>Platform</td><td><code>PlatformMass</code></td><td class="n">0</td><td>Platformun kendi kütlesi. 0'da ilk kutu tek başına tam eğim verir; büyüdükçe yük birikerek eğer</td></tr>
+          <tr><td>Platform</td><td><code>PlatformMass</code></td><td class="n">12</td><td>Platformun kendi kütlesi. 0'da kenara konan tek kutu oyunu bitirir; 12'de yük birikerek eğer</td></tr>
           <tr><td>Platform</td><td><code>TiltSpeed</code></td><td class="n">25 °/sn</td><td>Hedefe yaklaşma hızı</td></tr>
           <tr><td>Platform</td><td><code>SwayAmplitude</code></td><td class="n">1.5°</td><td>Dünya sallanması</td></tr>
           <tr><td>Platform</td><td><code>SwayPeriod</code></td><td class="n">4.0 sn</td><td>Sallanma periyodu</td></tr>
-          <tr><td>Platform</td><td><code>ReleaseTilt</code></td><td class="n">8°</td><td>Fiziğe bırakma eşiği</td></tr>
-          <tr><td>Platform</td><td><code>ReleasedFriction</code></td><td class="n">0.1</td><td>Bırakılanın sürtünmesi; 0.1 ≈ 5,7°'de kayar. Motorun 0.7'si 35° ister, hiçbir şey kaymaz</td></tr>
-          <tr><td>Platform</td><td><code>bReleasedStillWeigh</code></td><td class="n">açık</td><td>Bırakılan nesne platformdayken ağırlık yapar; kaydıkça eğim artar</td></tr>
+          <tr><td>Platform</td><td><code>WarnTilt</code></td><td class="n">8°</td><td>Uyarı eşiği: platform kırmızı atmaya başlar</td></tr>
           <tr><td>Platform</td><td><code>FailTilt</code></td><td class="n">10°</td><td>Kaybetme eşiği</td></tr>
           <tr><td>Platform</td><td><code>FailSeconds</code></td><td class="n">1.5 sn</td><td>Eşiğin kesintisiz süresi</td></tr>
-          <tr><td>Platform</td><td><code>FailZ</code></td><td class="n">−200 cm</td><td>Altı kayıp</td></tr>
+          <tr><td>Platform</td><td><code>CollapseAngle</code></td><td class="n">45°</td><td>Devrilmenin vardığı açı. 75'te platformun altı ekranı kaplıyordu</td></tr>
+          <tr><td>Platform</td><td><code>WarnStrengthMin/Max</code></td><td class="n">0.6 / 0.9</td><td>Kırmızı nabzın gücü, uyarı başında ve sonunda</td></tr>
           <tr><td>Placeable</td><td><code>Mass</code></td><td class="n">1.0</td><td>Dengeye katkı</td></tr>
           <tr><td>Placeable</td><td><code>GridSize</code></td><td class="n">50 cm</td><td>Izgara adımı</td></tr>
           <tr><td>Build</td><td><code>Slots</code></td><td class="n">1·2·8·12</td><td>4 slotun kütlesi: kutu, orta nesne, küçük bina, orta bina (hacimle orantılı)</td></tr>
@@ -551,7 +560,7 @@ AmbientSway = sin(t × 2π / SwayPeriod) × SwayAmplitude</pre>
         <thead><tr><th>Kanal</th><th>Ne yapıyor</th></tr></thead>
         <tbody>
           <tr><td><b>Görsel</b></td><td>Platformun eğilmesi. İzometrikte küçük eğim tek başına fark edilmez</td></tr>
-          <tr><td><b>Nesne durumu</b></td><td><code>ReleaseTilt</code> geçilince kayma/devrilme. En güçlü kanal</td></tr>
+          <tr><td><b>Platform rengi</b></td><td>8°'den sonra kırmızı nabız, sınıra yaklaştıkça hızlanır. Binalar sabit olduğu için en güçlü kanal bu</td></tr>
           <tr><td><b>Ses</b></td><td>Karton gıcırtısı, eğimle yükselir</td></tr>
           <tr><td><b>HUD</b> (bonus)</td><td>Denge çubuğu ya da eğilen ok</td></tr>
         </tbody>

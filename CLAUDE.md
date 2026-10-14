@@ -35,7 +35,7 @@ Bağlayıcı spec'ler: `C:\Dev\JamKit\09_MEKANIK_SPEC.md` (kod), `C:\Dev\JamKit\
 **Bitmeyecekler:** envanter, NPC/AI, ayrı state system, karakter animasyonu, yıkım VFX'i, menü,
 ikinci seviye.
 
-**Kesme sırası:** 1. HUD denge göstergesi (ses + nesne kayması yeter) 2. ses 3. kazanma sayacı
+**Kesme sırası:** 1. HUD denge göstergesi (platformun kırmızı nabzı yeter) 2. ses 3. kazanma sayacı
 (sadece kaybetme + yeniden başlatma kalır)
 
 ---
@@ -133,35 +133,41 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
 
 ## Bilinen durum
 
-**Çalışıyor ve ekranda görüldü:** boş proje paketi (Shipping) açılıyor, `L_Ana` ışık/atmosfer
-görünüyor · temiz klon derleniyor ve editör açılıyor · **uygulama sırası 1–6** (14 Ekim, `SLSelfTest`
-ile ölçüldü ve ekran görüntüsüyle görüldü): izometrik kamera, sallanma, hayalet, ızgara + geçerlilik
-rengi, yerleştirme + istif, CoM → eğim. Gerçek fare ışını da ölçüldü. · **adım 7** (`SLTest7`): eğim
-ReleaseTilt'i geçince bağlı her şey fiziğe bırakılıyor, alçak kenara kayıyor, eğimi artırıp dökülüyor.
+**Tasarım değişikliği (14 Ekim, ekip kararı):** binalar **sabit**, fiziğe bırakılmaz; platformla
+birlikte eğilir. Eğim `WarnTilt`'i (8°) geçince platform kırmızı atar ("DENGE SINIRDA"); doğru dizilirse
+eğim düşer ve uyarı kalkar. `FailTilt` (10°) `FailSeconds` (1,5 sn) kesintisiz aşılırsa platform
+binalarla birlikte `CollapseAngle`'a (45°) devrilir, oyun biter, Space/F5 yeniden başlatır.
+Uyarı/kaybetme kararları **sallanma hariç** eğime bakar. Eski adım 7 (fiziğe bırakma) kaldırıldı,
+`5ec0385`'te duruyor.
 
-**Derlendi, ekranda görülmedi:** —  ← 2'yi geçerse yeni özellik durur
+**Çalışıyor ve ekranda görüldü:** boş proje paketi (Shipping) açılıyor, `L_Ana` ışık/atmosfer
+görünüyor · temiz klon derleniyor ve editör açılıyor · **uygulama sırası 1–6** (`SLSelfTest`):
+izometrik kamera, sallanma, hayalet, ızgara + geçerlilik rengi, yerleştirme + istif, CoM → eğim,
+gerçek fare ışını · **uyarı → kurtarma → devrilme → kilit** (`SLTest8`; sayılar elle hesapla aynı:
+7,78 dengede, 8,29 uyarı, karşı bina 0,28, köşe 10,61, 1,50 sn'de devrildi, sonra yerleştirme kilitli)
+· test paneli, ızgara, geri al, `SLSet`.
+
+**Derlendi, ekranda görülmedi:** Space ile yeniden başlatma, F5, G, H tuşları (kodlu, elle denenmedi)
+← 2'yi geçerse yeni özellik durur
 
 **Bozuk:** —
 
-**Gözlemler (6–7. adım):**
-- Motorun varsayılan sürtünmesi (0,7 → 35°'de kayma) 8–12°'lik platformda hiçbir şeyi kaydırmıyordu.
-  Bırakılan nesnelere `ReleasedFriction` 0,1 (≈5,7°) veriliyor, birleştirme `Min`.
-- Bırakılan nesne yüzeyin üstünde ve kenardan en fazla bir hücre dışarıdaysa ağırlık yapmaya devam eder
-  (`bReleasedStillWeigh`); kaydıkça eğim artar. Merkezi kenarı geçince düşmüş sayınca platform,
-  binalar daha kenardayken düzeliyordu — ölçülüp düzeltildi.
-- `PlatformMass` 0'ken kenara konan tek kutu 9° verir → **ilk kenar yerleşiminde her şey bırakılır.**
-  Bu, kararın en önemli düğmesi.
-- Sallanma ±1,5° ekler: hedef eğim 6,5°'deyken bile sallanma tepesinde bırakma olur.
-- Bırakılmış nesneler ızgara istifine sayılmıyor; üstüne hayalet konursa iç içe doğabilir (adım 8'de bak).
-- Spec formülü CoM = Σ(m·r)/Σm kütleden bağımsız: kenara konan **tek bir kutu** eğimi anında ~9°'ye
-  çıkarıyor. `ASLPlatform::PlatformMass` bunu yumuşatır (0 = spec). Oynayarak dene: 0, 10, 30.
+**Gözlemler:**
+- Varsayılanlar spec'ten ölçülerek değişti: `TiltPerCm` 0,04 → **0,08**, `PlatformMass` 0 → **12**.
+  0,04'te PlatformMass > 0 iken devrilme için CoM'un kenara 50 cm gelmesi gerekiyor (pratikte imkânsız);
+  PlatformMass 0'da kenara konan tek kutu oyunu bitiriyor. 0,08/12 ile uyarı, kurtarma, devrilme üçü de olur.
+- `SLSelfTest`'in (1–6) yorumlarındaki beklenen sayılar eski varsayılanlarla (0,04 / 0) ölçüldü.
+- `CollapseAngle` 75'te kameradan uzağa devrilmede platformun altı ekranı kaplıyordu → 45.
+  Uzağa devrilmede 35°'den sonra alt yüz görünür (kamera eğimi); 45'te binalar yine seçiliyor.
+- Uyarı nabzı ilk sürümde UYARI anında neredeyse görünmüyordu → `WarnStrengthMin` 0,6, nabız yarım genlik.
+- Sallanma ±1,5° görsel; kararları etkilemez.
 - `TiltSpeed` 25 °/sn → eğim 0,4 sn'de oturuyor; "ağır" değil "atik" hissettiriyor.
-- Platform kraft kahvesi değil krem görünüyor (otomatik pozlama); hayaletin yeşili bu yüzden soluk.
-  Mert'in lighting işi — kodla düzeltilmedi.
-- Kamera spec'te 1400 cm'di; ölçüldü, 600 cm'lik platform sığmıyordu → 2200.
+- Platform kraft kahvesi değil krem görünüyor (otomatik pozlama). Mert'in lighting işi.
+- Kamera spec'te 1400 cm'di; 600 cm'lik platform sığmıyordu → 2200.
 
 **Oynamak / ölçmek:** `Build\oyna.bat` (önce `derle.bat`). Ekranda test paneli (`ASLTestHUD`):
-seçili slot, hücre/seviye, geçerli mi, eğim çubuğu (sarı ReleaseTilt, kırmızı FailTilt), CoM.
+seçili slot, hücre/seviye, geçerli mi, eğim çubuğu (sarı WarnTilt, kırmızı FailTilt), durum ve
+devrilme sayacı, CoM. Ortadaki uyarı/devrildi mesajı panel gizliyken de görünür.
 Izgara yerleştirirken görünür.
 
 | Tuş | Ne yapar |
@@ -170,12 +176,13 @@ Izgara yerleştirirken görünür.
 | Sol tık / R / Sağ tık, Esc | Koy / 90° döndür / bırak |
 | Backspace | Son nesneyi geri al |
 | F5 | Baştan (seviyeyi yeniden yükler) |
+| Space | Devrildikten sonra tekrar |
 | G | Izgara hep açık / yalnızca yerleştirirken |
 | H | Test panelini gizle |
 
 Konsol (`~`): `SLKnobs` bütün ayarları listeler, `SLSet <Ad> <Değer>` derlemeden değiştirir
 (`SLSet PlatformMass 10`, `SLSet TiltSpeed 8`, `SLSet Distance 2600`). Kalıcı değildir: beğenilen
-değer koddaki varsayılana ya da Blueprint alt sınıfına yazılır. `SLSelfTest` 1–6.yı, `SLTest7` bırakmayı otomatik ölçer,
+değer koddaki varsayılana ya da Blueprint alt sınıfına yazılır. `SLSelfTest` 1–6.yı, `SLTest8` uyarı/devrilmeyi otomatik ölçer,
 ekran görüntüleri `Saved/Screenshots/WindowsEditor/SL_*.png`; `SLReport` anlık eğim/CoM'u loga yazar.
 
 Spec çakışması: kesme listesi "R ile yeniden başlat" diyor, girdi tablosu R'yi döndürmeye veriyor.
