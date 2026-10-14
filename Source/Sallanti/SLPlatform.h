@@ -7,6 +7,7 @@
 #include "SLPlatform.generated.h"
 
 class ASLPlaceable;
+class UInstancedStaticMeshComponent;
 class UStaticMeshComponent;
 
 UCLASS()
@@ -26,6 +27,26 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sallanti")
 	TObjectPtr<UStaticMeshComponent> Deck;
+
+	/** Izgara cizgileri; TiltPivot'a bagli, platformla birlikte egilir. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sallanti")
+	TObjectPtr<UInstancedStaticMeshComponent> GridLines;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Izgara")
+	FLinearColor GridColor = FLinearColor(0.12f, 0.08f, 0.05f);
+
+	/** Cizgi kalinligi, cm. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Izgara")
+	float GridLineWidth = 1.5f;
+
+	/** true = hep gorunur. false = yalnizca yerlestirirken (BuildComponent acar/kapatir). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Izgara")
+	bool bGridAlwaysVisible = false;
+
+	void SetGridShownForPlacing(bool bPlacing);
+
+	/** Boyut/izgara degerleri canli degistirildiyse (SLSet) gorunumu yeniden kurar. */
+	void RefreshVisuals() { ApplyDeckSize(); BuildGrid(); }
 
 	// --- Denge (09_MEKANIK_SPEC 7. bolum; hepsi baslangic tahmini) ---
 
@@ -94,6 +115,10 @@ public:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
 	float TotalMass = 0.f;
 
+	/** CoM'un istedigi egim (sallanma haric), derece. Mevcut egim buna TiltSpeed ile yaklasir. */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
+	float TargetTiltDegrees = 0.f;
+
 	/** Sallanma haric egim vektoru: yon = inen taraf (yerel XY), boy = derece. */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
 	FVector2D CurrentTilt = FVector2D::ZeroVector;
@@ -119,6 +144,9 @@ public:
 private:
 	void RecomputeCenterOfMass();
 	void ApplyDeckSize();
+	void BuildGrid();
+
+	bool bGridForPlacing = false;
 
 	UPROPERTY(Transient)
 	TArray<TWeakObjectPtr<ASLPlaceable>> Placeables;

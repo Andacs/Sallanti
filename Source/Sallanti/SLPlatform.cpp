@@ -1,7 +1,9 @@
 #include "SLPlatform.h"
 
 #include "SLPlaceable.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/Engine.h"
 #include "Engine/StaticMesh.h"
@@ -36,6 +38,20 @@ ASLPlatform::ASLPlatform()
 	{
 		Deck->SetMaterial(0, CardboardMat.Object);
 	}
+
+	GridLines = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("GridLines"));
+	GridLines->SetupAttachment(TiltPivot);
+	GridLines->SetMobility(EComponentMobility::Movable);
+	GridLines->SetCollisionEnabled(ECollisionEnabled::NoCollision); // isini engellemesin
+	GridLines->SetCastShadow(false);
+	if (CubeMesh.Succeeded())
+	{
+		GridLines->SetStaticMesh(CubeMesh.Object);
+	}
+	if (CardboardMat.Succeeded())
+	{
+		GridLines->SetMaterial(0, CardboardMat.Object);
+	}
 	ApplyDeckSize();
 }
 
@@ -43,6 +59,33 @@ void ASLPlatform::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 	ApplyDeckSize();
+	BuildGrid();
+}
+
+void ASLPlatform::BuildGrid()
+{
+	GridLines->ClearInstances();
+	const int32 N = GetCellCount();
+	const float Len = 2.f * HalfExtent;
+	const float W = GridLineWidth / 100.f;
+	const float H = 0.5f / 100.f; // 0.5 cm yukseklik, yuzeyin 0.25 cm ustunde: z-fighting yok
+	for (int32 I = 0; I <= N; ++I)
+	{
+		const float P = CellToLocal(I);
+		GridLines->AddInstance(FTransform(FQuat::Identity, FVector(P, 0.f, 0.25f), FVector(W, Len / 100.f, H)));
+		GridLines->AddInstance(FTransform(FQuat::Identity, FVector(0.f, P, 0.25f), FVector(Len / 100.f, W, H)));
+	}
+	if (UMaterialInstanceDynamic* MID = GridLines->CreateDynamicMaterialInstance(0))
+	{
+		MID->SetVectorParameterValue(TEXT("Tint"), GridColor);
+	}
+	GridLines->SetVisibility(bGridAlwaysVisible || bGridForPlacing);
+}
+
+void ASLPlatform::SetGridShownForPlacing(bool bPlacing)
+{
+	bGridForPlacing = bPlacing;
+	GridLines->SetVisibility(bGridAlwaysVisible || bGridForPlacing);
 }
 
 void ASLPlatform::ApplyDeckSize()
@@ -119,6 +162,7 @@ void ASLPlatform::Tick(float DeltaSeconds)
 	const FVector2D TargetTilt = ComDist > KINDA_SMALL_NUMBER
 		? (CenterOfMass / ComDist) * FMath::Min(ComDist * TiltPerCm, MaxTilt)
 		: FVector2D::ZeroVector;
+	TargetTiltDegrees = TargetTilt.Size();
 	CurrentTilt = FMath::Vector2DInterpConstantTo(CurrentTilt, TargetTilt, DeltaSeconds, TiltSpeed);
 
 	SwayTime += DeltaSeconds;
@@ -143,13 +187,8 @@ void ASLPlatform::Tick(float DeltaSeconds)
 	if (bDebugDraw)
 	{
 		const FVector ComWorld = TiltPivot->GetComponentTransform().TransformPosition(FVector(CenterOfMass.X, CenterOfMass.Y, 2.f));
+		// Sayilar ASLTestHUD'da; burada sadece CoM'un platformdaki yeri.
 		DrawDebugSphere(GetWorld(), ComWorld, 12.f, 8, FColor::Magenta, false, -1.f, SDPG_Foreground);
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(9001, 0.f, FColor::Yellow, FString::Printf(
-				TEXT("CoM (%.0f, %.0f) cm | kutle %.1f | hedef %.2f deg | egim %.2f deg (sallanma dahil %.2f)"),
-				CenterOfMass.X, CenterOfMass.Y, TotalMass, TargetTilt.Size(), CurrentTilt.Size(), CurrentTiltDegrees));
-		}
 	}
 #endif
 }

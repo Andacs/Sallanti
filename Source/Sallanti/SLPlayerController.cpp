@@ -1,8 +1,10 @@
 #include "SLPlayerController.h"
 
 #include "SLBuildComponent.h"
+#include "SLCameraPawn.h"
 #include "SLGameMode.h"
 #include "SLPlatform.h"
+#include "SLTestHUD.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/GameViewportClient.h"
@@ -63,6 +65,107 @@ void ASLPlayerController::SetupInputComponent()
 	Bind(TEXT("IA_Slot2"), { EKeys::Two }, &ASLPlayerController::OnSlot2);
 	Bind(TEXT("IA_Slot3"), { EKeys::Three }, &ASLPlayerController::OnSlot3);
 	Bind(TEXT("IA_Slot4"), { EKeys::Four }, &ASLPlayerController::OnSlot4);
+	Bind(TEXT("IA_Undo"), { EKeys::BackSpace }, &ASLPlayerController::OnUndo);
+	Bind(TEXT("IA_Restart"), { EKeys::F5 }, &ASLPlayerController::OnRestart);
+	Bind(TEXT("IA_Grid"), { EKeys::G }, &ASLPlayerController::OnToggleGrid);
+	Bind(TEXT("IA_Help"), { EKeys::H }, &ASLPlayerController::OnToggleHelp);
+}
+
+void ASLPlayerController::OnUndo() { Build->UndoLast(); }
+void ASLPlayerController::OnRestart() { RestartLevel(); }
+
+void ASLPlayerController::OnToggleGrid()
+{
+	ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
+	if (ASLPlatform* P = GM ? GM->GetPlatform() : nullptr)
+	{
+		P->bGridAlwaysVisible = !P->bGridAlwaysVisible;
+		P->SetGridShownForPlacing(Build->State != ESLBuildState::Idle);
+	}
+}
+
+void ASLPlayerController::OnToggleHelp()
+{
+	if (ASLTestHUD* HUD = GetHUD<ASLTestHUD>())
+	{
+		HUD->bShowTestPanel = !HUD->bShowTestPanel;
+	}
+}
+
+TArray<UObject*> ASLPlayerController::GetKnobTargets() const
+{
+	TArray<UObject*> Targets;
+	ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
+	if (ASLPlatform* P = GM ? GM->GetPlatform() : nullptr)
+	{
+		Targets.Add(P);
+	}
+	Targets.Add(Build);
+	if (APawn* CamPawn = GetPawn())
+	{
+		Targets.Add(CamPawn);
+	}
+	return Targets;
+}
+
+static bool IsKnob(const FProperty* Prop)
+{
+	return Prop->HasAnyPropertyFlags(CPF_Edit) && !Prop->HasAnyPropertyFlags(CPF_EditConst)
+		&& (Prop->IsA<FFloatProperty>() || Prop->IsA<FDoubleProperty>() || Prop->IsA<FIntProperty>() || Prop->IsA<FBoolProperty>());
+}
+
+void ASLPlayerController::SLSet(const FString& Name, const FString& Value)
+{
+	for (UObject* Target : GetKnobTargets())
+	{
+		FProperty* Prop = FindFProperty<FProperty>(Target->GetClass(), FName(*Name));
+		if (!Prop || !IsKnob(Prop))
+		{
+			continue;
+		}
+		void* Ptr = Prop->ContainerPtrToValuePtr<void>(Target);
+		FString Before;
+		Prop->ExportTextItem_Direct(Before, Ptr, nullptr, Target, PPF_None);
+		if (!Prop->ImportText_Direct(*Value, Ptr, Target, PPF_None))
+		{
+			ClientMessage(FString::Printf(TEXT("SLSet: '%s' %s icin gecerli bir deger degil"), *Value, *Name));
+			return;
+		}
+		FString After;
+		Prop->ExportTextItem_Direct(After, Ptr, nullptr, Target, PPF_None);
+		if (ASLPlatform* P = Cast<ASLPlatform>(Target))
+		{
+			P->RefreshVisuals();
+		}
+		else if (ASLCameraPawn* Cam = Cast<ASLCameraPawn>(Target))
+		{
+			Cam->ApplyCamera();
+		}
+		const FString Msg = FString::Printf(TEXT("SLSet %s.%s: %s -> %s"), *Target->GetClass()->GetName(), *Name, *Before, *After);
+		ClientMessage(Msg);
+		UE_LOG(LogSLInput, Log, TEXT("%s"), *Msg);
+		return;
+	}
+	ClientMessage(FString::Printf(TEXT("SLSet: '%s' diye bir ayar yok. SLKnobs ile listele."), *Name));
+}
+
+void ASLPlayerController::SLKnobs()
+{
+	for (UObject* Target : GetKnobTargets())
+	{
+		for (TFieldIterator<FProperty> It(Target->GetClass()); It; ++It)
+		{
+			if (!IsKnob(*It) || !It->GetOwnerClass()->GetName().StartsWith(TEXT("SL")))
+			{
+				continue; // motorun kendi ayarlarini degil, sadece bizimkileri
+			}
+			FString Val;
+			It->ExportTextItem_Direct(Val, It->ContainerPtrToValuePtr<void>(Target), nullptr, Target, PPF_None);
+			const FString Msg = FString::Printf(TEXT("%s.%s = %s"), *Target->GetClass()->GetName(), *It->GetName(), *Val);
+			ClientMessage(Msg);
+			UE_LOG(LogSLInput, Log, TEXT("SL_KNOB %s"), *Msg);
+		}
+	}
 }
 
 void ASLPlayerController::OnPlace() { Build->TryPlace(); }
@@ -170,7 +273,11 @@ void ASLPlayerController::SelfTestStep()
 	case 37: LogGhost(TEXT("fare_kule_ustu")); Shot(TEXT("7b_fare_kule_ustu")); break;
 	case 38: OnPlace(); break;                                              // sol tik yolu
 	case 39: SLReport(); Shot(TEXT("7c_fare_yerlesti")); break;
-	case 41:
+	// Test paneli araclari: canli ayar ve geri alma.
+	case 40: SLKnobs(); SLSet(TEXT("PlatformMass"), TEXT("10")); break;  // CoM = Sum(m*r)/(Sum(m)+10) kuculmeli
+	case 42: OnUndo(); break;                                             // kule tepesindeki kutu gider
+	case 44: Shot(TEXT("8_test_paneli")); break;
+	case 46:
 		GetWorldTimerManager().ClearTimer(SelfTestTimer);
 		UE_LOG(LogSLInput, Log, TEXT("SL_SELFTEST_DONE"));
 		ConsoleCommand(TEXT("quit"));

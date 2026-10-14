@@ -21,18 +21,19 @@ USLBuildComponent::USLBuildComponent()
 	GhostMaterial = GhostMat.Object;
 
 	// 08_ASSET_SPEC boyut tablosu. Kutle = hacim (modul^3); ilk tahmin, oynayarak ayarlanacak.
-	auto Make = [](int32 X, int32 Y, int32 Z, float Mass, FLinearColor Tint)
+	auto Make = [](const TCHAR* Label, int32 X, int32 Y, int32 Z, float Mass, FLinearColor Tint)
 	{
 		FSLSlot S;
+		S.Label = Label;
 		S.SizeCells = FIntVector(X, Y, Z);
 		S.Mass = Mass;
 		S.Tint = Tint;
 		return S;
 	};
-	Slots.Add(Make(1, 1, 1, 1.f, FLinearColor(0.62f, 0.45f, 0.28f)));  // kutu
-	Slots.Add(Make(1, 1, 2, 2.f, FLinearColor(0.80f, 0.70f, 0.52f)));  // orta nesne
-	Slots.Add(Make(2, 2, 2, 8.f, FLinearColor(0.85f, 0.85f, 0.80f)));  // kucuk bina
-	Slots.Add(Make(2, 2, 3, 12.f, FLinearColor(0.38f, 0.27f, 0.18f))); // orta bina
+	Slots.Add(Make(TEXT("Kutu"), 1, 1, 1, 1.f, FLinearColor(0.62f, 0.45f, 0.28f)));
+	Slots.Add(Make(TEXT("Orta nesne"), 1, 1, 2, 2.f, FLinearColor(0.80f, 0.70f, 0.52f)));
+	Slots.Add(Make(TEXT("Küçük bina"), 2, 2, 2, 8.f, FLinearColor(0.85f, 0.85f, 0.80f)));
+	Slots.Add(Make(TEXT("Orta bina"), 2, 2, 3, 12.f, FLinearColor(0.38f, 0.27f, 0.18f)));
 }
 
 ASLPlatform* USLBuildComponent::GetPlatform() const
@@ -240,6 +241,7 @@ bool USLBuildComponent::TryPlace()
 	P->SetActorRelativeRotation(bGhostRotated ? FRotator(0.f, 90.f, 0.f) : FRotator::ZeroRotator);
 
 	Platform->RegisterPlaceable(P);
+	PlacedStack.Add(P);
 	++PlacedCount;
 	UE_LOG(LogSLBuild, Log, TEXT("SL_PLACE slot=%d cell=(%d,%d) level=%d foot=(%d,%d) mass=%.1f rel=%s"),
 		SelectedSlot, GhostCellMin.X, GhostCellMin.Y, GhostLevel, Foot.X, Foot.Y, P->Mass,
@@ -248,8 +250,29 @@ bool USLBuildComponent::TryPlace()
 	return true;
 }
 
+void USLBuildComponent::UndoLast()
+{
+	while (PlacedStack.Num() > 0)
+	{
+		ASLPlaceable* P = PlacedStack.Pop().Get();
+		if (P)
+		{
+			// Platform zayif isaretci tutuyor; yok olan nesne bir sonraki karede dengeden duser.
+			P->Destroy();
+			PlacedCount = FMath::Max(0, PlacedCount - 1);
+			UE_LOG(LogSLBuild, Log, TEXT("SL_UNDO count=%d"), PlacedCount);
+			break;
+		}
+	}
+	UpdateGhost();
+}
+
 void USLBuildComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	UpdateGhost();
+	if (ASLPlatform* Platform = GetPlatform())
+	{
+		Platform->SetGridShownForPlacing(State != ESLBuildState::Idle);
+	}
 }

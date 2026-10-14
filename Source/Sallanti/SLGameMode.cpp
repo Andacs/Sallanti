@@ -3,12 +3,14 @@
 #include "SLCameraPawn.h"
 #include "SLPlatform.h"
 #include "SLPlayerController.h"
+#include "SLTestHUD.h"
 #include "EngineUtils.h"
 
 ASLGameMode::ASLGameMode()
 {
 	DefaultPawnClass = ASLCameraPawn::StaticClass();
 	PlayerControllerClass = ASLPlayerController::StaticClass();
+	HUDClass = ASLTestHUD::StaticClass(); // Yigit'in WBP_HUD'u gelene kadar gelistirici paneli
 }
 
 ASLPlatform* ASLGameMode::GetPlatform()

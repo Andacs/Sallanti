@@ -24,6 +24,10 @@ struct FSLSlot
 {
 	GENERATED_BODY()
 
+	/** Test ekraninda gorunen ad. Oyuncuya gosterilmez (UI metinsiz). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	FString Label;
+
 	/** Modul cinsinden G x D x Y. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
 	FIntVector SizeCells = FIntVector(1, 1, 1);
@@ -89,6 +93,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Sallanti")
 	bool TryPlace();
 
+	/** Son yerlestirileni kaldirir (test icin). */
+	UFUNCTION(BlueprintCallable, Category = "Sallanti")
+	void UndoLast();
+
 	/** Olcum/test: imlec yerine bu yerel XY'yi kullan. Kapatmak icin ClearAimOverride. */
 	void SetAimOverride(const FVector2D& LocalXY);
 	void ClearAimOverride() { bAimOverride = false; }
@@ -105,6 +113,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<ASLPlaceable> Ghost;
+
+	UPROPERTY(Transient)
+	TArray<TWeakObjectPtr<ASLPlaceable>> PlacedStack;
 
 	FIntPoint GhostCellMin = FIntPoint::ZeroValue;
 	int32 GhostLevel = 0;

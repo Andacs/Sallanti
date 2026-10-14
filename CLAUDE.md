@@ -150,7 +150,25 @@ rengi, yerleştirme + istif, CoM → eğim. Gerçek fare ışını da ölçüld�
   Mert'in lighting işi — kodla düzeltilmedi.
 - Kamera spec'te 1400 cm'di; ölçüldü, 600 cm'lik platform sığmıyordu → 2200.
 
-**Oynamak / ölçmek:** `Build\oyna.bat`. Konsolda (`~`) `SLSelfTest` 1–6'yı otomatik ölçer, ekran
-görüntüleri `Saved/Screenshots/WindowsEditor/SL_*.png`; `SLReport` anlık eğim/CoM'u loga yazar.
+**Oynamak / ölçmek:** `Build\oyna.bat` (önce `derle.bat`). Ekranda test paneli (`ASLTestHUD`):
+seçili slot, hücre/seviye, geçerli mi, eğim çubuğu (sarı ReleaseTilt, kırmızı FailTilt), CoM.
+Izgara yerleştirirken görünür.
+
+| Tuş | Ne yapar |
+|---|---|
+| 1–4 | Kutu · Orta nesne · Küçük bina · Orta bina |
+| Sol tık / R / Sağ tık, Esc | Koy / 90° döndür / bırak |
+| Backspace | Son nesneyi geri al |
+| F5 | Baştan (seviyeyi yeniden yükler) |
+| G | Izgara hep açık / yalnızca yerleştirirken |
+| H | Test panelini gizle |
+
+Konsol (`~`): `SLKnobs` bütün ayarları listeler, `SLSet <Ad> <Değer>` derlemeden değiştirir
+(`SLSet PlatformMass 10`, `SLSet TiltSpeed 8`, `SLSet Distance 2600`). Kalıcı değildir: beğenilen
+değer koddaki varsayılana ya da Blueprint alt sınıfına yazılır. `SLSelfTest` 1–6'yı otomatik ölçer,
+ekran görüntüleri `Saved/Screenshots/WindowsEditor/SL_*.png`; `SLReport` anlık eğim/CoM'u loga yazar.
+
+Spec çakışması: kesme listesi "R ile yeniden başlat" diyor, girdi tablosu R'yi döndürmeye veriyor.
+R döndürme kaldı, yeniden başlatma F5.
 Git Bash'ten UE çalıştırırken `/Game/...` yolu için `MSYS_NO_PATHCONV=1` gerekir — ama bu değişken
 `cmd //c` çağrısını bozar (bat hiç çalışmaz, eski DLL'le test edilir). İkisini aynı komutta kullanma.

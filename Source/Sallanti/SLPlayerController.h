@@ -39,6 +39,15 @@ public:
 	UFUNCTION(Exec)
 	void SLMouse();
 
+	/** Derlemeden ayar: platform, yerlestirme ya da kameradaki EditAnywhere bir degeri degistirir.
+	 *  Ornek: SLSet PlatformMass 10  /  SLSet TiltSpeed 8  /  SLSet Distance 2600 */
+	UFUNCTION(Exec)
+	void SLSet(const FString& Name, const FString& Value);
+
+	/** Degistirilebilir butun sayilari konsola listeler. */
+	UFUNCTION(Exec)
+	void SLKnobs();
+
 	/** Uygulama sirasi 1-6'yi sirayla calistirir; her adimda ekran goruntusu + SL_REPORT. Sonda cikar. */
 	UFUNCTION(Exec)
 	void SLSelfTest();
@@ -55,6 +64,13 @@ private:
 	void OnSlot2();
 	void OnSlot3();
 	void OnSlot4();
+	void OnUndo();
+	void OnRestart();
+	void OnToggleGrid();
+	void OnToggleHelp();
+
+	/** SLSet/SLKnobs'un dolastigi nesneler: platform, BuildComponent, kamera pawn'i. */
+	TArray<UObject*> GetKnobTargets() const;
 
 	void SelfTestStep();
 	void MouseAtLocal(int32 Slot, const FVector& Local);
