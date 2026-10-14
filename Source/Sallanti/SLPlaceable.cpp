@@ -67,6 +67,119 @@ void ASLPlaceable::ApplyVisuals()
 			MID->SetVectorParameterValue(TEXT("Tint"), Tint);
 		}
 	}
+	BuildEntrance();
+}
+
+UStaticMeshComponent* ASLPlaceable::MakePart(const FLinearColor& Color, bool bForGhost)
+{
+	UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+	C->SetStaticMesh(DefaultCube);
+	C->SetMobility(EComponentMobility::Movable);
+	C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	C->SetCastShadow(false);
+	C->SetupAttachment(GetRootComponent());
+	C->RegisterComponent();
+	// Temel materyalden ayri ornek: evin MID'ini vermek ayni MID'i paylastirip evi boyuyordu.
+	UMaterialInterface* BaseMat = Mesh->GetMaterial(0);
+	if (const UMaterialInstanceDynamic* Own = Cast<UMaterialInstanceDynamic>(BaseMat))
+	{
+		BaseMat = Own->Parent;
+	}
+	if (UMaterialInstanceDynamic* PartMID = UMaterialInstanceDynamic::Create(BaseMat, C))
+	{
+		PartMID->SetVectorParameterValue(bForGhost ? TEXT("Color") : TEXT("Tint"), Color);
+		C->SetMaterial(0, PartMID);
+	}
+	return C;
+}
+
+void ASLPlaceable::BuildEntrance()
+{
+	if (!bHasEntrance || !DefaultCube || !GetWorld())
+	{
+		return;
+	}
+	if (DoorMesh)
+	{
+		DoorMesh->DestroyComponent();
+		DoorMesh = nullptr;
+	}
+	for (UStaticMeshComponent* M : EntranceMarks)
+	{
+		if (M)
+		{
+			M->DestroyComponent();
+		}
+	}
+	EntranceMarks.Reset();
+
+	// Kapi yerel +X yuzunde, ortada. Boyut yuze gore: evde 30x55, AVM'de 45x80 civari.
+	const float HalfX = 0.5f * SizeCells.X * GridSize;
+	const float FaceW = SizeCells.Y * GridSize;
+	const float BodyH = SizeCells.Z * GridSize;
+	const float DoorW = FMath::Clamp(FaceW * 0.3f, 25.f, 60.f);
+	const float DoorH = FMath::Min(BodyH * 0.55f, 90.f);
+	DoorMesh = MakePart(bGhost ? FLinearColor(0.f, 0.f, 0.f) : DoorColor, bGhost);
+	DoorMesh->SetRelativeScale3D(FVector(4.f / 100.f, DoorW / 100.f, DoorH / 100.f));
+	DoorMesh->SetRelativeLocation(FVector(HalfX + 1.f, 0.f, 0.5f * DoorH));
+
+	// Kapi onu hucreleri: yuzun ortasi; cift genislikte ortadaki iki hucre.
+	const int32 W = SizeCells.Y;
+	TArray<float> Ys;
+	if (W % 2) { Ys.Add(0.f); } else { Ys.Add(-0.5f * GridSize); Ys.Add(0.5f * GridSize); }
+	for (float Y : Ys)
+	{
+		UStaticMeshComponent* M = MakePart(EntranceMarkColor, false);
+		M->SetRelativeScale3D(FVector(0.7f * GridSize / 100.f, 0.7f * GridSize / 100.f, 0.6f / 100.f));
+		M->SetRelativeLocation(FVector(HalfX + 0.5f * GridSize, Y, 0.4f)); // yuzeyin hemen ustu; yol (4 cm) ortuyor
+		M->SetVisibility(false);
+		EntranceMarks.Add(M);
+	}
+}
+
+void ASLPlaceable::SetEntranceMarkersVisible(bool bVisible)
+{
+	for (UStaticMeshComponent* M : EntranceMarks)
+	{
+		if (M && M->IsVisible() != bVisible)
+		{
+			M->SetVisibility(bVisible);
+		}
+	}
+}
+
+FIntPoint ASLPlaceable::GetFacingDir() const
+{
+	switch (Facing & 3)
+	{
+	case 0: return FIntPoint(1, 0);
+	case 1: return FIntPoint(0, 1);
+	case 2: return FIntPoint(-1, 0);
+	default: return FIntPoint(0, -1);
+	}
+}
+
+TArray<FIntPoint> ASLPlaceable::GetEntranceCells() const
+{
+	TArray<FIntPoint> Out;
+	if (!bHasEntrance)
+	{
+		return Out;
+	}
+	const FIntPoint F = GetFootprint();
+	const FIntPoint D = GetFacingDir();
+	// Kapinin yuzu boyunca genislik ve o yuzun ortasindaki hucre(ler).
+	const int32 W = D.X != 0 ? F.Y : F.X;
+	TArray<int32> Mid;
+	if (W % 2) { Mid.Add(W / 2); } else { Mid.Add(W / 2 - 1); Mid.Add(W / 2); }
+	for (int32 M : Mid)
+	{
+		if (D.X > 0)      Out.Add(FIntPoint(CellMin.X + F.X, CellMin.Y + M));
+		else if (D.X < 0) Out.Add(FIntPoint(CellMin.X - 1, CellMin.Y + M));
+		else if (D.Y > 0) Out.Add(FIntPoint(CellMin.X + M, CellMin.Y + F.Y));
+		else              Out.Add(FIntPoint(CellMin.X + M, CellMin.Y - 1));
+	}
+	return Out;
 }
 
 void ASLPlaceable::MakeGhost(UMaterialInterface* GhostMaterial)
@@ -110,14 +223,26 @@ void ASLPlaceable::StartResidentsArrival(const FVector& StartPlatformLocal)
 	// Baslangic noktasi bina yereline: bina tasinsa da aile onunla gider.
 	const FTransform Rel = GetRootComponent()->GetRelativeTransform();
 	const FVector Start = Rel.InverseTransformPosition(StartPlatformLocal);
+	// Hedef: kapinin (yerel +X yuzu) 30 cm onu. Kapisiz binada aileye en yakin yuz.
 	const FVector2D Dir2 = FVector2D(Start.X, Start.Y).GetSafeNormal();
-	const FIntPoint F(SizeCells.X, SizeCells.Y); // bina yerelinde donmesiz ayak izi
-	// Kapi: binanin aileye bakan yuzu, 30 cm onu.
-	const float HalfX = 0.5f * F.X * GridSize, HalfY = 0.5f * F.Y * GridSize;
-	const FVector Door = FMath::Abs(Dir2.X) >= FMath::Abs(Dir2.Y)
-		? FVector(FMath::Sign(Dir2.X) * (HalfX + 30.f), 0.f, 0.f)
-		: FVector(0.f, FMath::Sign(Dir2.Y) * (HalfY + 30.f), 0.f);
+	const float HalfX = 0.5f * SizeCells.X * GridSize, HalfY = 0.5f * SizeCells.Y * GridSize;
+	const FVector Door = bHasEntrance ? FVector(HalfX + 30.f, 0.f, 0.f)
+		: FMath::Abs(Dir2.X) >= FMath::Abs(Dir2.Y)
+			? FVector(FMath::Sign(Dir2.X) * (HalfX + 30.f), 0.f, 0.f)
+			: FVector(0.f, FMath::Sign(Dir2.Y) * (HalfY + 30.f), 0.f);
 	const FVector Side = FVector::CrossProduct(FVector::UpVector, Door.GetSafeNormal());
+
+	// Yol: kapi aileye donukse dosdogru; degilse once yan sokaga (bina yan yuzunden 60 cm), sonra kapinin
+	// onune, sonra kapiya. Boylece aile binanin icinden yurumez. (Kapisiz binada hep dosdogru.)
+	ResidentPath.Reset();
+	if (bHasEntrance && Start.X < HalfX + 30.f)
+	{
+		const float S = Start.Y >= 0.f ? 1.f : -1.f;
+		const float Lane = S * FMath::Max(FMath::Abs(Start.Y), HalfY + 60.f);
+		ResidentPath.Add(FVector(Start.X, Lane, 0.f));
+		ResidentPath.Add(FVector(HalfX + 60.f, Lane, 0.f));
+	}
+	ResidentPath.Add(Door);
 
 	// Figurlere evin MID'i verilirse motor yeni ornek acmiyor, ayni MID'i paylastiriyor: figuru boyamak
 	// evi de boyuyordu (ekranda goruldu, ev mavi). Temel materyalden ayri ornek ac.
@@ -145,10 +270,11 @@ void ASLPlaceable::StartResidentsArrival(const FVector& StartPlatformLocal)
 			C->SetMaterial(0, RMID);
 		}
 		ResidentMeshes.Add(C);
-		ResidentTargets.Add(Door + Side * Spread + FVector(0.f, 0.f, 0.5f * H));
+		ResidentOffsets.Add(Side * Spread + FVector(0.f, 0.f, 0.5f * H));
+		ResidentStep.Add(0);
 	}
 	SetActorTickEnabled(true);
-	UE_LOG(LogSLPlaceable, Log, TEXT("SL_FAMILY %s: %d kisi yola cikti, kapi %s"), *TypeId.ToString(), Residents, *Door.ToString());
+	UE_LOG(LogSLPlaceable, Log, TEXT("SL_FAMILY %s: %d kisi yola cikti, kapi %s, %d durak"), *TypeId.ToString(), Residents, *Door.ToString(), ResidentPath.Num());
 }
 
 void ASLPlaceable::Tick(float DeltaSeconds)
@@ -167,16 +293,20 @@ void ASLPlaceable::Tick(float DeltaSeconds)
 		{
 			continue;
 		}
-		const FVector Cur = C->GetRelativeLocation();
-		const FVector Next = FMath::VInterpConstantTo(Cur, ResidentTargets[I], DeltaSeconds, ResidentWalkSpeed);
+		const FVector Target = ResidentPath[ResidentStep[I]] + ResidentOffsets[I];
+		const FVector Next = FMath::VInterpConstantTo(C->GetRelativeLocation(), Target, DeltaSeconds, ResidentWalkSpeed);
 		C->SetRelativeLocation(Next);
-		if (FVector::DistSquared(Next, ResidentTargets[I]) < 1.f)
+		bAll = false;
+		if (FVector::DistSquared(Next, Target) < 1.f)
 		{
-			C->SetVisibility(false); // kapiya vardi: eve girdi (gizle, sifira olcekleme)
-		}
-		else
-		{
-			bAll = false;
+			if (ResidentStep[I] + 1 < ResidentPath.Num())
+			{
+				++ResidentStep[I]; // sonraki durak
+			}
+			else
+			{
+				C->SetVisibility(false); // kapiya vardi: eve girdi (gizle, sifira olcekleme)
+			}
 		}
 	}
 	if (bAll)

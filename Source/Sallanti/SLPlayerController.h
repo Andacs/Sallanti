@@ -59,8 +59,12 @@ protected:
 
 private:
 	void OnPlace();
+	void OnPlaceReleased();
+	void OnZoom(const struct FInputActionValue& Value);
+	void OnToggleDrawer();
 	void OnCancel();
 	void OnRotate();
+	void OnRotateBack();
 	void OnSlot1();
 	void OnSlot2();
 	void OnSlot3();
@@ -77,6 +81,7 @@ private:
 	void TestLevel1Step();
 	void MouseAtLocal(int32 Slot, const FVector& Local);
 	void MoveMouseToLocal(const FVector& Local);
+	void MoveMouseToScreen(const FVector2D& Screen);
 	void LogGhost(const TCHAR* Label);
 	void Shot(const TCHAR* Name);
 

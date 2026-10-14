@@ -223,6 +223,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Platform")
 	bool bAllowStacking = false;
 
+	/** Tahmin: ExtraMass kutlesinde bir nesne yerel ExtraLocal'e konursa hedef egim (derece, sallanma haric).
+	 *  Elde tutulan nesne zaten dengede degil. "Buraya koyarsan devrilir" uyarisi ve denge barindaki
+	 *  tahmin isareti bunu okur; CoM'u tek yerde hesaplama kurali bozulmasin diye ayni formul burada. */
+	float PredictTiltDegrees(float ExtraMass, const FVector2D& ExtraLocal) const;
+
+	/** Platformun CoM yonunde inen tarafi, ekran diliyle (sag/sol/on/arka). Kamera yaw'i verilir. */
+	FString DescribeLeanSide(float CameraYawDeg) const;
+
 	/** Debug/olcum: yerel bir noktanin su anki dunya Z'si. */
 	float GetWorldZOfLocal(const FVector& Local) const;
 

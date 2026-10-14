@@ -4,7 +4,7 @@
 
 ASLCameraPawn::ASLCameraPawn()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
@@ -28,7 +28,24 @@ void ASLCameraPawn::OnConstruction(const FTransform& Transform)
 void ASLCameraPawn::BeginPlay()
 {
 	Super::BeginPlay();
+	TargetDistance = FMath::Clamp(Distance, ZoomMin, ZoomMax);
 	ApplyCamera();
+}
+
+void ASLCameraPawn::Zoom(float Ticks)
+{
+	// Carpimsal adim: her tik uzakligin sabit bir orani, yakin ve uzakta ayni "his".
+	TargetDistance = FMath::Clamp(TargetDistance * FMath::Pow(1.f - ZoomStepFraction, Ticks), ZoomMin, ZoomMax);
+}
+
+void ASLCameraPawn::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	if (!FMath::IsNearlyEqual(Distance, TargetDistance, 0.5f))
+	{
+		Distance = FMath::FInterpTo(Distance, TargetDistance, DeltaSeconds, ZoomInterpSpeed);
+		ApplyCamera();
+	}
 }
 
 void ASLCameraPawn::ApplyCamera()

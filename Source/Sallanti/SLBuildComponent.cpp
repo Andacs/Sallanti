@@ -33,9 +33,14 @@ USLBuildComponent::USLBuildComponent()
 	};
 	FSLSlot Ev = Make(TEXT("Ev"), TEXT("Ev"), 2, 2, 2, 8.f, FLinearColor(0.80f, 0.55f, 0.35f));          // kucuk bina
 	Ev.Residents = 3;
+	Ev.bHasEntrance = true;
 	Slots.Add(Ev);
-	Slots.Add(Make(TEXT("Hastane"), TEXT("Hastane"), 2, 2, 3, 12.f, FLinearColor(0.92f, 0.92f, 0.88f))); // orta bina
-	Slots.Add(Make(TEXT("AVM"), TEXT("AVM"), 3, 3, 4, 36.f, FLinearColor(0.40f, 0.30f, 0.22f)));         // buyuk bina
+	FSLSlot Hastane = Make(TEXT("Hastane"), TEXT("Hastane"), 2, 2, 3, 12.f, FLinearColor(0.92f, 0.92f, 0.88f)); // orta bina
+	Hastane.bHasEntrance = true;
+	Slots.Add(Hastane);
+	FSLSlot Avm = Make(TEXT("AVM"), TEXT("AVM"), 3, 3, 4, 36.f, FLinearColor(0.40f, 0.30f, 0.22f));             // buyuk bina
+	Avm.bHasEntrance = true;
+	Slots.Add(Avm);
 	FSLSlot Yol = Make(TEXT("Yol"), TEXT("Yol"), 1, 1, 1, 0.5f, FLinearColor(0.25f, 0.22f, 0.20f));
 	Yol.bFlat = true;
 	Slots.Add(Yol);
@@ -55,6 +60,7 @@ void USLBuildComponent::ConfigurePlaceable(ASLPlaceable* P, const FSLSlot& Slot)
 	P->Tint = Slot.Tint;
 	P->bFlat = Slot.bFlat;
 	P->Residents = Slot.Residents;
+	P->bHasEntrance = Slot.bHasEntrance;
 	P->DisplayMesh = Slot.Mesh;
 	if (const ASLPlatform* Platform = GetPlatform())
 	{
@@ -91,6 +97,7 @@ void USLBuildComponent::SpawnGhostFor(const FSLSlot& Slot)
 	{
 		ConfigurePlaceable(Ghost, Slot);
 		Ghost->MakeGhost(GhostMaterial);
+		Ghost->SetEntranceMarkersVisible(true); // yolun nereye gelecegi koymadan once gorunsun
 	}
 }
 
@@ -102,7 +109,7 @@ void USLBuildComponent::SelectSlot(int32 Index)
 	}
 	Cancel(); // tasima yapiliyorduysa nesne yerine doner
 	SelectedSlot = Index;
-	bGhostRotated = false;
+	GhostFacing = DefaultFacing & 3;
 	SpawnGhostFor(Slots[Index]);
 	State = ESLBuildState::Blocked;
 	UpdateGhost();
@@ -114,7 +121,7 @@ void USLBuildComponent::Cancel()
 	if (Moving)
 	{
 		// Tasima iptal: nesne eski yerine, eski agirligiyla.
-		PutAt(Moving, MovingOrigCell, MovingOrigLevel, bMovingOrigRotated);
+		PutAt(Moving, MovingOrigCell, MovingOrigLevel, MovingOrigFacing);
 		Moving->SetHeld(false);
 		UE_LOG(LogSLBuild, Log, TEXT("SL_MOVE_CANCEL %s eski yerine (%d,%d)"), *Moving->TypeId.ToString(), MovingOrigCell.X, MovingOrigCell.Y);
 		Moving = nullptr;
@@ -123,12 +130,31 @@ void USLBuildComponent::Cancel()
 	State = ESLBuildState::Idle;
 }
 
-void USLBuildComponent::RotateGhost()
+void USLBuildComponent::RotateGhost(int32 Steps)
 {
 	if (Ghost)
 	{
-		bGhostRotated = !bGhostRotated;
-		UpdateGhost();
+		SetFacing(GhostFacing + Steps);
+	}
+}
+
+void USLBuildComponent::SetFacing(int32 InFacing)
+{
+	GhostFacing = ((InFacing % 4) + 4) % 4;
+	UpdateGhost();
+}
+
+void USLBuildComponent::ShowEntranceMarkers(bool bShow) const
+{
+	if (const ASLPlatform* Platform = GetPlatform())
+	{
+		for (const TWeakObjectPtr<ASLPlaceable>& Weak : Platform->GetPlaceables())
+		{
+			if (ASLPlaceable* P = Weak.Get())
+			{
+				P->SetEntranceMarkersVisible(bShow && !P->bHeld);
+			}
+		}
 	}
 }
 
@@ -216,7 +242,7 @@ void USLBuildComponent::UpdateGhost()
 		return;
 	}
 	Ghost->SetActorHiddenInGame(false);
-	Ghost->bRotated = bGhostRotated;
+	Ghost->Facing = GhostFacing;
 
 	// Izgaraya yapisma: ayak izinin merkezi imlece en yakin hucre kosesine oturur.
 	const float G = Platform->GridSize;
@@ -231,6 +257,7 @@ void USLBuildComponent::UpdateGhost()
 	BlockedReason = bInside ? TEXT("") : TEXT("kenardan taşıyor ya da dışarıda");
 	GhostCellMin = CellMin;
 	GhostLevel = 0;
+	Ghost->CellMin = CellMin; // kapi onu hucreleri (ipucu) hayaletten okunsun
 
 	if (bInside)
 	{
@@ -250,15 +277,22 @@ void USLBuildComponent::UpdateGhost()
 		Platform->CellToLocal(CellMin.X + 0.5f * Foot.X),
 		Platform->CellToLocal(CellMin.Y + 0.5f * Foot.Y),
 		GhostLevel * G);
-	const FQuat LocalRot = bGhostRotated ? FQuat(FVector::UpVector, UE_HALF_PI) : FQuat::Identity;
+	GhostCenterLocal = FVector2D(LocalCenter.X, LocalCenter.Y);
+	const FQuat LocalRot(FVector::UpVector, GhostFacing * UE_HALF_PI);
 	const FTransform LocalXf(LocalRot, LocalCenter);
 	Ghost->SetActorTransform(LocalXf * Platform->TiltPivot->GetComponentTransform());
 
 	State = bValid ? ESLBuildState::Placing : ESLBuildState::Blocked;
-	Ghost->SetGhostColor(bValid ? ValidColor : BlockedColor, GhostOpacity);
+	FLinearColor Color = bValid ? ValidColor : BlockedColor;
+	if (bValid)
+	{
+		const float Pred = Platform->PredictTiltDegrees(Ghost->Mass, GhostCenterLocal);
+		Color = Pred >= Platform->FailTilt ? DangerColor : Pred >= Platform->WarnTilt ? RiskyColor : ValidColor;
+	}
+	Ghost->SetGhostColor(Color, GhostOpacity);
 }
 
-void USLBuildComponent::PutAt(ASLPlaceable* P, FIntPoint Cell, int32 Level, bool bRot) const
+void USLBuildComponent::PutAt(ASLPlaceable* P, FIntPoint Cell, int32 Level, int32 InFacing) const
 {
 	const ASLPlatform* Platform = GetPlatform();
 	if (!P || !Platform)
@@ -267,14 +301,14 @@ void USLBuildComponent::PutAt(ASLPlaceable* P, FIntPoint Cell, int32 Level, bool
 	}
 	P->CellMin = Cell;
 	P->Level = Level;
-	P->bRotated = bRot;
+	P->Facing = InFacing & 3;
 	const FIntPoint Foot = P->GetFootprint();
 	// Dunya donusumunden geri hesaplanan yerel konum yuvarlama tasiyabilir: tam degeri yaz.
 	P->SetActorRelativeLocation(FVector(
 		Platform->CellToLocal(Cell.X + 0.5f * Foot.X),
 		Platform->CellToLocal(Cell.Y + 0.5f * Foot.Y),
 		Level * Platform->GridSize));
-	P->SetActorRelativeRotation(bRot ? FRotator(0.f, 90.f, 0.f) : FRotator::ZeroRotator);
+	P->SetActorRelativeRotation(FRotator(0.f, 90.f * P->Facing, 0.f));
 }
 
 bool USLBuildComponent::TryPlace()
@@ -295,12 +329,12 @@ bool USLBuildComponent::TryPlace()
 		// Tasima: ayni nesne yeni yerinde; yeni dogma yok, aile ve gorev durumu korunur.
 		ASLPlaceable* P = Moving;
 		Moving = nullptr;
-		PutAt(P, GhostCellMin, GhostLevel, bGhostRotated);
+		PutAt(P, GhostCellMin, GhostLevel, GhostFacing);
 		P->SetHeld(false);
 		DestroyGhost();
 		State = ESLBuildState::Idle;
-		UE_LOG(LogSLBuild, Log, TEXT("SL_MOVE %s (%d,%d) -> (%d,%d)"), *P->TypeId.ToString(),
-			MovingOrigCell.X, MovingOrigCell.Y, GhostCellMin.X, GhostCellMin.Y);
+		UE_LOG(LogSLBuild, Log, TEXT("SL_MOVE %s (%d,%d) yon %d -> (%d,%d) yon %d"), *P->TypeId.ToString(),
+			MovingOrigCell.X, MovingOrigCell.Y, MovingOrigFacing, GhostCellMin.X, GhostCellMin.Y, GhostFacing);
 		return true;
 	}
 
@@ -317,14 +351,19 @@ bool USLBuildComponent::TryPlace()
 	}
 	ConfigurePlaceable(P, Slots[SelectedSlot]);
 	P->AttachToComponent(Platform->TiltPivot, FAttachmentTransformRules::KeepWorldTransform);
-	PutAt(P, GhostCellMin, GhostLevel, bGhostRotated);
+	PutAt(P, GhostCellMin, GhostLevel, GhostFacing);
 
 	Platform->RegisterPlaceable(P);
 	PlacedStack.Add(P);
 	++PlacedCount;
-	UE_LOG(LogSLBuild, Log, TEXT("SL_PLACE %s cell=(%d,%d) level=%d foot=(%d,%d) mass=%.1f rel=%s"),
+	FString Ent;
+	for (const FIntPoint& E : P->GetEntranceCells())
+	{
+		Ent += FString::Printf(TEXT("(%d,%d)"), E.X, E.Y);
+	}
+	UE_LOG(LogSLBuild, Log, TEXT("SL_PLACE %s cell=(%d,%d) level=%d foot=(%d,%d) yon=%d giris=%s mass=%.1f rel=%s"),
 		*P->TypeId.ToString(), GhostCellMin.X, GhostCellMin.Y, GhostLevel, P->GetFootprint().X, P->GetFootprint().Y,
-		P->Mass, *P->GetRootComponent()->GetRelativeLocation().ToString());
+		P->Facing, Ent.IsEmpty() ? TEXT("-") : *Ent, P->Mass, *P->GetRootComponent()->GetRelativeLocation().ToString());
 	UpdateGhost();
 	return true;
 }
@@ -344,14 +383,15 @@ bool USLBuildComponent::PickUp(ASLPlaceable* Target)
 	Moving = Target;
 	MovingOrigCell = Target->CellMin;
 	MovingOrigLevel = Target->Level;
-	bMovingOrigRotated = Target->bRotated;
-	bGhostRotated = Target->bRotated;
+	MovingOrigFacing = Target->Facing;
+	GhostFacing = Target->Facing;
 	Target->SetHeld(true); // agirligi bu kareden itibaren dengeden cikar
 
 	const int32 SlotIdx = FindSlotById(Target->TypeId);
 	FSLSlot Shape = Slots.IsValidIndex(SlotIdx) ? Slots[SlotIdx] : FSLSlot();
 	Shape.SizeCells = Target->SizeCells;
 	Shape.bFlat = Target->bFlat;
+	Shape.bHasEntrance = Target->bHasEntrance;
 	SpawnGhostFor(Shape);
 	State = ESLBuildState::Blocked;
 	UE_LOG(LogSLBuild, Log, TEXT("SL_PICKUP %s (%d,%d)"), *Target->TypeId.ToString(), MovingOrigCell.X, MovingOrigCell.Y);
@@ -414,5 +454,12 @@ void USLBuildComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 	if (ASLPlatform* Platform = GetPlatform())
 	{
 		Platform->SetGridShownForPlacing(State != ESLBuildState::Idle);
+	}
+	// Yerlestirirken her binanin kapi onu gorunsun: yol nereye gelmeli, kapinin onu kapanmasin.
+	const bool bPlacing = State != ESLBuildState::Idle;
+	if (bPlacing || bPlacing != bMarkersShown)
+	{
+		ShowEntranceMarkers(bPlacing); // yerlestirirken her kare: yeni konan binalar da
+		bMarkersShown = bPlacing;
 	}
 }

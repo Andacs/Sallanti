@@ -179,6 +179,35 @@ ASLPlaceable* ASLPlatform::FindPlaceableAt(const FIntPoint& Cell) const
 	return nullptr;
 }
 
+float ASLPlatform::PredictTiltDegrees(float ExtraMass, const FVector2D& ExtraLocal) const
+{
+	FVector2D Weighted = CenterOfMass * (TotalMass + PlatformMass); // = Sum(m*r)
+	Weighted += ExtraMass * ExtraLocal;
+	const float Denominator = TotalMass + ExtraMass + PlatformMass;
+	const FVector2D Com = Denominator > KINDA_SMALL_NUMBER ? Weighted / Denominator : FVector2D::ZeroVector;
+	return FMath::Min(Com.Size() * TiltPerCm, MaxTilt);
+}
+
+FString ASLPlatform::DescribeLeanSide(float CameraYawDeg) const
+{
+	if (CenterOfMass.SizeSquared() < 1.f)
+	{
+		return FString();
+	}
+	// Yerel CoM yonu -> dunya (platform kokunun yaw'i dahil) -> kamera eksenlerine izdusum.
+	const FVector World = GetActorTransform().TransformVectorNoScale(FVector(CenterOfMass.X, CenterOfMass.Y, 0.f));
+	const float Yaw = FMath::DegreesToRadians(CameraYawDeg);
+	const FVector2D Fwd(FMath::Cos(Yaw), FMath::Sin(Yaw));   // ekranin "ileri"si (arka taraf)
+	const FVector2D Right(-FMath::Sin(Yaw), FMath::Cos(Yaw)); // ekranin sagi
+	const float F = World.X * Fwd.X + World.Y * Fwd.Y;
+	const float R = World.X * Right.X + World.Y * Right.Y;
+	if (FMath::Abs(R) >= FMath::Abs(F))
+	{
+		return R > 0.f ? TEXT("sağa") : TEXT("sola");
+	}
+	return F > 0.f ? TEXT("arkaya") : TEXT("öne");
+}
+
 float ASLPlatform::GetWorldZOfLocal(const FVector& Local) const
 {
 	return TiltPivot->GetComponentTransform().TransformPosition(Local).Z;

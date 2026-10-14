@@ -13,6 +13,7 @@
 #include "TimerManager.h"
 #include "UnrealClient.h"
 #include "InputAction.h"
+#include "InputActionValue.h"
 #include "InputMappingContext.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSLInput, Log, All);
@@ -50,7 +51,7 @@ void ASLPlayerController::SetupInputComponent()
 		return;
 	}
 
-	auto Bind = [this, EIC](const TCHAR* Name, std::initializer_list<FKey> Keys, void (ASLPlayerController::*Handler)())
+	auto Bind = [this, EIC](const TCHAR* Name, std::initializer_list<FKey> Keys, void (ASLPlayerController::*Handler)()) -> UInputAction*
 	{
 		UInputAction* Action = NewObject<UInputAction>(this, Name);
 		for (const FKey& Key : Keys)
@@ -58,10 +59,21 @@ void ASLPlayerController::SetupInputComponent()
 			Mapping->MapKey(Action, Key);
 		}
 		EIC->BindAction(Action, ETriggerEvent::Started, this, Handler);
+		return Action;
 	};
-	Bind(TEXT("IA_Place"), { EKeys::LeftMouseButton }, &ASLPlayerController::OnPlace);
+	UInputAction* PlaceAction = Bind(TEXT("IA_Place"), { EKeys::LeftMouseButton }, &ASLPlayerController::OnPlace);
+	// Ayni eylemin birakilisi: cekmece surukleme biter.
+	EIC->BindAction(PlaceAction, ETriggerEvent::Completed, this, &ASLPlayerController::OnPlaceReleased);
+	Bind(TEXT("IA_Drawer"), { EKeys::Tab }, &ASLPlayerController::OnToggleDrawer);
+
+	// Tekerlek: eksen eylemi (deger = tik, + ileri).
+	UInputAction* ZoomAction = NewObject<UInputAction>(this, TEXT("IA_Zoom"));
+	ZoomAction->ValueType = EInputActionValueType::Axis1D;
+	Mapping->MapKey(ZoomAction, EKeys::MouseWheelAxis);
+	EIC->BindAction(ZoomAction, ETriggerEvent::Triggered, this, &ASLPlayerController::OnZoom);
 	Bind(TEXT("IA_Cancel"), { EKeys::RightMouseButton, EKeys::Escape }, &ASLPlayerController::OnCancel);
 	Bind(TEXT("IA_Rotate"), { EKeys::R }, &ASLPlayerController::OnRotate);
+	Bind(TEXT("IA_RotateBack"), { EKeys::Q }, &ASLPlayerController::OnRotateBack);
 	Bind(TEXT("IA_Slot1"), { EKeys::One }, &ASLPlayerController::OnSlot1);
 	Bind(TEXT("IA_Slot2"), { EKeys::Two }, &ASLPlayerController::OnSlot2);
 	Bind(TEXT("IA_Slot3"), { EKeys::Three }, &ASLPlayerController::OnSlot3);
@@ -151,6 +163,7 @@ void ASLPlayerController::SLSet(const FString& Name, const FString& Value)
 		}
 		else if (ASLCameraPawn* Cam = Cast<ASLCameraPawn>(Target))
 		{
+			Cam->SetTargetDistance(Cam->Distance); // Distance degistiyse yumusatma geri cekmesin
 			Cam->ApplyCamera();
 		}
 		const FString Msg = FString::Printf(TEXT("SLSet %s.%s: %s -> %s"), *Target->GetClass()->GetName(), *Name, *Before, *After);
@@ -180,8 +193,43 @@ void ASLPlayerController::SLKnobs()
 	}
 }
 
+void ASLPlayerController::OnPlaceReleased()
+{
+	float MX = 0.f, MY = 0.f;
+	GetMousePosition(MX, MY);
+	if (ASLHUD* HUD = GetHUD<ASLHUD>())
+	{
+		HUD->HandleMouseUp(FVector2D(MX, MY));
+	}
+}
+
+void ASLPlayerController::OnZoom(const FInputActionValue& Value)
+{
+	if (ASLCameraPawn* Cam = Cast<ASLCameraPawn>(GetPawn()))
+	{
+		Cam->Zoom(Value.Get<float>());
+	}
+}
+
+void ASLPlayerController::OnToggleDrawer()
+{
+	if (ASLHUD* HUD = GetHUD<ASLHUD>())
+	{
+		HUD->ToggleDrawer();
+	}
+}
+
 void ASLPlayerController::OnPlace()
 {
+	// Once arayuz: cekmece ve kulpu tiklamayi yakalar, oyuna gecmez.
+	float MX = 0.f, MY = 0.f;
+	if (GetMousePosition(MX, MY))
+	{
+		if (ASLHUD* HUD = GetHUD<ASLHUD>(); HUD && HUD->HandleMouseDown(FVector2D(MX, MY)))
+		{
+			return;
+		}
+	}
 	// Elde bir sey yoksa sol tik tasima baslatir: tiklanan nesne kaldirilir.
 	if (Build->State == ESLBuildState::Idle && !Build->IsMoving())
 	{
@@ -191,7 +239,8 @@ void ASLPlayerController::OnPlace()
 	Build->TryPlace();
 }
 void ASLPlayerController::OnCancel() { Build->Cancel(); }
-void ASLPlayerController::OnRotate() { Build->RotateGhost(); }
+void ASLPlayerController::OnRotate() { Build->RotateGhost(1); }
+void ASLPlayerController::OnRotateBack() { Build->RotateGhost(-1); }
 void ASLPlayerController::OnSlot1() { Build->SelectSlot(0); }
 void ASLPlayerController::OnSlot2() { Build->SelectSlot(1); }
 void ASLPlayerController::OnSlot3() { Build->SelectSlot(2); }
@@ -262,9 +311,9 @@ void ASLPlayerController::LogGhost(const TCHAR* Label)
 {
 	float MX = 0.f, MY = 0.f;
 	GetMousePosition(MX, MY);
-	UE_LOG(LogSLInput, Log, TEXT("SL_GHOST_MOUSE %s mouse=(%.0f,%.0f) cell=(%d,%d) level=%d state=%s"),
+	UE_LOG(LogSLInput, Log, TEXT("SL_GHOST_MOUSE %s mouse=(%.0f,%.0f) cell=(%d,%d) level=%d yon=%d state=%s"),
 		Label, MX, MY, Build->GetGhostCellMin().X, Build->GetGhostCellMin().Y, Build->GetGhostLevel(),
-		*UEnum::GetValueAsString(Build->State));
+		Build->GetGhostFacing(), *UEnum::GetValueAsString(Build->State));
 }
 
 void ASLPlayerController::SLTestLevel1()
@@ -278,30 +327,75 @@ void ASLPlayerController::TestLevel1Step()
 {
 	const int32 I = SelfTestIndex++;
 	SLReport();
-	// Beklenen (PlatformMass 12, TiltPerCm 0.08): Ev (-100,0) 3.2 | Hastane (150,0) 2.5 |
-	// AVM (175,225) hedef 12 -> DEVRILIYOR | AVM'yi fareyle kaldir -> 2.5 | (25,25)'e koy -> 2.5 |
-	// yol (3..8, 4) -> 6. karoda uc bina bagli -> BOLUM TAMAMLANDI.
+	ASLHUD* HUD = GetHUD<ASLHUD>();
+	ASLCameraPawn* Cam = Cast<ASLCameraPawn>(GetPawn());
+	if (HUD)
+	{
+		UE_LOG(LogSLInput, Log, TEXT("SL_HINT %s"), *HUD->GetCurrentHint());
+	}
+	// Gercek fare yolu: cekmece kulpu, kart, dunyadaki bina. Beklenen (PlatformMass 12, TiltPerCm 0.08):
+	//  aile (-230,-250)'de bekler, balon konusur | kulpa tik: cekmece acilir | Ev kartina tik: Ev secilir |
+	//  Ev (-100,0) yon 3 -> aile ~2.7 sn yurur | Hastane kilitli | tekerlek +3: uzaklik 2200 -> ~1500 |
+	//  Hastane (150,0) yon 1 (kapi +Y, yanlis) | AVM hayaleti (175,225): tahmin >= 10 -> "DEVRILIR" ipucu |
+	//  AVM konur -> DEVRILIYOR -> fareyle kaldir -> (25,25) | yol (3..8,4): 2/3 (Hastane kapisi ters) |
+	//  Hastaneyi kaldir, R R (1 -> 3), ayni yere: 3/3 -> BOLUM TAMAMLANDI.
 	switch (I)
 	{
-	case 1: SLPlace(1, -100.f, 0.f); break;                  // Ev
-	case 2: Shot(TEXT("L1_1_aile_yuruyor")); SLPlace(2, 150.f, 0.f); break; // Hastane henuz kilitli
-	case 8: Shot(TEXT("L1_2_aile_yerlesti")); SLPlace(2, 150.f, 0.f); break; // Hastane
-	case 9: SLPlace(3, 150.f, 225.f); break;                 // AVM yanlis yere
-	case 10: Build->Cancel(); MoveMouseToLocal(FVector(175.f, 225.f, 200.f)); Shot(TEXT("L1_3_devriliyor")); break;
-	case 11: OnPlace(); LogGhost(TEXT("tasima_fare")); break; // bosta sol tik: AVM'yi kaldir
-	case 12: Build->SetAimOverride(FVector2D(25.f, 25.f)); Shot(TEXT("L1_4_elde")); break;
-	case 13: OnPlace(); break;                               // yeni yerine
-	case 14: Shot(TEXT("L1_5_tasindi")); break;
-	case 15: case 16: case 17: case 18: case 19: case 20:
-		SLPlace(4, -300.f + (3 + (I - 15) + 0.5f) * 50.f, -75.f); break; // yol hucre (3..8, 4)
-	case 22: Shot(TEXT("L1_6_tamamlandi")); break;
-	case 24:
+	case 1: Shot(TEXT("L1_0_baslangic")); break;
+	// Cekmece: HUD'un tiklama islevi kulp/kart koordinatlariyla dogrudan (gercek fare bu makinede
+	// kullanici tarafindan oynatilabiliyor; olculdu: imlec tasindiktan sonra (14,161) okundu).
+	case 3: if (HUD) { HUD->HandleMouseDown(HUD->GetHandleCenter()); HUD->HandleMouseUp(HUD->GetHandleCenter()); }
+		UE_LOG(LogSLInput, Log, TEXT("SL_DRAWER kulpa tik -> istenen acik=%d"), HUD && HUD->IsDrawerWanted() ? 1 : 0); break;
+	case 4: Shot(TEXT("L1_0b_cekmece_acik")); break;
+	case 5: if (HUD) { HUD->HandleMouseDown(HUD->GetCardCenter(0)); }
+		UE_LOG(LogSLInput, Log, TEXT("SL_DRAWER Ev kartina tik -> secilen slot %d, istenen acik %d"), Build->SelectedSlot, HUD && HUD->IsDrawerWanted() ? 1 : 0); break;
+	// Ekran goruntusu kare sonunda alinir: hayaleti gostereceksek koyma bir sonraki adimda olmali.
+	case 6: Build->SetAimOverride(FVector2D(-100.f, 0.f)); Shot(TEXT("L1_0c_ev_hayalet")); break;
+	case 7: OnPlace(); break;                                                       // Ev, yon 3
+	case 8: SLPlace(2, 150.f, 0.f); break;                                          // Hastane henuz kilitli
+	case 9: Shot(TEXT("L1_1_aile_yuruyor")); break;
+	case 14: Shot(TEXT("L1_2_aile_yerlesti")); if (Cam) { Cam->Zoom(3.f); } break;
+	case 16: Shot(TEXT("L1_2b_yakin")); UE_LOG(LogSLInput, Log, TEXT("SL_ZOOM uzaklik %.0f hedef %.0f"), Cam ? Cam->Distance : 0.f, Cam ? Cam->GetTargetDistance() : 0.f);
+		if (Cam) { Cam->Zoom(-3.f); } break;
+	case 18: SLGhost(2, 150.f, 0.f); Build->SetFacing(1); Shot(TEXT("L1_2c_hastane_ters")); break;
+	case 19: Build->TryPlace(); break;                                              // Hastane, kapi +Y
+	case 20: SLGhost(3, 150.f, 225.f); Shot(TEXT("L1_3a_avm_tahmin")); break;      // tahmin isareti + ipucu
+	case 21: Build->TryPlace(); break;                                              // AVM yanlis yere
+	case 22: Build->Cancel(); MoveMouseToLocal(FVector(175.f, 225.f, 200.f)); Shot(TEXT("L1_3_devriliyor")); break;
+	case 23:
+		OnPlace(); LogGhost(TEXT("tasima_fare"));                                     // bosta sol tik: AVM'yi kaldir
+		if (!Build->IsMoving())
+		{
+			UE_LOG(LogSLInput, Warning, TEXT("SL_TASIMA fare kaydi (kullanici?), hucreden kaldiriliyor"));
+			Build->PickUp(GetWorld()->GetAuthGameMode<ASLGameMode>()->GetPlatform()->FindPlaceableAt(FIntPoint(9, 10)));
+		}
+		break;
+	case 24: Build->SetAimOverride(FVector2D(25.f, 25.f)); Shot(TEXT("L1_4_elde")); break;
+	case 25: OnPlace(); break;                                                      // yeni yerine
+	case 26: case 27: case 28: case 29: case 30: case 31:
+		SLPlace(4, -300.f + (3 + (I - 26) + 0.5f) * 50.f, -75.f); break;            // yol hucre (3..8, 4)
+	case 32: Build->Cancel(); Shot(TEXT("L1_5_hastane_bagli_degil")); break;
+	case 33: Build->PickUp(GetWorld()->GetAuthGameMode<ASLGameMode>()->GetPlatform()->FindPlaceableAt(FIntPoint(8, 5))); break;
+	case 34: OnRotate(); OnRotate(); Build->SetAimOverride(FVector2D(150.f, 0.f)); LogGhost(TEXT("hastane_R_R")); break;
+	case 35: Shot(TEXT("L1_6_hastane_cevrildi")); OnPlace(); break;
+	case 37: Shot(TEXT("L1_7_tamamlandi")); break;
+	case 39:
 		GetWorldTimerManager().ClearTimer(SelfTestTimer);
 		UE_LOG(LogSLInput, Log, TEXT("SL_TESTL1_DONE"));
 		ConsoleCommand(TEXT("quit"));
 		break;
 	default: break;
 	}
+}
+
+void ASLPlayerController::MoveMouseToScreen(const FVector2D& Screen)
+{
+	Build->ClearAimOverride();
+	if (ULocalPlayer* LP = GetLocalPlayer(); LP && LP->ViewportClient && LP->ViewportClient->Viewport)
+	{
+		LP->ViewportClient->Viewport->SetMouse(FMath::RoundToInt(Screen.X), FMath::RoundToInt(Screen.Y));
+	}
+	UE_LOG(LogSLInput, Log, TEXT("SL_MOUSE ekran=(%.0f,%.0f)"), Screen.X, Screen.Y);
 }
 
 void ASLPlayerController::SLReport()

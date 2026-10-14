@@ -47,6 +47,10 @@ struct FSLSlot
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
 	bool bFlat = false;
 
+	/** Kapisi var mi (bina). Yol baglantisi kapinin onundeki hucreden. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	bool bHasEntrance = false;
+
 	/** Yerlesince gelen kisi sayisi (Ev: aile). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
 	int32 Residents = 0;
@@ -84,6 +88,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Yerlestirme")
 	FLinearColor BlockedColor = FLinearColor(0.95f, 0.15f, 0.1f);
 
+	/** Konabilir ama koyunca egim WarnTilt'i gececek (egitim: hayalet de uyarsin, sadece bar degil). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Yerlestirme")
+	FLinearColor RiskyColor = FLinearColor(0.95f, 0.75f, 0.05f);
+
+	/** Konabilir ama koyunca egim FailTilt'i gececek: platform devrilir. Konmasina izin var. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Yerlestirme")
+	FLinearColor DangerColor = FLinearColor(1.f, 0.4f, 0.0f);
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Yerlestirme")
 	TObjectPtr<UMaterialInterface> GhostMaterial;
 
@@ -115,8 +127,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Sallanti")
 	void Cancel();
 
+	/** Elindekini cevirir: +1 saat yonunde (R), -1 tersi (Q). Dort yon. */
 	UFUNCTION(BlueprintCallable, Category = "Sallanti")
-	void RotateGhost();
+	void RotateGhost(int32 Steps = 1);
+
+	/** Yeni secilen nesnenin ilk yonu. 3 = kapi -Y: kameraya (-X,-Y tarafi) bakar, kapi gorunur. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Yerlestirme", meta = (ClampMin = "0", ClampMax = "3"))
+	int32 DefaultFacing = 3;
+
+	/** Test/UI: elindekinin yonunu dogrudan ayarla. */
+	void SetFacing(int32 InFacing);
+	int32 GetGhostFacing() const { return GhostFacing; }
 
 	/** Hayalet gecerliyse yerlestirir (ya da tasinan nesneyi yeni yerine koyar). */
 	UFUNCTION(BlueprintCallable, Category = "Sallanti")
@@ -143,8 +164,14 @@ public:
 	FIntPoint GetGhostCellMin() const { return GhostCellMin; }
 	int32 GetGhostLevel() const { return GhostLevel; }
 
-	/** Gecersizligin sebebi (test paneli). */
+	/** Gecersizligin sebebi (test paneli ve ipucu). */
 	const TCHAR* GetBlockedReason() const { return BlockedReason; }
+
+	/** Elindeki hayalet (yoksa nullptr). CellMin/Facing guncel; kapi onu hucreleri buradan. */
+	const ASLPlaceable* GetGhost() const { return Ghost; }
+
+	/** Hayaletin platform yerelindeki merkezi (egim tahmini icin). */
+	FVector2D GetGhostCenterLocal() const { return GhostCenterLocal; }
 
 private:
 	ASLPlatform* GetPlatform() const;
@@ -153,7 +180,8 @@ private:
 	void DestroyGhost();
 	void SpawnGhostFor(const FSLSlot& Slot);
 	void ConfigurePlaceable(ASLPlaceable* P, const FSLSlot& Slot) const;
-	void PutAt(ASLPlaceable* P, FIntPoint Cell, int32 Level, bool bRot) const;
+	void PutAt(ASLPlaceable* P, FIntPoint Cell, int32 Level, int32 InFacing) const;
+	void ShowEntranceMarkers(bool bShow) const;
 
 	UPROPERTY(Transient)
 	TObjectPtr<ASLPlaceable> Ghost;
@@ -167,11 +195,13 @@ private:
 
 	FIntPoint MovingOrigCell = FIntPoint::ZeroValue;
 	int32 MovingOrigLevel = 0;
-	bool bMovingOrigRotated = false;
+	int32 MovingOrigFacing = 0;
 
 	FIntPoint GhostCellMin = FIntPoint::ZeroValue;
 	int32 GhostLevel = 0;
-	bool bGhostRotated = false;
+	int32 GhostFacing = 3;
+	FVector2D GhostCenterLocal = FVector2D::ZeroVector;
+	bool bMarkersShown = false;
 	bool bAimOverride = false;
 	FVector2D AimOverride = FVector2D::ZeroVector;
 	const TCHAR* BlockedReason = TEXT("");

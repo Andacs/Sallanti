@@ -1,6 +1,7 @@
 #include "SLLevelDirector.h"
 
 #include "SLBuildComponent.h"
+#include "SLFamily.h"
 #include "SLGameMode.h"
 #include "SLPlaceable.h"
 #include "SLPlatform.h"
@@ -15,25 +16,42 @@ ASLLevelDirector::ASLLevelDirector()
 	PrimaryActorTick.TickGroup = TG_PostPhysics; // yerlestirme ayni karede gorulsun
 
 	// 1. bolum (egitim / vertical slice): aile gelir, eve yerlesir; hastane, AVM; yollarla baglanir.
-	auto Task = [](const TCHAR* Text, const TCHAR* Hint, ESLTaskKind Kind, const TCHAR* Type, std::initializer_list<FName> Unlocks)
+	auto Task = [](const TCHAR* Text, const TCHAR* Speech, const TCHAR* Done, const TCHAR* Hint, ESLTaskKind Kind, const TCHAR* Type, std::initializer_list<FName> Unlocks)
 	{
 		FSLTask T;
 		T.Text = Text;
+		T.Speech = Speech;
+		T.DoneSpeech = Done;
 		T.Hint = Hint;
 		T.Kind = Kind;
 		T.TypeId = Type;
 		T.Unlocks = Unlocks;
 		return T;
 	};
-	Tasks.Add(Task(TEXT("Aile geliyor: onlara bir ev kur"), TEXT("Merkeze yakın kur. Kenara koyarsan platform o yana yatar."),
+	Tasks.Add(Task(TEXT("Aile için bir ev kur"),
+		TEXT("Merhaba başkan! Bu şehre yeni taşındık ama evimiz yok. Bize bir ev yapar mısın?"),
+		TEXT("Ne güzel bir ev!"),
+		TEXT("Sağdaki çekmeceyi çek, Ev'i seç. Merkeze yakın koy; kapı yönünü R / Q çevirir."),
 		ESLTaskKind::PlaceType, TEXT("Ev"), { TEXT("Ev") }));
-	Tasks.Add(Task(TEXT("Aile eve yerleşsin"), TEXT("Biraz bekle, aile yürüyerek geliyor."),
+	Tasks.Add(Task(TEXT("Aile eve yerleşsin"),
+		TEXT("Hemen eşyalarımızı taşıyoruz!"),
+		TEXT("Yerleştik, çok rahat."),
+		TEXT("Aile kapıya yürüyor, biraz bekle."),
 		ESLTaskKind::FamilyMovedIn, TEXT("Ev"), {}));
-	Tasks.Add(Task(TEXT("Bir hastane kur"), TEXT("Evin ağırlığını dengeleyecek yere."),
+	Tasks.Add(Task(TEXT("Bir hastane kur"),
+		TEXT("Çocuklar hastalanırsa nereye gideceğiz? Yakında bir hastane olsa..."),
+		TEXT("İçimiz rahatladı."),
+		TEXT("Hastaneyi evin karşı tarafına koy: ağırlıklar birbirini dengeler."),
 		ESLTaskKind::PlaceType, TEXT("Hastane"), { TEXT("Hastane") }));
-	Tasks.Add(Task(TEXT("Bir alışveriş merkezi kur"), TEXT("AVM çok ağır. Yanlış yerdeyse tıklayıp taşı."),
+	Tasks.Add(Task(TEXT("Bir alışveriş merkezi kur"),
+		TEXT("Alışveriş için bir AVM çok iyi olurdu. Ama dikkat, AVM çok ağır!"),
+		TEXT("Harika, alışveriş günü!"),
+		TEXT("Koymadan önce bara bak: tahmin işareti kırmızıya geçiyorsa başka yer seç."),
 		ESLTaskKind::PlaceType, TEXT("AVM"), { TEXT("AVM") }));
-	FSLTask Roads = Task(TEXT("Evi, hastaneyi ve AVM'yi yollarla bağla"), TEXT("Yollar binalara yan yana değmeli."),
+	FSLTask Roads = Task(TEXT("Evi, hastaneyi ve AVM'yi yollarla bağla"),
+		TEXT("Hastaneye ve AVM'ye yürüyerek gidemiyoruz. Yol yapar mısın?"),
+		TEXT(""),
+		TEXT("Yol, binaların kapı önündeki sarı karelere değmeli."),
 		ESLTaskKind::ConnectRoads, TEXT("Yol"), { TEXT("Yol") });
 	Roads.ConnectTypes = { TEXT("Ev"), TEXT("Hastane"), TEXT("AVM") };
 	Tasks.Add(Roads);
@@ -55,6 +73,61 @@ void ASLLevelDirector::BeginPlay()
 {
 	Super::BeginPlay();
 	UE_LOG(LogSLLevel, Log, TEXT("SL_LEVEL %s, %d gorev"), *LevelTitle, Tasks.Num());
+}
+
+void ASLLevelDirector::SpawnFamily()
+{
+	ASLPlatform* P = GetPlatform();
+	if (Family || !P)
+	{
+		return;
+	}
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	Family = GetWorld()->SpawnActor<ASLFamily>(ASLFamily::StaticClass(), FTransform::Identity, Params);
+	if (Family)
+	{
+		// Platforma bagli: platform egilince aile de egilir, kutlesi yok.
+		Family->AttachToComponent(P->TiltPivot, FAttachmentTransformRules::KeepRelativeTransform);
+		Family->SetActorRelativeLocation(FamilyWaitLocal);
+		Family->BuildFigures();
+	}
+}
+
+bool ASLLevelDirector::GetSpeech(FString& OutText, FVector& OutWorldAnchor) const
+{
+	const float Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+	const ASLPlaceable* Home = FamilyHome.Get();
+	const bool bShowDone = Now < DoneUntil && !DoneText.IsEmpty();
+	if (bLevelComplete)
+	{
+		OutText = FinalSpeech;
+	}
+	else if (bShowDone)
+	{
+		OutText = DoneText;
+	}
+	else if (Tasks.IsValidIndex(CurrentTask))
+	{
+		OutText = Tasks[CurrentTask].Speech;
+	}
+	if (OutText.IsEmpty())
+	{
+		return false;
+	}
+	// Aile bekliyorsa onun ustunden, eve yerlestiyse evin ustunden konusur.
+	if (Family && Family->IsWaitingVisible())
+	{
+		OutWorldAnchor = Family->GetSpeechAnchor();
+		return true;
+	}
+	if (Home && !Home->bHeld)
+	{
+		const FBox B = Home->GetComponentsBoundingBox(false);
+		OutWorldAnchor = FVector(B.GetCenter().X, B.GetCenter().Y, B.Max.Z + 40.f);
+		return true;
+	}
+	return false;
 }
 
 void ASLLevelDirector::ApplyUnlocks()
@@ -97,11 +170,22 @@ void ASLLevelDirector::StartFamilies()
 		{
 			continue;
 		}
-		// Aile kameraya bakan iki kenardan (-X ya da -Y; kamera -X,-Y tarafinda) binaya yakin olanindan
-		// gelir: yuruyus binalarin arkasinda kalmaz, hep gorunur.
-		const FVector C = House->GetRootComponent()->GetRelativeLocation();
-		const float H = P->HalfExtent - 20.f;
-		const FVector Start = (C.X + H) < (C.Y + H) ? FVector(-H, C.Y, 0.f) : FVector(C.X, -H, 0.f);
+		FVector Start;
+		if (Family && Family->IsWaitingVisible())
+		{
+			// Ilk ev: bekleyen aile tam bulundugu yerden yuruyerek gider (figurler el degistirir).
+			Start = Family->GetRootComponent()->GetRelativeLocation();
+			Family->SetWaitingVisible(false);
+			FamilyHome = House;
+		}
+		else
+		{
+			// Sonraki evler: kapinin baktigi yondeki kenardan gelen yeni komsular.
+			const FVector C = House->GetRootComponent()->GetRelativeLocation();
+			const float H = P->HalfExtent - 20.f;
+			const FIntPoint D = House->GetFacingDir();
+			Start = D.X != 0 ? FVector(D.X * H, C.Y, 0.f) : FVector(C.X, D.Y * H, 0.f);
+		}
 		House->StartResidentsArrival(Start);
 	}
 }
@@ -174,18 +258,33 @@ int32 ASLLevelDirector::CountConnected(const TArray<FName>& Types) const
 		TSet<FName> Touched;
 		for (const ASLPlaceable* Bld : Buildings)
 		{
-			const FIntPoint Mn = Bld->CellMin, F = Bld->GetFootprint();
+			// Bina yola yalnizca kapisinin onundeki hucreden baglanir; kapisi olmayan binada her yan komsu.
 			bool bTouch = false;
-			for (int32 X = Mn.X - 1; X <= Mn.X + F.X && !bTouch; ++X)
+			if (Bld->bHasEntrance)
 			{
-				for (int32 Y = Mn.Y - 1; Y <= Mn.Y + F.Y && !bTouch; ++Y)
+				for (const FIntPoint& E : Bld->GetEntranceCells())
 				{
-					const bool bEdgeRing = (X == Mn.X - 1 || X == Mn.X + F.X) != (Y == Mn.Y - 1 || Y == Mn.Y + F.Y);
-					if (!bEdgeRing || X < 0 || Y < 0 || X >= N || Y >= N) // kose degil, yan komsu
+					if (E.X >= 0 && E.Y >= 0 && E.X < N && E.Y < N && Comp[E.Y * N + E.X] == C)
 					{
-						continue;
+						bTouch = true;
+						break;
 					}
-					bTouch = Comp[Y * N + X] == C;
+				}
+			}
+			else
+			{
+				const FIntPoint Mn = Bld->CellMin, F = Bld->GetFootprint();
+				for (int32 X = Mn.X - 1; X <= Mn.X + F.X && !bTouch; ++X)
+				{
+					for (int32 Y = Mn.Y - 1; Y <= Mn.Y + F.Y && !bTouch; ++Y)
+					{
+						const bool bEdgeRing = (X == Mn.X - 1 || X == Mn.X + F.X) != (Y == Mn.Y - 1 || Y == Mn.Y + F.Y);
+						if (!bEdgeRing || X < 0 || Y < 0 || X >= N || Y >= N) // kose degil, yan komsu
+						{
+							continue;
+						}
+						bTouch = Comp[Y * N + X] == C;
+					}
 				}
 			}
 			if (bTouch)
@@ -234,6 +333,7 @@ bool ASLLevelDirector::EvaluateTask(const FSLTask& Task, int32& OutProgress, int
 void ASLLevelDirector::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	SpawnFamily();
 	ApplyUnlocks();
 	StartFamilies();
 	if (bLevelComplete || !Tasks.IsValidIndex(CurrentTask))
@@ -255,6 +355,11 @@ void ASLLevelDirector::Tick(float DeltaSeconds)
 			return; // son gorev tamam ama platform devriliyor: once dengele
 		}
 		UE_LOG(LogSLLevel, Log, TEXT("SL_TASK_DONE %d: %s"), CurrentTask + 1, *Tasks[CurrentTask].Text);
+		if (!Tasks[CurrentTask].DoneSpeech.IsEmpty())
+		{
+			DoneText = Tasks[CurrentTask].DoneSpeech;
+			DoneUntil = GetWorld()->GetTimeSeconds() + DoneSpeechSeconds;
+		}
 		++CurrentTask;
 		ApplyUnlocks();
 		if (bLast)

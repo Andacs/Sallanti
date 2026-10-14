@@ -8,6 +8,7 @@
 #include "GameFramework/Actor.h"
 #include "SLLevelDirector.generated.h"
 
+class ASLFamily;
 class ASLPlaceable;
 class ASLPlatform;
 class USLBuildComponent;
@@ -28,6 +29,14 @@ struct FSLTask
 	/** Ekranda gorunen gorev cumlesi. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
 	FString Text;
+
+	/** Ailenin konusma balonu: gorevi aile verir. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	FString Speech;
+
+	/** Gorev bitince ailenin kisa tesekkuru (bos = yok). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	FString DoneSpeech;
 
 	/** Kucuk ipucu satiri (bos olabilir). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
@@ -68,6 +77,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
 	TArray<FSLTask> Tasks;
 
+	/** Bolum bitince ailenin son sozu. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
+	FString FinalSpeech = TEXT("Mahallemiz hazır. Teşekkürler başkan!");
+
+	/** Tesekkur balonunun ekranda kalma suresi, sn. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
+	float DoneSpeechSeconds = 2.5f;
+
+	/** Ailenin bolum basinda bekledigi yer (platform yerelinde, cm). Varsayilan: on kenar, kameraya yakin. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
+	FVector FamilyWaitLocal = FVector(-230.f, -250.f, 0.f);
+
 	/** Bolum sonu icin platformun dengede olmasi gerekir mi? (devriliyor durumunda bitmez) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
 	bool bRequireBalanceToComplete = true;
@@ -92,6 +113,9 @@ public:
 	/** Yol agina degen hedef turu sayisi (HUD ve test icin). */
 	int32 CountConnected(const TArray<FName>& Types) const;
 
+	/** Su an gosterilecek konusma balonu. false = balon yok. */
+	bool GetSpeech(FString& OutText, FVector& OutWorldAnchor) const;
+
 private:
 	ASLPlatform* GetPlatform() const;
 	USLBuildComponent* GetBuild() const;
@@ -99,6 +123,17 @@ private:
 	void StartFamilies();
 	bool EvaluateTask(const FSLTask& Task, int32& OutProgress, int32& OutGoal) const;
 	void CompleteLevel();
+
+	void SpawnFamily();
+
+	UPROPERTY(Transient)
+	TObjectPtr<ASLFamily> Family;
+
+	/** Ailenin yasadigi ev (ilk ev). Sonraki gorevlerin balonu bunun ustunden. */
+	TWeakObjectPtr<ASLPlaceable> FamilyHome;
+
+	FString DoneText;
+	float DoneUntil = -1.f;
 
 	int32 UnlockedForTask = -1;
 };
