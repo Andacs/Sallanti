@@ -222,7 +222,12 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
   stok; tıkla seç). Seçili ailede mercek + "İSTEDİĞİ / İSTEMEDİĞİ" kutuları. Sağ altta döndürme hapı,
   sağ üstte müzik. Yazılar soluk krem hap zeminde (panelsiz yazı tahtada okunmuyordu; gece daha opak).
   Eski kart HUD fonksiyonları (çekmece, görev kartı, denge barı) kodda duruyor ama çizilmiyor.
-  Fontlar şimdilik motorun Roboto'su; tasarımdaki Cinzel + Jost indirilip aktarılınca değişecek.
+  **Fontlar (15 Ekim akşamı):** başlıklar **Cinzel**, metinler **Jost** (Google Fonts, SIL OFL 1.1; kaynak +
+  lisans `Art/Fonts/*/`, oyunun okuduğu kopya `Content/Fonts/*.ttf`, pakete NonUFS kopyalanır). UFont'u HUD
+  oyun içinde dosyadan kurar (`MakeRuntimeFont`); boyut Roboto'ya otomatik eşitlenir, Jost ×1,18
+  (`BodyFontBoost`). **Tuzak:** UE font aktarıcısı başsız komutta (`-run=pythonscript -nullrhi`) onay
+  penceresi açmaya çalışıp çöküyor (`CurrentApplication.IsValid()`); bu yüzden asset değil dosya. Dosya
+  yoksa Roboto'ya düşer (logda `SL_FONT yok`). `SlateCore` modülü bunun için eklendi.
 - **Açılış, menü, jenerik, trailer (16 Ekim, kural kitapçığı v09'a göre):**
   - Açılış videosu `Content/Movies/Intro.mp4` (19 sn), `DefaultGame.ini` `StartupMovies` (atlanabilir).
   - **Ana menü = bölüm 0** (URL'de `Bolum` yoksa oyun menüyle açılır; `oyna.bat` varsayılanı 0). Arkada
@@ -230,7 +235,7 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
     Oyna · Bölümler · Nasıl oynanır · Emeği geçenler · Çıkış. Oyunda sol üstte "Menü"; bitiş ekranında
     Tekrar + sonraki bölüm / Menü / (son bölümde) Emeği geçenler.
   - **Jenerik** = README'deki hazır kaynak ve yapay zekâ beyanının oyun içi hâli (`ASLHUD::GetCreditsLines`,
-    takım adı `TeamName`, ekip `TeamMembers`).
+    takım adı `TeamName` = **FreakLabs**, ekip `TeamMembers`).
   - **Trailer:** `bash Tools/trailer_yap.sh` → `SLSinema` 3. bölümü sabit 30 fps (`-benchmark -fps=30`) oynar,
     her kareyi kaydeder; ffmpeg kareler + müzik → `Build/Teslim/Sallanti_Trailer.mp4` (36,5 sn, ≤ 60 kuralı)
     ve kısa kesit → `Intro.mp4`. Süre ~6 dk. Başlık kartı zemini %86 opak (%50'de arayüzün altında kaldı).

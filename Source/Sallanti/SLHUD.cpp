@@ -37,10 +37,58 @@ namespace
 
 // --- Yardimcilar --------------------------------------------------------------------------------
 
+UFont* ASLHUD::MakeRuntimeFont(const FString& FileName)
+{
+	// Content/Fonts/<ad>.ttf (OFL; pakete NonUFS olarak kopyalanir, DefaultGame.ini). Font aktarma
+	// fabrikasi bassiz modda onay penceresi acip cokuyordu: UFont oyun icinde dosyadan kurulur.
+	const FString Path = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Fonts") / FileName);
+	if (!FPaths::FileExists(Path))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SL_FONT yok: %s (Roboto kullaniliyor)"), *Path);
+		return nullptr;
+	}
+	UFont* F = NewObject<UFont>(this);
+	F->FontCacheType = EFontCacheType::Runtime;
+	F->LegacyFontSize = 24;
+	F->CompositeFont.DefaultTypeface.Fonts.Add(FTypefaceEntry(TEXT("Regular"), Path, EFontHinting::Default, EFontLoadingPolicy::LazyLoad));
+	UE_LOG(LogTemp, Log, TEXT("SL_FONT %s"), *Path);
+	return F;
+}
+
+UFont* ASLHUD::PickFont(bool bLarge, float& OutMul)
+{
+	UFont* Roboto = GEngine ? (bLarge ? GEngine->GetLargeFont() : GEngine->GetMediumFont()) : nullptr;
+	OutMul = 1.f;
+	if (!bFontsInit)
+	{
+		bFontsInit = true;
+		TitleFont = MakeRuntimeFont(TEXT("Cinzel.ttf"));
+		BodyFont = MakeRuntimeFont(TEXT("Jost.ttf"));
+	}
+	UFont* F = bUseTitleFont && TitleFont ? TitleFont.Get() : BodyFont.Get();
+	if (!F || !Roboto || !Canvas)
+	{
+		return Roboto;
+	}
+	// Boyutu Roboto'ya esitle: tasarim olculeri (Scale) Roboto'yla yapildi. Bir kez olculur.
+	float& Cached = FontMul[bUseTitleFont && TitleFont ? 1 : 0][bLarge ? 1 : 0];
+	if (Cached < 0.f)
+	{
+		float RW = 0.f, RH = 0.f, FW = 0.f, FH = 0.f;
+		Canvas->StrLen(Roboto, TEXT("Ag"), RW, RH);
+		Canvas->StrLen(F, TEXT("Ag"), FW, FH);
+		Cached = FH > 0.f ? RH / FH : 1.f;
+		UE_LOG(LogTemp, Log, TEXT("SL_FONT olcek %s %s: %.2f"), bUseTitleFont ? TEXT("baslik") : TEXT("metin"), bLarge ? TEXT("buyuk") : TEXT("orta"), Cached);
+	}
+	OutMul = Cached * (bUseTitleFont && TitleFont ? 1.f : BodyFontBoost);
+	return F;
+}
+
 void ASLHUD::Text(const FString& S, float X, float Y, const FLinearColor& Color, float Scale, bool bLarge)
 {
-	UFont* Font = GEngine ? (bLarge ? GEngine->GetLargeFont() : GEngine->GetMediumFont()) : nullptr;
-	const float Sc = Scale * TextScale;
+	float Mul = 1.f;
+	UFont* Font = PickFont(bLarge, Mul);
+	const float Sc = Scale * TextScale * Mul;
 	if (bTextShadow && Color.R + Color.G + Color.B > 1.2f)
 	{
 		// Yalniz koyu test panelinde: acik yaziya golge. Krem kartlarda golge kirli gorunuyor.
@@ -95,9 +143,10 @@ void ASLHUD::Card(float X, float Y, float W, float H, float R, const FLinearColo
 
 FVector2D ASLHUD::Measure(const FString& S, float Scale, bool bLarge)
 {
-	UFont* Font = GEngine ? (bLarge ? GEngine->GetLargeFont() : GEngine->GetMediumFont()) : nullptr;
+	float Mul = 1.f;
+	UFont* Font = PickFont(bLarge, Mul);
 	float W = 0.f, H = 0.f;
-	GetTextSize(S, W, H, Font, Scale * TextScale);
+	GetTextSize(S, W, H, Font, Scale * TextScale * Mul);
 	return FVector2D(W, H);
 }
 
@@ -1479,6 +1528,7 @@ void ASLHUD::TextSpaced(const FString& S, float CenterX, float Y, float Scale, f
 	// Aralikli buyuk harf (Monument Valley basliklari): harf harf, ortalanmis.
 	float W = 0.f;
 	TArray<float> Ws;
+	TGuardValue<bool> TitleMeasure(bUseTitleFont, true);
 	for (int32 I = 0; I < S.Len(); ++I)
 	{
 		Ws.Add(Measure(S.Mid(I, 1), Scale, false).X);
@@ -1486,6 +1536,7 @@ void ASLHUD::TextSpaced(const FString& S, float CenterX, float Y, float Scale, f
 	}
 	float X = CenterX - 0.5f * W;
 	const float H = Measure(TEXT("A"), Scale, false).Y;
+	TGuardValue<bool> Title(bUseTitleFont, true); // basliklar Cinzel
 	FillRound(X - 14.f, Y - 3.f, W + 28.f, H + 6.f, 0.5f * (H + 6.f), FLinearColor(0.984f, 0.973f, 0.992f, PillAlpha(0.5f)));
 	for (int32 I = 0; I < S.Len(); ++I)
 	{
@@ -2070,6 +2121,8 @@ TArray<FString> ASLHUD::GetCreditsLines() const
 	L.Add(TEXT("Unreal Engine 5.8 · Epic Games · Unreal Engine EULA"));
 	L.Add(TEXT("Motorun temel şekilleri (küp, küre, silindir, koni)"));
 	L.Add(TEXT("Epic Games · Unreal Engine EULA"));
+	L.Add(TEXT("Cinzel yazı tipi · The Cinzel Project Authors · SIL OFL 1.1"));
+	L.Add(TEXT("Jost yazı tipi · The Jost Project Authors · SIL OFL 1.1"));
 	L.Add(TEXT("Roboto yazı tipi · Google · Apache 2.0 (motorla gelir)"));
 	L.Add(TEXT(""));
 	L.Add(TEXT("#YAPAY ZEKÂ KULLANIMI"));

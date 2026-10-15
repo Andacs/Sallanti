@@ -11,6 +11,7 @@
 #include "SLHUD.generated.h"
 
 class ASLAmbience;
+class UFont;
 class ASLLevelDirector;
 class ASLPlatform;
 class USLBuildComponent;
@@ -28,7 +29,7 @@ public:
 
 	/** Takim adi: menu altinda ve jenerikte. Teslimden once Yigit yazar. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Jenerik")
-	FString TeamName = TEXT("[Takım adı]");
+	FString TeamName = TEXT("FreakLabs");
 
 	/** Jenerikteki ekip satirlari. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Jenerik")
@@ -55,6 +56,10 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|HUD")
 	float TextScale = 1.2f;
+
+	/** Jost ayni "Ag" yuksekliginde Roboto'dan kucuk ve ince okunuyordu (ekran goruntusu): metin carpani. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|HUD")
+	float BodyFontBoost = 1.18f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|HUD")
 	float BalanceBarWidth = 520.f;
@@ -151,6 +156,16 @@ private:
 	float UiScale() const { return Canvas ? FMath::Max(0.6f, Canvas->ClipY / 800.f) : 1.f; }
 	void Arc(float CX, float CY, float R, float A0, float A1, float Thick, const FLinearColor& C, bool bDashed = false);
 	float PillAlpha(float Day) const;
+	/** Cinzel (baslik) ve Jost (metin), Content/Fonts'tan oyun icinde kurulur; yoksa Roboto. */
+	UFont* MakeRuntimeFont(const FString& FileName);
+	UFont* PickFont(bool bLarge, float& OutMul);
+	UPROPERTY(Transient)
+	TObjectPtr<UFont> TitleFont;
+	UPROPERTY(Transient)
+	TObjectPtr<UFont> BodyFont;
+	bool bFontsInit = false;
+	bool bUseTitleFont = false;
+	float FontMul[2][2] = { { -1.f, -1.f }, { -1.f, -1.f } }; // [baslik][buyuk]
 	void TextHalo(const FString& S, float X, float Y, const FLinearColor& C, float Scale);
 	void TextSpaced(const FString& S, float CenterX, float Y, float Scale, float Spacing, const FLinearColor& C);
 	void OutlineRound(float X, float Y, float W, float H, float R, float Thick, const FLinearColor& Line, const FLinearColor& Fill);

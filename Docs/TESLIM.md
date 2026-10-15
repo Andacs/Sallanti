@@ -11,6 +11,7 @@ https://game.ktimo.com.tr/jam/teslim
 
 | Alan | Değer |
 |---|---|
+| Takım | FreakLabs |
 | Oyun adı | [Sallantı] |
 | Kısa açıklama | [Sallanan bir adaya şehir kur, aileleri mutlu et, dengeyi koru. Her bina adanın ağırlık merkezini kaydırır; ailelerin istekleri birbirini zorlar.] |
 | Platform | Windows |

@@ -4,7 +4,7 @@ Sallanan bir adaya şehir kur, aileleri mutlu et, dengeyi koru. İzometrik, kart
 yerleşim bulmacası. Her bina adanın ağırlık merkezini kaydırır; ağır binayı kenara koyarsan ada devrilir.
 Ailelerin istekleri (hastaneye yakın, AVM'den uzak, akrabaya yakın, durağa yolla bağlı...) birbirini zorlar.
 
-CIVIL GAME JAM 2026 · [Takım adı]
+CIVIL GAME JAM 2026 · **FreakLabs**
 
 > **Durum:** bu depo jam'in provasıdır (14–15 Ekim 2026, tema açıklanmadan önce). Kural kitapçığı madde 3.1
 > gereği önceden hazırlanmış oyun teslim edilemez; bu proje yalnızca araçları ve teslim düzenini denemek
@@ -57,9 +57,11 @@ Trailer ve açılış videosu oyundan çekilir: `bash Tools/trailer_yap.sh` (ffm
 | Ses | Kullanılmadı | Bütün efektler ve müzik projede sentezlendi (`Tools/sesleri_uret.py`, `Tools/muzik_uret.py`). |
 | Kod | Kullanıldı | **Unreal Engine 5.8** · Epic Games · [Unreal Engine EULA](https://www.unrealengine.com/eula) · oyun motoru. Python betiklerinde **NumPy** ve **SciPy** (BSD-3) yalnızca ses üretimi için, oyuna girmez. |
 | Metin | Kullanılmadı | — |
-| Diğer | Kullanıldı | **Roboto** yazı tipi · Google · [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) · motorla gelir, arayüz yazıları. |
+| Diğer | Kullanıldı | **Cinzel** yazı tipi · The Cinzel Project Authors (Natanael Gama) · [Google Fonts](https://fonts.google.com/specimen/Cinzel) · [SIL OFL 1.1](Art/Fonts/Cinzel/OFL.txt) · başlıklar; değiştirilmedi. **Jost** yazı tipi · The Jost Project Authors (indestructible type*) · [Google Fonts](https://fonts.google.com/specimen/Jost) · [SIL OFL 1.1](Art/Fonts/Jost/OFL.txt) · arayüz metinleri; değiştirilmedi. **Roboto** · Google · [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) · motorla gelir, font yüklenemezse yedek. |
 
-Repoda yeniden dağıtımı kısıtlı ham asset yoktur (motor içerikleri motorla gelir, repoya konmadı).
+Repoda yeniden dağıtımı kısıtlı ham asset yoktur (motor içerikleri motorla gelir, repoya konmadı). Cinzel ve
+Jost OFL lisanslıdır, yeniden dağıtılabilir; lisans metinleri `Art/Fonts/*/OFL.txt`, oyunun kullandığı
+kopyalar `Content/Fonts/`.
 
 ## Yapay zekâ beyanı (kitapçık 4.2, EK A.5)
 
