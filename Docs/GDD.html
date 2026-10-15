@@ -512,31 +512,56 @@ table.matrix td[colspan]{background:var(--chip);text-align:center}
         </tbody>
       </table></div>
 
-      <h3>3D modeller (Mert, Asil)</h3>
+      <h3>3D modeller (Mert, Asil) <span class="hand">16 Ekim, oyundaki ölçülerle</span></h3>
+      <p><b>Ortak kurallar.</b> Format <code>.fbx</code> + kaynak <code>.blend</code> (<code>Art/Blender/</code>). Birim santimetre: Unreal'de 1 birim = 1 cm, Blender'da 50 cm'lik küp Unreal'de 50 görünmeli. FBX: −Y Forward, +Z Up, Apply Scalings <b>FBX All</b>, Smoothing Face; export öncesi <code>Ctrl+A → Rotation &amp; Scale</code>. <b>Pivot tabanın ortası, Z=0</b> (aksi yazmıyorsa). <b>Ön yüz Blender'da −Y</b> (Numpad 1'de görünen yüz); Unreal'de +X olur, oyun kapıyı ve aracın burnunu orada bekler. Tek materyal slotu, renk vertex color ile; ışık alan her şey <code>M_Cardboard</code>'la çizilir. Collision: her mesh'in yanında <code>UBX_&lt;MeshAdı&gt;_01</code> kutu (bounding box ile aynı), aynı FBX'te. İsimde Türkçe karakter yok. Teslim yeri <code>Content/Sallanti/Meshes/&lt;Kategori&gt;/</code>; "bitti" = Unreal'de oyunda görüldü.</p>
+
+      <p><b>Binalar.</b> Tahta 13×13 hücre, hücre 50 cm. Binanın altındaki <b>plakayı, yolları, giriş yolunu oyun çiziyor</b>; modelci yalnızca plakanın üstünde duranı yapar. Plaka = hücre × 50 − 8 cm (derz); gövde plakadan her yanda 8 cm içeride. Tabloda "taban" gövdenin ayak izidir; ağaç, çalı gibi süsler plaka kenarına kadar uzanabilir ama <b>plakanın dışına çıkamaz</b> (komşu hücreye taşar).</p>
       <div class="tbl"><table>
-        <thead><tr><th>Dosya</th><th>Ölçü (cm, G×D×Y)</th><th>Modül</th><th>Pivot</th><th>Kapı</th><th>Tris</th><th>Kim</th><th></th></tr></thead>
+        <thead><tr><th>Dosya</th><th>Hücre</th><th>Plaka (cm)</th><th>Gövde tabanı (cm)</th><th>Yükseklik (cm)</th><th>Kapı / ön</th><th>Tris</th><th>Kim</th><th></th></tr></thead>
         <tbody>
-          <tr><td><code>SM_Bina_Ev01</code> (gövde)</td><td class="n">32×32×50</td><td class="n">1×1</td><td>Tabanın ortası</td><td class="n">≈11×27</td><td class="n">800</td><td>Mert</td><td>P1</td></tr>
-          <tr><td><code>SM_Bina_Hastane01</code> (gövde)</td><td class="n">82×82×150</td><td class="n">2×2</td><td>Tabanın ortası</td><td class="n">≈28×80</td><td class="n">1500</td><td>Mert</td><td>P1</td></tr>
-          <tr><td><code>SM_Bina_AVM01</code> (gövde)</td><td class="n">132×132×200</td><td class="n">3×3</td><td>Tabanın ortası</td><td class="n">≈45×90</td><td class="n">1500</td><td>Mert</td><td>P1</td></tr>
-          <tr><td><code>SM_Zemin_Platform</code></td><td class="n">650×650×20</td><td class="n">13×13</td><td><b>Üst yüzün ortası</b> (istisna)</td><td>—</td><td class="n">2000</td><td>Mert</td><td>P2</td></tr>
-          <tr><td><code>SM_Dekor_InsanYetiskin01</code>, <code>…02</code></td><td>boy kararı Asil'de</td><td>—</td><td>İki ayağın ortası, Z=0</td><td>—</td><td class="n">3000</td><td>Asil</td><td>P1</td></tr>
-          <tr><td><code>SM_Dekor_InsanCocuk01</code></td><td>yetişkinin ~%70'i</td><td>—</td><td>İki ayağın ortası, Z=0</td><td>—</td><td class="n">3000</td><td>Asil</td><td>P1</td></tr>
-          <tr><td><code>SM_Bina_Ev02</code> (gövde)</td><td class="n">32×32×50</td><td class="n">1×1</td><td>Tabanın ortası</td><td class="n">≈11×27</td><td class="n">800</td><td>Asil</td><td>P2</td></tr>
+          <tr><td><code>SM_Bina_Ev01</code></td><td class="n">1×1</td><td class="n">42×42</td><td class="n">26×26</td><td class="n">gövde 50 + çatı ≈16 = <b>≤66</b></td><td>−Y yüzü, ortada, ≈9×27</td><td class="n">800</td><td>Mert</td><td>P1</td></tr>
+          <tr><td><code>SM_Bina_Ev02</code></td><td class="n">1×1</td><td class="n">42×42</td><td class="n">26×26</td><td class="n">≤66</td><td>aynı</td><td class="n">800</td><td>Asil</td><td>P2</td></tr>
+          <tr><td><code>SM_Bina_Hastane01</code></td><td class="n">2×2</td><td class="n">92×92</td><td class="n">76×76</td><td class="n">150 + çatı kenarı ≤6</td><td>−Y, ortada, ≈27×82; kapının üstünde kırmızı haç</td><td class="n">1500</td><td>Mert</td><td>P1</td></tr>
+          <tr><td><code>SM_Bina_AVM01</code></td><td class="n">3×3</td><td class="n">142×142</td><td class="n">126×126</td><td class="n">200 + çatı kenarı ≤6</td><td>−Y, ortada, ≈44×90; üstünde tente + "AVM" tabelası</td><td class="n">1500</td><td>Mert</td><td>P1</td></tr>
+          <tr><td><code>SM_Bina_Durak01</code></td><td class="n">1×1</td><td class="n">42×42</td><td class="n">≤40×36 (sundurma)</td><td class="n">sundurma ≤36, tabela direği ≤54</td><td>−Y tarafı açık (yola bakar); arkada cam, içte bank, yanda "D" tabelası</td><td class="n">600</td><td>Asil</td><td>P1</td></tr>
+          <tr><td><code>SM_Bina_Park01</code></td><td class="n">2×2</td><td class="n">92×92 (çimen rengi oyunda)</td><td class="n">≤88×88</td><td class="n">≤40</td><td>kapı yok; patika, küçük göl, 2–4 ağaç, bank, çiçek</td><td class="n">1500</td><td>Asil</td><td>P1</td></tr>
         </tbody>
       </table></div>
       <ul>
-        <li><b>Yalnızca bina gövdesi.</b> Tahta 13×13 hücre (50 cm), nane karo + krem derz; binanın altındaki plakayı, yolları ve yolların birleşmesini <b>oyun kendisi çiziyor</b>. Gövde ölçüsü = hücre × 50 − 8 cm derz − 2×5 cm pay (Ev 1×1 → 32×32). Gövde plakanın üstüne, Z=0'dan başlar.</li>
-        <li><b>Ölçü çatı dahil.</b> Ev 50 cm ise çatının tepesi 50'de biter. Hiçbir parça ayak izinin dışına 2 cm'den fazla taşmaz; taşan parça komşu hücreye girer ve oyuncu "neden konmuyor" der.</li>
-        <li><b>Kapı ön yüzde, ortada.</b> Blender'da ön görünümde (<code>Numpad 1</code>) görünen yüz, yani <b>−Y yüzü</b>. Bu yüz Unreal'de +X olur ve oyun kapıyı oraya bekler; yol bu yüzün önündeki hücreye bağlanır. Kapı 2 cm içe girintili, dışarı taşmaz.</li>
-        <li><b>Dört yüz de bitmiş olacak.</b> Oyuncu binayı R / Q ile dört yöne çeviriyor; arka yüz boş kalmaz.</li>
-        <li><b>Kapının rengi vertex color ile.</b> Tek doku + tek materyal kuralı yüzünden kapıyı ayrı materyal yapmayın: kapı yüzlerine koyu vertex color (≈ <code>#2E1C12</code>), geri kalanı beyaz.</li>
-        <li><b>Platform (P2):</b> karolar ve derzler oyun tarafından çiziliyor; platform mesh'i yalnızca yan yüz ve alt için (650×650×20, pivot <b>üst yüzün</b> ortası). Karo ve derz dokuya çizilmez.</li>
-        <li><b>Yol:</b> oyun çiziyor ve birleştiriyor. Mert'ten yalnızca yol, plaka, karo ve derz için renk (hex) isteniyor.</li>
-        <li><b>İnsanlar:</b> ev 50 cm; aile şu an geçici 35 cm (yetişkin), çocuk %70. Kesin boy Asil'de. Animasyon yok, oyun figürleri kaydırıyor; <b>karton figür</b> (ince, tabanlı, düz renkli) kaymayı doğal gösterir ve karton diline uyar.</li>
-        <li><b>Collision:</b> her mesh'te <code>UBX_&lt;MeshAdı&gt;_01</code> kutu, bounding box ile aynı. İnsanlarda da tek kutu.</li>
-        <li><b>Gün 0 doğrulaması:</b> −Y yüzüne kırmızı bir kare boyanmış 32×32×50 küpü export edin. Unreal'de kare <b>+X</b>'te ve ölçüler aynıysa ayar doğru; değilse üretime başlamadan düzeltin.</li>
+        <li><b>Pencereler ayrı mesh</b>, aynı pivotla: <code>SM_Bina_Ev01_Pencere</code>, <code>SM_Bina_Hastane01_Pencere</code>, <code>SM_Bina_AVM01_Pencere</code> (AVM vitrini dahil), <code>SM_Bina_Durak01_Cam</code>. Gece oyun bunları ışıksız sarıya boyuyor (pencereler "yanıyor"); gövdeyle tek mesh olursa yanmaz. Gövdeden 0,5–1 cm dışarı, ince plaka.</li>
+        <li><b>Dört yüz de bitmiş olacak.</b> Oyuncu binayı R / Q ile dört yöne çeviriyor ve tahtayı Z / X ile döndürüyor; arka yüz de görünür.</li>
+        <li><b>Kapı 2 cm içe girintili</b>, dışarı taşmaz. Kapının önündeki hücreye yol bağlanır, aile kapının önünde (plakanın ön köşesinde) durur: kapının iki yanında 12 cm boş kalsın.</li>
+        <li><b>Oyundaki taslaklar referans:</b> şu an kodla çizilen beşik çatı + baca (Ev), haç (Hastane), tente + tabela (AVM), sundurma (Durak), göllü park ekrandaki oranları gösteriyor. <code>Build\oyna.bat 3</code> ile bakılabilir.</li>
+        <li><b>Gün 0 doğrulaması:</b> −Y yüzüne kırmızı kare boyanmış 26×26×50 küp export edin; Unreal'de kare <b>+X</b>'te ve ölçü 26×26×50 ise ayar doğru.</li>
       </ul>
+
+      <p><b>Karakterler ve araç.</b> Oyun animasyonu koddan yapıyor (yürürken sekme, zıplama, nefes, mutsuzken başı eğme). Bunun için figür <b>iki parça</b>: gövde ve baş ayrı mesh. Gövdeyi oyun her ailenin renginde boyuyor; gövde beyaz/açık gri gelsin. Baş boyanmaz: ten ve saç vertex color ile.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Dosya</th><th>Ölçü (cm)</th><th>Pivot</th><th>Not</th><th>Tris</th><th>Kim</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><code>SM_Karakter_Yetiskin01_Govde</code>, <code>…02_Govde</code></td><td class="n">boy (baş dahil) 35, gövde ≈22, en ≈5</td><td>iki ayağın ortası, Z=0</td><td>İki yetişkin varyantı. Beyaz/açık gri, oyun boyar.</td><td class="n">400</td><td>Asil</td><td>P1</td></tr>
+          <tr><td><code>SM_Karakter_Yetiskin01_Bas</code>, <code>…02_Bas</code></td><td class="n">≈13 çap</td><td><b>boynun ortası</b> (baş eğilince buradan döner)</td><td>Ten + saç vertex color. Yüz −Y'ye bakar.</td><td class="n">300</td><td>Asil</td><td>P1</td></tr>
+          <tr><td><code>SM_Karakter_Cocuk01_Govde</code>, <code>…_Bas</code></td><td class="n">boy 24 (yetişkinin %68'i)</td><td>aynı</td><td>Aynı kurallar.</td><td class="n">400 + 300</td><td>Asil</td><td>P1</td></tr>
+          <tr><td><code>SM_Arac_Otobus01</code></td><td class="n">36×18×19 (U×G×Y)</td><td>tabanın ortası</td><td>Burun −Y'de. Tekerler gövdeyle tek mesh olabilir. Camlar <code>SM_Arac_Otobus01_Cam</code> ayrı (gece yanar). Yol eni 42 cm, sığmalı.</td><td class="n">1000</td><td>Mert</td><td>P2</td></tr>
+        </tbody>
+      </table></div>
+      <ul>
+        <li><b>Boy kararı Asil'de:</b> şu an yetişkin 35 cm (ev 50 cm). Boy değişirse oyunda tek sayı (<code>HeightCm</code>) değişir; oranlar (çocuk %68) aynı kalsın.</li>
+        <li><b>Karton dili:</b> ince, tabanlı, düz renkli figür; detay yerine siluet. Ekranda 20–40 piksel görünüyorlar.</li>
+      </ul>
+
+      <p><b>Arka plan ve süs (P2).</b> Tahtanın dışında, havada; collision yok, <code>UBX_</code> gerekmez. Oyun bunları yerleştiriyor, sallıyor, kaydırıyor; modelci yalnızca tek tek nesneyi yapar.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Dosya</th><th>Ölçü (cm)</th><th>Pivot</th><th>Not</th><th>Tris</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><code>SM_Dekor_Adacik01</code>, <code>…02</code>, <code>…03</code></td><td class="n">çap 110–160, toprak kaide ≈45 yüksek, altta sivri uç</td><td>çimen yüzünün ortası</td><td>Bina yok (Andaç: "kartonun dışındaki binaları kaldır"): çimen, ağaç, çiçek.</td><td class="n">1500</td><td>P2</td></tr>
+          <tr><td><code>SM_Dekor_Balon01</code></td><td class="n">zarf çapı 60, toplam boy ≈100</td><td>zarfın ortası</td><td>Sıcak hava balonu: zarf, beyaz şerit, ip, sepet. Renk oyunda (beyaz gelsin).</td><td class="n">800</td><td>P2</td></tr>
+          <tr><td><code>SM_Dekor_Kus01_Govde</code>, <code>SM_Dekor_Kus01_Kanat</code></td><td class="n">gövde 10, kanat 14 açıklık</td><td>gövde: ortası; kanat: <b>gövdeye bağlandığı kenar</b></td><td>Kanat ayrı: oyun çırptırıyor (sol kanadı aynalıyor).</td><td class="n">100 + 50</td><td>P2</td></tr>
+          <tr><td><code>SM_Dekor_Servi01</code>, <code>SM_Dekor_Agac01</code>, <code>SM_Dekor_Cali01</code></td><td class="n">servi 40, ağaç 30, çalı 6</td><td>taban</td><td>Plakalarda ve adacıklarda; oyun 0,6–1,5 arası ölçekliyor.</td><td class="n">200 / 300 / 80</td><td>P2</td></tr>
+          <tr><td><code>SM_Zemin_Kaide</code></td><td class="n">650×650, tahtanın altında ≈110 derin</td><td><b>üst yüzün ortası</b> (istisna)</td><td>Kemerli sütunlu pembe kaide (şu an kodla çiziliyor). Karo ve derz çizilmez, oyun çiziyor.</td><td class="n">3000</td><td>P2</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">Yollar, plakalar, karolar, derzler, yol virajları ve bağlantı efekti modellenmez: oyun çiziyor ve birleştiriyor. Bunlar için yalnızca renk (hex) isteniyor (aşağıda).</p>
 
       <h3>Doku ve materyal (Mert)</h3>
       <div class="tbl"><table>
@@ -544,7 +569,7 @@ table.matrix td[colspan]{background:var(--chip);text-align:center}
         <tbody>
           <tr><td><code>T_Cardboard_D</code></td><td class="n">1024×1024</td><td>Tileable karton, oluk görünür. 1 UV tile = 1 m. Renk nötr açık kahve; oyun tonu <code>Tint</code> ile veriyor.</td><td>P1</td></tr>
           <tr><td><code>T_Cardboard_N</code></td><td class="n">1024×1024</td><td>Oluk normal haritası, sRGB kapalı.</td><td>P2</td></tr>
-          <tr><td>Renk listesi</td><td>—</td><td>Ev, Hastane, AVM gövdeleri, yol, plaka, karo (yeşil), derz (kahverengi) ve aile için birer ton (hex). Şu an: karo <code>#4D8C24</code>, derz <code>#4D2E17</code>, plaka <code>#B8B8B3</code>.</td><td>P1</td></tr>
+          <tr><td>Renk listesi</td><td>—</td><td>Ev, Hastane, AVM, Durak gövdeleri, yol, plaka, park çimeni, karo, derz, kaide ve üç ailenin rengi (hex). Şu an ekranda ölçülen (16 Ekim): karo ≈ <code>#96BEAA</code> (nane), derz ve plaka krem, kaide ≈ <code>#C9BAB8</code> (pembe), yol kum rengi, aileler mavi / mercan / mor / yeşil.</td><td>P1</td></tr>
         </tbody>
       </table></div>
 
