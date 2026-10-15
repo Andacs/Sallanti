@@ -111,6 +111,28 @@ void USLBuildComponent::SpawnGhostFor(const FSLSlot& Slot)
 	}
 }
 
+ASLPlaceable* USLBuildComponent::SpawnDirect(FName TypeId, FIntPoint Cell, int32 Facing)
+{
+	ASLPlatform* Platform = GetPlatform();
+	const int32 Slot = FindSlotById(TypeId);
+	if (!Platform || !Slots.IsValidIndex(Slot))
+	{
+		return nullptr;
+	}
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	ASLPlaceable* P = GetWorld()->SpawnActor<ASLPlaceable>(ASLPlaceable::StaticClass(), FTransform::Identity, Params);
+	if (!P)
+	{
+		return nullptr;
+	}
+	ConfigurePlaceable(P, Slots[Slot]);
+	P->AttachToComponent(Platform->TiltPivot, FAttachmentTransformRules::KeepRelativeTransform);
+	PutAt(P, Cell, 0, Slots[Slot].bFlat ? 0 : Facing);
+	Platform->RegisterPlaceable(P);
+	return P;
+}
+
 int32 USLBuildComponent::GetRemaining(FName Id) const
 {
 	const int32* L = Limits.Find(Id);

@@ -154,6 +154,9 @@ public:
 	/** Tasima: verilen nesneyi kaldirir (test ve UI icin). */
 	bool PickUp(ASLPlaceable* Target);
 
+	/** Hayaletsiz, kontrolsuz koy (menu sahnesi, test). Hamle sayilmaz. */
+	ASLPlaceable* SpawnDirect(FName TypeId, FIntPoint Cell, int32 Facing);
+
 	/** Imlecin altindaki nesne (kaldirmadan). Aile atamasi icin. */
 	ASLPlaceable* GetPlaceableUnderCursor() const;
 

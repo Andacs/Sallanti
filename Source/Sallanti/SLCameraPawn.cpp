@@ -68,7 +68,13 @@ void ASLCameraPawn::Tick(float DeltaSeconds)
 		Distance = FMath::FInterpTo(Distance, TargetDistance, DeltaSeconds, ZoomInterpSpeed);
 		ApplyCamera();
 	}
-	if (!FMath::IsNearlyEqual(Yaw, TargetYaw, 0.05f))
+	if (AutoOrbitDegPerSec != 0.f)
+	{
+		TargetYaw += AutoOrbitDegPerSec * DeltaSeconds;
+		Yaw = TargetYaw;
+		ApplyCamera();
+	}
+	else if (!FMath::IsNearlyEqual(Yaw, TargetYaw, 0.05f))
 	{
 		Yaw = FMath::FInterpTo(Yaw, TargetYaw, DeltaSeconds, RotateInterpSpeed);
 		ApplyCamera();
@@ -89,6 +95,7 @@ void ASLCameraPawn::ApplyCamera()
 	Camera->PostProcessSettings.bOverride_MotionBlurAmount = true;
 	Camera->PostProcessSettings.MotionBlurAmount = 0.f;
 	Camera->PostProcessBlendWeight = 1.f;
-	Camera->SetRelativeLocation(LookAtOffset + FVector(PanOffset, 0.f) - ViewRot.Vector() * Distance);
+	const FVector Right = FRotator(0.f, Yaw, 0.f).RotateVector(FVector::RightVector);
+	Camera->SetRelativeLocation(LookAtOffset + FVector(PanOffset, 0.f) - ViewRot.Vector() * Distance + Right * ViewShiftRight);
 	Camera->SetRelativeRotation(ViewRot);
 }

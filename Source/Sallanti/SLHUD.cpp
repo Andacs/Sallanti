@@ -176,6 +176,44 @@ void ASLHUD::DrawHUD()
 	{
 		return;
 	}
+	MenuRects.Reset();
+	MenuActions.Reset();
+	if (!Ambience.IsValid())
+	{
+		// Gece hap zemini (PillAlpha) icin gun isigini okuyoruz; menude DrawSky cizilmedigi icin burada bul.
+		for (TActorIterator<ASLAmbience> It(GetWorld()); It; ++It)
+		{
+			Ambience = *It;
+			break;
+		}
+	}
+	if (GM && GM->IsMenu())
+	{
+		if (GM->bCreditsOnStart && !bCreditsChecked)
+		{
+			MenuPage = ESLMenuPage::Credits; // son bolum bitince "Emegi gecenler"
+			CreditsStart = Now;
+		}
+		bCreditsChecked = true;
+		if (D)
+		{
+			DrawFamilyOverlays(*GM->GetDirector());
+		}
+		DrawMenu();
+		{
+			// Muzik dugmesi menude de.
+			const float S = UiScale();
+			MusicRect = { Canvas->ClipX - 64.f * S, 28.f * S, 44.f * S, 44.f * S };
+			const bool bH = Hover(MusicRect);
+			DrawSpeakerIcon(MusicRect.X + 20.f * S, MusicRect.Y + 22.f * S, 22.f * S, GM->IsMusicOn(), bH ? FLinearColor(0.243f, 0.212f, 0.345f) : FLinearColor(0.416f, 0.376f, 0.525f));
+		}
+		DrawCinemaOverlay();
+		if (PC)
+		{
+			PC->CurrentMouseCursor = bAnyHover ? EMouseCursor::Hand : EMouseCursor::Default;
+		}
+		return;
+	}
 
 	// Gokyuzu pusulasi (16 Eki): eski kartlar (gorev listesi, aileler karti, cekmece, saat karti, denge
 	// bari) cizilmiyor; fonksiyonlari duruyor (WBP_HUD'a gecerken basvuru).
@@ -189,8 +227,19 @@ void ASLHUD::DrawHUD()
 	}
 	DrawCompass(*P, *B);
 	DrawRotateButtons();
-	DrawHintC(*P, *B, D);
-	DrawEndC(*P, GM->IsLevelComplete());
+	if (!bCinema)
+	{
+		DrawHintC(*P, *B, D);
+		FRect R;
+		MenuButton(TEXT("Menü"), 48.f * UiScale(), 34.f * UiScale(), 0.72f * UiScale(), R);
+		MenuRects.Add(R);
+		MenuActions.Add(21);
+	}
+	if (!bCinema)
+	{
+		DrawEndC(*P, GM->IsLevelComplete()); // trailerda bitis yazisi ve dugmeleri son 15 sn ekranda kaliyordu
+	}
+	DrawCinemaOverlay();
 	if (PC)
 	{
 		PC->CurrentMouseCursor = bAnyHover ? EMouseCursor::Hand : EMouseCursor::Default;
@@ -1242,6 +1291,27 @@ bool ASLHUD::HandleMouseDown(const FVector2D& Mouse)
 {
 	ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
 	ASLPlayerController* PC = Cast<ASLPlayerController>(GetOwningPlayerController());
+	for (int32 I = 0; I < MenuRects.Num(); ++I)
+	{
+		if (MenuRects[I].Contains(Mouse) && MenuActions.IsValidIndex(I))
+		{
+			DoMenuAction(MenuActions[I]);
+			return true;
+		}
+	}
+	if (GM && GM->IsMenu())
+	{
+		if (MusicRect.Contains(Mouse))
+		{
+			GM->ToggleMusic();
+			return true;
+		}
+		if (MenuPage == ESLMenuPage::Credits)
+		{
+			MenuPage = ESLMenuPage::Main; // jenerikte tiklama geri doner
+		}
+		return true; // menude tahtaya tiklama oyuna gecmez
+	}
 	if (MusicRect.W > 0.f && MusicRect.Contains(Mouse) && GM)
 	{
 		GM->ToggleMusic();
@@ -1251,9 +1321,16 @@ bool ASLHUD::HandleMouseDown(const FVector2D& Mouse)
 	if (GM && GM->IsRoundOver())
 	{
 		const ASLLevelDirector* Dir = GM->GetDirector();
-		if (NextRect.W > 0.f && NextRect.Contains(Mouse) && Dir && Dir->NextLevelNumber > 0)
+		if (NextRect.W > 0.f && NextRect.Contains(Mouse))
 		{
-			GM->TravelToLevel(Dir->NextLevelNumber);
+			if (NextAction == 0 && Dir && Dir->NextLevelNumber > 0)
+			{
+				GM->TravelToLevel(Dir->NextLevelNumber);
+			}
+			else if (NextAction != 0)
+			{
+				DoMenuAction(NextAction);
+			}
 			return true;
 		}
 		if (AgainRect.W > 0.f && AgainRect.Contains(Mouse))
@@ -1908,12 +1985,21 @@ void ASLHUD::DrawEndC(const ASLPlatform& P, bool bLevelComplete)
 	const float Mid = 0.5f * Canvas->ClipX;
 	if (bLevelComplete && Dir && Dir->NextLevelNumber > 0)
 	{
+		NextAction = 0;
 		Button(AgainRect, Mid - 178.f * Sc, TEXT("Tekrar"), false);
 		Button(NextRect, Mid + 10.f * Sc, FString::Printf(TEXT("%d. bölüm"), Dir->NextLevelNumber), true);
 	}
+	else if (bLevelComplete)
+	{
+		NextAction = 22; // son bolum: jenerik
+		Button(AgainRect, Mid - 178.f * Sc, TEXT("Tekrar"), false);
+		Button(NextRect, Mid + 10.f * Sc, TEXT("Emeği geçenler"), true);
+	}
 	else
 	{
-		Button(AgainRect, Mid - 84.f * Sc, TEXT("Tekrar"), true);
+		NextAction = 21;
+		Button(AgainRect, Mid - 178.f * Sc, TEXT("Tekrar"), true);
+		Button(NextRect, Mid + 10.f * Sc, TEXT("Menü"), false);
 	}
 }
 
@@ -1948,5 +2034,250 @@ void ASLHUD::DrawHomeNodes(const ASLLevelDirector& D)
 			FillCircle(P.X, P.Y, 10.f * S, FLinearColor(CFail.R, CFail.G, CFail.B, 0.25f));
 			Arc(P.X, P.Y, 6.f * S, 0.f, 360.f, 2.f, CFail);
 		}
+	}
+}
+
+// =================================================================================================
+// Ana menu, jenerik, trailer yazilari (16 Eki). Ayni "gokyuzu pusulasi" dili: panel yok, aralikli harf,
+// ince cizgi, soluk krem hap zemin. Arkada canli kasaba doner (ASLLevelDirector::ConfigureMenu).
+// =================================================================================================
+
+namespace
+{
+	const FLinearColor MInk(0.243f, 0.212f, 0.345f);
+	const FLinearColor MMuted(0.416f, 0.376f, 0.525f);
+	const FLinearColor MLine(0.62f, 0.573f, 0.745f);
+	const FLinearColor MCream(0.984f, 0.973f, 0.992f);
+}
+
+TArray<FString> ASLHUD::GetCreditsLines() const
+{
+	// Jenerik = kural kitapcigi 3.4 / 4.2 beyanlarinin oyun ici hali (README ile ayni icerik).
+	TArray<FString> L;
+	L.Add(TEXT("#SALLANTI"));
+	L.Add(TEXT("dengede bir şehir kur"));
+	L.Add(TEXT(""));
+	L.Add(FString::Printf(TEXT("%s"), *TeamName));
+	L.Add(TEXT("CIVIL GAME JAM 2026"));
+	L.Add(TEXT(""));
+	L.Add(TEXT("#EKİP"));
+	for (const FString& M : TeamMembers)
+	{
+		L.Add(M);
+	}
+	L.Add(TEXT(""));
+	L.Add(TEXT("#HAZIR KAYNAKLAR"));
+	L.Add(TEXT("Unreal Engine 5.8 · Epic Games · Unreal Engine EULA"));
+	L.Add(TEXT("Motorun temel şekilleri (küp, küre, silindir, koni)"));
+	L.Add(TEXT("Epic Games · Unreal Engine EULA"));
+	L.Add(TEXT("Roboto yazı tipi · Google · Apache 2.0 (motorla gelir)"));
+	L.Add(TEXT(""));
+	L.Add(TEXT("#YAPAY ZEKÂ KULLANIMI"));
+	L.Add(TEXT("Kod: Claude (Anthropic) · oyun kodu, araç betikleri"));
+	L.Add(TEXT("Görsel: Claude · binalar, arayüz ve arka plan kodla çizildi"));
+	L.Add(TEXT("Ses: Claude'un yazdığı sentez betikleri · efektler ve müzik"));
+	L.Add(TEXT("Metin: Claude · diyaloglar ve arayüz metinleri"));
+	L.Add(TEXT("Diğer: Claude · tasarım belgesi, test otomasyonu, trailer"));
+	L.Add(TEXT(""));
+	L.Add(TEXT("#TEŞEKKÜRLER"));
+	L.Add(TEXT("KTMMOB İnşaat Mühendisleri Odası"));
+	L.Add(TEXT("LootBAG Studios · ODTÜ KALTEV"));
+	L.Add(TEXT(""));
+	L.Add(TEXT("#Oynadığın için teşekkürler"));
+	return L;
+}
+
+bool ASLHUD::MenuButton(const FString& Label, float X, float Y, float Scale, FRect& Out)
+{
+	const FVector2D Sz = Measure(Label, Scale, false);
+	Out = { X - 30.f, Y - 6.f, float(Sz.X) + 60.f, float(Sz.Y) + 12.f };
+	const bool bH = Hover(Out);
+	// Imleç: soldaki elmas dolar, metin kayar, altinda ince cizgi.
+	const float Shift = bH ? 8.f : 0.f;
+	const float DX = X - 14.f, DY = Y + 0.5f * Sz.Y;
+	for (int32 I = 0; I < 10; ++I)
+	{
+		const float Hw = (I < 5 ? I : 10 - I) * 0.9f;
+		if (bH || I == 0 || I == 9 || Hw >= 3.5f)
+		{
+			DrawRect(bH ? MInk : MLine, DX - Hw, DY - 5.f + I, 2.f * Hw, 1.f);
+		}
+	}
+	TextHalo(Label, X + Shift, Y, MInk, Scale);
+	if (bH)
+	{
+		DrawLine(X + Shift, Y + Sz.Y + 3.f, X + Shift + Sz.X, Y + Sz.Y + 3.f, MInk, 1.f);
+	}
+	return bH;
+}
+
+void ASLHUD::DrawMenu()
+{
+	const float S = UiScale();
+	const float CX = 330.f * S;
+	MenuRects.Reset();
+	MenuActions.Reset();
+	if (MenuPage == ESLMenuPage::Credits)
+	{
+		DrawCredits();
+		return;
+	}
+	// Baslik: ekranin sol yarisinda, tahta sagda doner.
+	TextSpaced(TEXT("SALLANTI"), CX, 150.f * S, 2.3f * S, 14.f * S, MInk);
+	const FString Tag = TEXT("dengede bir şehir kur");
+	const FVector2D TS = Measure(Tag, 0.9f * S, false);
+	TextHalo(Tag, CX - 0.5f * TS.X, 222.f * S, MMuted, 0.9f * S);
+	DrawLine(CX - 50.f * S, 262.f * S, CX + 50.f * S, 262.f * S, MLine, 1.f);
+
+	float Y = 320.f * S;
+	const float X = CX - 90.f * S, Step = 52.f * S, Sc = 1.05f * S;
+	auto Add = [&](const FString& Label, int32 Action)
+	{
+		FRect R;
+		MenuButton(Label, X, Y, Sc, R);
+		MenuRects.Add(R);
+		MenuActions.Add(Action);
+		Y += Step;
+	};
+	if (MenuPage == ESLMenuPage::Main)
+	{
+		Add(TEXT("Oyna"), 1);
+		Add(TEXT("Bölümler"), 10);
+		Add(TEXT("Nasıl oynanır"), 11);
+		Add(TEXT("Emeği geçenler"), 12);
+		Add(TEXT("Çıkış"), 99);
+	}
+	else if (MenuPage == ESLMenuPage::Levels)
+	{
+		Add(TEXT("1 · İlk mahalle"), 1);
+		Add(TEXT("2 · Otobüs durağı"), 2);
+		Add(TEXT("3 · Komşular"), 3);
+		Add(TEXT("‹ Geri"), 20);
+	}
+	else if (MenuPage == ESLMenuPage::HowTo)
+	{
+		const TCHAR* Lines[] = {
+			TEXT("Sallanan bir adaya şehir kuruyorsun."),
+			TEXT("Her bina dengeyi bozar: ağırları merkeze yakın tut."),
+			TEXT("Ailelere tıkla, ne istediklerini öğren."),
+			TEXT("Seçili aile için ev kur ya da boş bir eve tıkla."),
+			TEXT("Herkes mutlu olunca bölüm biter."),
+			TEXT(""),
+			TEXT("Sol tık: koy / binayı taşı    R, Q: çevir"),
+			TEXT("Sağ tık sürükle: kaydır    Tekerlek: yakınlaş"),
+			TEXT("Z, X: tahtayı döndür    Esc: bırak    M: müzik"),
+		};
+		float LY = Y - 10.f * S;
+		for (const TCHAR* L : Lines)
+		{
+			if (*L)
+			{
+				TextHalo(L, X - 20.f * S, LY, MInk, 0.78f * S);
+			}
+			LY += 30.f * S;
+		}
+		Y = LY + 20.f * S;
+		Add(TEXT("‹ Geri"), 20);
+	}
+	const FString Foot = FString::Printf(TEXT("%s  ·  CIVIL GAME JAM 2026"), *TeamName);
+	TextHalo(Foot, 40.f * S, Canvas->ClipY - 50.f * S, MMuted, 0.62f * S);
+}
+
+void ASLHUD::DrawCredits()
+{
+	// Yavasca yukari kayan jenerik; tiklama ya da Esc geri doner.
+	const float S = UiScale();
+	FillRound(0.f, 0.f, Canvas->ClipX, Canvas->ClipY, 0.f, FLinearColor(MCream.R, MCream.G, MCream.B, 0.55f));
+	const TArray<FString> Lines = GetCreditsLines();
+	const float Speed = 38.f * S;
+	const float T = NowReal - CreditsStart;
+	float Y = Canvas->ClipY + 20.f * S - T * Speed;
+	const float CX = 0.5f * Canvas->ClipX;
+	for (const FString& L : Lines)
+	{
+		if (L.StartsWith(TEXT("#")))
+		{
+			const FString H = L.Mid(1);
+			const bool bTitle = H == TEXT("SALLANTI");
+			Y += bTitle ? 0.f : 18.f * S;
+			if (Y > -80.f && Y < Canvas->ClipY + 40.f)
+			{
+				TextSpaced(H, CX, Y, (bTitle ? 2.f : 0.9f) * S, (bTitle ? 12.f : 5.f) * S, MInk);
+			}
+			Y += (bTitle ? 80.f : 44.f) * S;
+		}
+		else
+		{
+			if (!L.IsEmpty() && Y > -40.f && Y < Canvas->ClipY + 40.f)
+			{
+				const FVector2D Sz = Measure(L, 0.78f * S, false);
+				TextHalo(L, CX - 0.5f * Sz.X, Y, MMuted, 0.78f * S);
+			}
+			Y += 32.f * S;
+		}
+	}
+	if (Y < -40.f)
+	{
+		CreditsStart = NowReal; // bitince basa sar
+	}
+	FRect R;
+	MenuButton(TEXT("‹ Geri"), 70.f * S, Canvas->ClipY - 70.f * S, 0.9f * S, R);
+	MenuRects.Add(R);
+	MenuActions.Add(20);
+}
+
+void ASLHUD::DoMenuAction(int32 Action)
+{
+	ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
+	ASLGameMode::PlaySfx(this, TEXT("SFX_UI_Tik"), 0);
+	switch (Action)
+	{
+	case 1: case 2: case 3:
+		if (GM) { GM->TravelToLevel(Action); }
+		break;
+	case 10: MenuPage = ESLMenuPage::Levels; break;
+	case 11: MenuPage = ESLMenuPage::HowTo; break;
+	case 12: MenuPage = ESLMenuPage::Credits; CreditsStart = NowReal; break;
+	case 20: MenuPage = ESLMenuPage::Main; break;
+	case 21: if (GM) { GM->TravelToLevel(0); } break;
+	case 22: if (GM) { GM->TravelToLevel(0, true); } break;
+	case 99:
+		if (APlayerController* PC = GetOwningPlayerController())
+		{
+			PC->ConsoleCommand(TEXT("quit"));
+		}
+		break;
+	default: break;
+	}
+}
+
+void ASLHUD::MenuBack()
+{
+	if (MenuPage != ESLMenuPage::Main)
+	{
+		MenuPage = ESLMenuPage::Main;
+	}
+}
+
+void ASLHUD::DrawCinemaOverlay()
+{
+	// Trailer: ortada baslik karti (gokyuzu zemininde), altta kisa altyazi.
+	const float S = UiScale();
+	if (!CinemaTitle.IsEmpty())
+	{
+		// Baslik karti oyun arayuzunun ustunde okunsun: zemin neredeyse opak (0.5'te baslik arayuzde kayboldu).
+		FillRound(0.f, 0.f, Canvas->ClipX, Canvas->ClipY, 0.f, FLinearColor(MCream.R, MCream.G, MCream.B, 0.86f * CinemaTitleAlpha));
+		const FLinearColor C(MInk.R, MInk.G, MInk.B, CinemaTitleAlpha);
+		TextSpaced(CinemaTitle, 0.5f * Canvas->ClipX, 0.42f * Canvas->ClipY, 2.4f * S, 16.f * S, C);
+		if (!CinemaSub.IsEmpty())
+		{
+			const FVector2D Sz = Measure(CinemaSub, 0.95f * S, false);
+			Text(CinemaSub, 0.5f * (Canvas->ClipX - Sz.X), 0.42f * Canvas->ClipY + 84.f * S, FLinearColor(MMuted.R, MMuted.G, MMuted.B, CinemaTitleAlpha), 0.95f * S);
+		}
+	}
+	if (!CinemaCaption.IsEmpty())
+	{
+		const FVector2D Sz = Measure(CinemaCaption, 1.1f * S, false);
+		TextHalo(CinemaCaption, 0.5f * (Canvas->ClipX - Sz.X), Canvas->ClipY - 120.f * S, MInk, 1.1f * S);
 	}
 }

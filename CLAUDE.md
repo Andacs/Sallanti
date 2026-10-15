@@ -223,6 +223,23 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
   sağ üstte müzik. Yazılar soluk krem hap zeminde (panelsiz yazı tahtada okunmuyordu; gece daha opak).
   Eski kart HUD fonksiyonları (çekmece, görev kartı, denge barı) kodda duruyor ama çizilmiyor.
   Fontlar şimdilik motorun Roboto'su; tasarımdaki Cinzel + Jost indirilip aktarılınca değişecek.
+- **Açılış, menü, jenerik, trailer (16 Ekim, kural kitapçığı v09'a göre):**
+  - Açılış videosu `Content/Movies/Intro.mp4` (19 sn), `DefaultGame.ini` `StartupMovies` (atlanabilir).
+  - **Ana menü = bölüm 0** (URL'de `Bolum` yoksa oyun menüyle açılır; `oyna.bat` varsayılanı 0). Arkada
+    3. bölümün çözümü kurulu canlı kasaba döner (`ConfigureMenu`, `SpawnMenuTown`), gün döngüsü akar.
+    Oyna · Bölümler · Nasıl oynanır · Emeği geçenler · Çıkış. Oyunda sol üstte "Menü"; bitiş ekranında
+    Tekrar + sonraki bölüm / Menü / (son bölümde) Emeği geçenler.
+  - **Jenerik** = README'deki hazır kaynak ve yapay zekâ beyanının oyun içi hâli (`ASLHUD::GetCreditsLines`,
+    takım adı `TeamName`, ekip `TeamMembers`).
+  - **Trailer:** `bash Tools/trailer_yap.sh` → `SLSinema` 3. bölümü sabit 30 fps (`-benchmark -fps=30`) oynar,
+    her kareyi kaydeder; ffmpeg kareler + müzik → `Build/Teslim/Sallanti_Trailer.mp4` (36,5 sn, ≤ 60 kuralı)
+    ve kısa kesit → `Intro.mp4`. Süre ~6 dk. Başlık kartı zemini %86 opak (%50'de arayüzün altında kaldı).
+  - Teslim belgeleri: `README.md` (çalıştırma, kontroller, beş kategoride hazır kaynak ve AI beyanı),
+    `Docs/TESLIM.md` (form alanları, kontrol listesi). Paket denemesi: `Tools/pencere_goruntu.ps1` yalnızca
+    oyun penceresini yakalar (Shipping'de log ve konsol yok).
+  - **Madde 3.1: Sallantı tema açıklanmadan (14–15 Ekim) yapıldı, teslim edilemez.** Bu proje prova; jam'de
+    yeni oyun yapılacak, araçlar (trailer, menü/jenerik düzeni, ses/müzik üreticileri, paketleme) taşınır.
+  - Repo şu an **private**; kurallar public istiyor (6.5). Görünürlük Andaç'ın kararı.
 - **Zorluk bölüme göre** (`ASLLevelDirector::bApplyTuning`, BeginPlay'de platforma yazılır): 1. bölüm
   eğitim (12 / 0,08 / 1,5 sn), 2. bölüm 10 / 0,09 / 1,3 sn, 3. bölüm 8 / 0,10 / 1,2 sn + hamle sınırı.
 - **Gece-gündüz:** her başarılı koyma/taşıma bir hamle (`USLBuildComponent::GetMoveCount`; geri alma ve

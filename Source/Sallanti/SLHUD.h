@@ -16,6 +16,8 @@ class ASLPlatform;
 class USLBuildComponent;
 struct FSLSlot;
 
+enum class ESLMenuPage : uint8 { Main, Levels, HowTo, Credits };
+
 UCLASS()
 class SALLANTI_API ASLHUD : public AHUD
 {
@@ -23,6 +25,29 @@ class SALLANTI_API ASLHUD : public AHUD
 
 public:
 	virtual void DrawHUD() override;
+
+	/** Takim adi: menu altinda ve jenerikte. Teslimden once Yigit yazar. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Jenerik")
+	FString TeamName = TEXT("[Takım adı]");
+
+	/** Jenerikteki ekip satirlari. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Jenerik")
+	TArray<FString> TeamMembers = {
+		TEXT("Andaç · programlama, oyun tasarımı"),
+		TEXT("Yiğit · arayüz, seviye, paketleme"),
+		TEXT("Mert · model, doku, ışık"),
+		TEXT("Asil · konsept, model") };
+
+	/** Menu: Esc bir ust sayfaya. */
+	void MenuBack();
+	void DoMenuAction(int32 Action);
+
+	/** Trailer cekimi: ortada baslik karti (alfa 0..1) ve altta altyazi. */
+	FString CinemaTitle;
+	FString CinemaSub;
+	float CinemaTitleAlpha = 0.f;
+	FString CinemaCaption;
+	bool bCinema = false;
 
 	/** Gelistirici paneli (sayilar, CoM, ayarlar). Oyuncu ekrani her zaman cizilir. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|HUD")
@@ -140,6 +165,19 @@ private:
 	FRect RotLeftRect;
 	FRect RotRightRect;
 	TArray<FRect> FamilyRowRects;
+
+	// --- Menu ve jenerik ---
+	TArray<FString> GetCreditsLines() const;
+	bool MenuButton(const FString& Label, float X, float Y, float Scale, FRect& Out);
+	void DrawMenu();
+	void DrawCredits();
+	void DrawCinemaOverlay();
+	ESLMenuPage MenuPage = ESLMenuPage::Main;
+	TArray<FRect> MenuRects;
+	TArray<int32> MenuActions;
+	float CreditsStart = 0.f;
+	bool bCreditsChecked = false;
+	int32 NextAction = 0; // bitis ekraninin ikinci dugmesi: 0 sonraki bolum, 21 menu, 22 jenerik
 
 	float DrawerOpen = 0.f;  // 0 kapali, 1 acik (cizim)
 	bool bDrawerWanted = false;

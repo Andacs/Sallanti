@@ -147,15 +147,16 @@ ASLLevelDirector* ASLGameMode::GetDirector()
 void ASLGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
-	LevelNumber = FMath::Clamp(UGameplayStatics::GetIntOption(Options, TEXT("Bolum"), 1), 1, 3);
+	LevelNumber = FMath::Clamp(UGameplayStatics::GetIntOption(Options, TEXT("Bolum"), 0), 0, 3);
+	bCreditsOnStart = UGameplayStatics::GetIntOption(Options, TEXT("Jenerik"), 0) != 0;
 	UE_LOG(LogTemp, Log, TEXT("SL_BOLUM %d (secenekler: %s)"), LevelNumber, *Options);
 }
 
-void ASLGameMode::TravelToLevel(int32 Number)
+void ASLGameMode::TravelToLevel(int32 Number, bool bCredits)
 {
 	const FString Map = UWorld::RemovePIEPrefix(GetWorld()->GetOutermost()->GetName());
 	UE_LOG(LogTemp, Log, TEXT("SL_TRAVEL %s bolum %d"), *Map, Number);
-	UGameplayStatics::OpenLevel(this, FName(*Map), true, FString::Printf(TEXT("Bolum=%d"), Number));
+	UGameplayStatics::OpenLevel(this, FName(*Map), true, FString::Printf(TEXT("Bolum=%d%s"), Number, bCredits ? TEXT("?Jenerik=1") : TEXT("")));
 }
 
 void ASLGameMode::HandleLevelComplete()

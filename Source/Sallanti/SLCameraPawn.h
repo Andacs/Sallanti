@@ -95,6 +95,14 @@ public:
 	/** 0..3: bastaki bakistan kac ceyrek tur. Yeni binanin kapisi kameraya baksin diye BuildComponent okur. */
 	int32 GetViewSteps() const { return ((ViewSteps % 4) + 4) % 4; }
 
+	/** Menu ve trailer: kamera tahtanin etrafinda kendiliginden doner, derece/sn (0 = durur). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
+	float AutoOrbitDegPerSec = 0.f;
+
+	/** Kamerayi kendi sagina kaydirir, cm (eksi = tahta ekranda saga gider; menude sol tarafa yazi icin). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
+	float ViewShiftRight = 0.f;
+
 	/** Donus yumusakligi (FInterpTo hizi). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
 	float RotateInterpSpeed = 7.f;

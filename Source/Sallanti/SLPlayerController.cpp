@@ -30,6 +30,16 @@ ASLPlayerController::ASLPlayerController()
 void ASLPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+	if (const ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>(); GM && GM->IsMenu())
+	{
+		// Menu: kasaba yavasca doner, tahta saga kayar (sol yari yazilara).
+		if (ASLCameraPawn* Cam = Cast<ASLCameraPawn>(GetPawn()))
+		{
+			Cam->AutoOrbitDegPerSec = 3.5f;
+			Cam->ViewShiftRight = -400.f;
+			Cam->SetTargetDistance(3600.f);
+		}
+	}
 
 	FInputModeGameAndUI Mode;
 	Mode.SetHideCursorDuringCapture(false);
@@ -233,6 +243,33 @@ void ASLPlayerController::OnCenterCamera()
 void ASLPlayerController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
+	if (bRecording)
+	{
+		CinemaTime += DeltaTime;
+		FScreenshotRequest::RequestScreenshot(FString::Printf(TEXT("REC_f_%05d"), RecFrame++), false, false);
+		if (ASLHUD* HUD = GetHUD<ASLHUD>())
+		{
+			// Baslik karti: 0-3.6 sn acilis, sonda kapanis (CinemaStep yazar); yumusak gir / cik.
+			const float T = CinemaTime;
+			if (T < 3.8f)
+			{
+				HUD->CinemaTitleAlpha = FMath::Clamp(FMath::Min(T / 0.8f, (3.8f - T) / 0.7f), 0.f, 1.f);
+			}
+			else if (!HUD->CinemaTitle.IsEmpty() && HUD->CinemaTitleAlpha < 1.f && T > 10.f)
+			{
+				HUD->CinemaTitleAlpha = FMath::Min(1.f, HUD->CinemaTitleAlpha + DeltaTime / 0.8f);
+			}
+			else if (T >= 3.8f && T < 10.f)
+			{
+				HUD->CinemaTitle.Reset();
+			}
+			if (CaptionUntil > 0.f && T > CaptionUntil)
+			{
+				HUD->CinemaCaption.Reset();
+				CaptionUntil = -1.f;
+			}
+		}
+	}
 	if (!bPanning)
 	{
 		return;
@@ -340,6 +377,14 @@ void ASLPlayerController::RotateView(int32 Steps)
 }
 void ASLPlayerController::OnCancel()
 {
+	if (const ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>(); GM && GM->IsMenu())
+	{
+		if (ASLHUD* HUD = GetHUD<ASLHUD>())
+		{
+			HUD->MenuBack();
+		}
+		return;
+	}
 	Build->Cancel();
 	if (ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>(); GM && GM->GetDirector())
 	{
@@ -373,8 +418,13 @@ void ASLPlayerController::SLSaat(float Hour)
 
 void ASLPlayerController::OnNextLevel()
 {
-	// Enter yalnizca bolum bittiyse ve sonraki bolum varsa.
+	// Enter yalnizca bolum bittiyse ve sonraki bolum varsa; menude "Oyna".
 	ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
+	if (GM && GM->IsMenu())
+	{
+		GM->TravelToLevel(1);
+		return;
+	}
 	const ASLLevelDirector* D = GM ? GM->GetDirector() : nullptr;
 	if (GM && D && GM->IsLevelComplete() && D->NextLevelNumber > 0)
 	{
@@ -634,6 +684,132 @@ void ASLPlayerController::TestLevel2Step()
 	case 72:
 		GetWorldTimerManager().ClearTimer(SelfTestTimer);
 		UE_LOG(LogSLInput, Log, TEXT("SL_TESTL2_DONE tamam=%d"), GM && GM->IsLevelComplete() ? 1 : 0);
+		ConsoleCommand(TEXT("quit"));
+		break;
+	default: break;
+	}
+}
+
+void ASLPlayerController::SLSinema()
+{
+	SelfTestIndex = 0;
+	CinemaTime = 0.f;
+	RecFrame = 0;
+	bRecording = true;
+	SLSet(TEXT("SwayAmplitude"), TEXT("0"));
+	if (ASLHUD* HUD = GetHUD<ASLHUD>())
+	{
+		HUD->bCinema = true;
+		HUD->CinemaTitle = TEXT("SALLANTI");
+		HUD->CinemaSub = TEXT("dengede bir şehir kur");
+	}
+	if (ASLCameraPawn* Cam = Cast<ASLCameraPawn>(GetPawn()))
+	{
+		Cam->AutoOrbitDegPerSec = 4.f;
+		Cam->SetTargetDistance(3300.f);
+	}
+	GetWorldTimerManager().SetTimer(SelfTestTimer, this, &ASLPlayerController::CinemaStep, 0.5f, true, 0.5f);
+}
+
+void ASLPlayerController::SLTestMenu()
+{
+	SelfTestIndex = 0;
+	GetWorldTimerManager().SetTimer(SelfTestTimer, this, &ASLPlayerController::MenuTestStep, 0.5f, true, 0.5f);
+}
+
+void ASLPlayerController::MenuTestStep()
+{
+	const int32 I = SelfTestIndex++;
+	ASLHUD* HUD = GetHUD<ASLHUD>();
+	if (!HUD)
+	{
+		return;
+	}
+	switch (I)
+	{
+	case 8: Shot(TEXT("M_0_ana")); break;
+	case 9: HUD->DoMenuAction(10); break;
+	case 10: Shot(TEXT("M_1_bolumler")); break;
+	case 11: HUD->DoMenuAction(11); break;
+	case 12: Shot(TEXT("M_2_nasil")); break;
+	case 13: HUD->DoMenuAction(12); break;
+	case 22: Shot(TEXT("M_3_jenerik")); break;
+	case 34: Shot(TEXT("M_4_jenerik_son")); break;
+	case 35: HUD->DoMenuAction(20); SLSaat(21.f); break;
+	case 37: Shot(TEXT("M_5_ana_gece")); break;
+	case 38:
+		GetWorldTimerManager().ClearTimer(SelfTestTimer);
+		UE_LOG(LogSLInput, Log, TEXT("SL_TESTMENU_DONE"));
+		ConsoleCommand(TEXT("quit"));
+		break;
+	default: break;
+	}
+}
+
+void ASLPlayerController::Caption(const TCHAR* Text, float Seconds)
+{
+	if (ASLHUD* HUD = GetHUD<ASLHUD>())
+	{
+		HUD->CinemaCaption = Text;
+		CaptionUntil = CinemaTime + Seconds;
+	}
+}
+
+void ASLPlayerController::CinemaStep()
+{
+	// 3. bolumun cozumu, trailer temposunda (0.5 sn adim). Koordinatlar TestLevel3Step ile ayni.
+	const int32 I = SelfTestIndex++;
+	ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
+	ASLLevelDirector* D = GM ? GM->GetDirector() : nullptr;
+	ASLCameraPawn* Cam = Cast<ASLCameraPawn>(GetPawn());
+	ASLHUD* HUD = GetHUD<ASLHUD>();
+	auto Place = [this](int32 Slot, float X, float Y, int32 Facing)
+	{
+		SLGhost(Slot, X, Y);
+		Build->SetFacing(Facing);
+		const bool bOk = Build->TryPlace();
+		Build->Cancel();
+		return bOk;
+	};
+	auto Assign = [&](int32 Fam)
+	{
+		if (D && Build->GetLastPlaced())
+		{
+			D->AssignFamilyToHouse(Fam, Build->GetLastPlaced());
+			D->ClearFamilySelection();
+		}
+	};
+	switch (I)
+	{
+	case 8: Caption(TEXT("Sallanan bir adaya şehir kur"), 3.5f); Place(2, -75.f, 25.f, 3); if (Cam) { Cam->SetTargetDistance(2700.f); } break;
+	case 11: Caption(TEXT("Herkesin bir isteği var"), 4.f); if (D) { D->SelectFamily(0); } break;
+	case 13: SLGhost(1, -150.f, -50.f); Build->SetFacing(0); break;
+	case 15: Build->TryPlace(); Build->Cancel(); Assign(0); break;
+	case 17: Caption(TEXT("Her bina dengeyi bozar"), 3.5f); SLGhost(3, 200.f, 200.f); break;
+	case 21: Build->Cancel(); Place(3, 100.f, 0.f, 3); break;
+	case 23: Place(6, -175.f, 175.f, 3); break;
+	case 25: Caption(TEXT("Kimin nerede oturacağına sen karar ver"), 4.f); if (D) { D->SelectFamily(1); } SLGhost(1, -100.f, 200.f); Build->SetFacing(3); break;
+	case 28: Build->TryPlace(); Build->Cancel(); Assign(1); break;
+	case 30: Place(4, -100.f, -50.f, 0); break;
+	case 31: case 32: case 33: case 34: case 35: Place(4, -300.f + 50.f * (4 + (I - 31)), -100.f, 0); break;
+	case 36: Caption(TEXT("Yollar ve otobüs mahalleyi birleştirir"), 4.f); Place(5, 0.f, -150.f, 1); break;
+	case 39: if (D) { D->SelectFamily(2); } break;
+	case 41: Place(1, -150.f, -150.f, 0); Assign(2); break;
+	case 42: Place(4, -100.f, -150.f, 0); if (Cam) { Cam->SetTargetDistance(1800.f); } break;
+	case 46: Caption(TEXT("Gün batar, pencereler yanar"), 4.f); SLSaat(20.5f); break;
+	case 52: Caption(TEXT("Herkes mutlu olunca mahalle tamamdır"), 4.f); SLSaat(-1.f); if (Cam) { Cam->SetTargetDistance(3000.f); } break;
+	case 62:
+		if (HUD)
+		{
+			HUD->CinemaTitle = TEXT("SALLANTI");
+			HUD->CinemaSub = FString::Printf(TEXT("%s  ·  CIVIL GAME JAM 2026"), *HUD->TeamName);
+			HUD->CinemaTitleAlpha = 0.f;
+		}
+		break;
+	case 72:
+		GetWorldTimerManager().ClearTimer(SelfTestTimer);
+		bRecording = false;
+		UE_LOG(LogSLInput, Log, TEXT("SL_SINEMA_DONE kare=%d sure=%.1f tamam=%d"), RecFrame, CinemaTime, GM && GM->IsLevelComplete() ? 1 : 0);
 		ConsoleCommand(TEXT("quit"));
 		break;
 	default: break;

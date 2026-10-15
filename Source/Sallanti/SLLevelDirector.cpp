@@ -96,6 +96,11 @@ void ASLLevelDirector::ConfigureLevel(int32 Number)
 	bAutoAssign = true;
 	RequiredTypes.Reset();
 	SlotLimits.Reset();
+	if (Number == 0)
+	{
+		ConfigureMenu();
+		return;
+	}
 	if (Number == 3)
 	{
 		ConfigureLevel3();
@@ -283,6 +288,66 @@ USLBuildComponent* ASLLevelDirector::GetBuild() const
 {
 	const ASLPlayerController* PC = GetWorld() ? Cast<ASLPlayerController>(GetWorld()->GetFirstPlayerController()) : nullptr;
 	return PC ? PC->Build.Get() : nullptr;
+}
+
+float ASLLevelDirector::GetTimeHours() const
+{
+	if (LevelNumber == 0 && GetWorld())
+	{
+		return StartHour + GetWorld()->GetTimeSeconds() * MenuHoursPerSecond;
+	}
+	return StartHour + GetMoveCount() * HoursPerMove;
+}
+
+void ASLLevelDirector::ConfigureMenu()
+{
+	// Ana menu (16 Eki): arkada canli bir kasaba. 3. bolumun cozumu kurulu, uc aile evlerine yurur,
+	// otobus calisir, gun dongusu akar; gorev, istek ve hamle yok.
+	LevelNumber = 0;
+	LevelTitle = TEXT("Sallantı");
+	NextLevelNumber = 1;
+	bNeighborsArrive = false;
+	bOpenLevel = false;
+	bAutoAssign = true;
+	BusStopType = TEXT("Durak");
+	FinalSpeech.Reset();
+	StartHour = 15.f;
+	const FLinearColor Tints[3] = { FLinearColor(0.45f, 0.35f, 0.70f), FLinearColor(0.85f, 0.38f, 0.35f), FLinearColor(0.25f, 0.60f, 0.45f) };
+	const FVector Waits[3] = { FVector(-285.f, -60.f, 0.f), FVector(-285.f, 150.f, 0.f), FVector(-230.f, -250.f, 0.f) };
+	for (int32 I = 0; I < 3; ++I)
+	{
+		FSLFamilyDef F;
+		F.Name = FString::Printf(TEXT("Aile %d"), I + 1);
+		F.WaitLocal = Waits[I];
+		F.Tint = Tints[I];
+		Families.Add(F);
+	}
+}
+
+void ASLLevelDirector::SpawnMenuTown()
+{
+	USLBuildComponent* B = GetBuild();
+	if (bMenuSpawned || !B)
+	{
+		return;
+	}
+	bMenuSpawned = true;
+	B->bBuildEnabled = false;
+	// 3. bolumun test cozumu: dengede (egim ~2 derece), herkes mutlu olurdu.
+	B->SpawnDirect(TEXT("Hastane"), FIntPoint(4, 6), 3);
+	B->SpawnDirect(TEXT("AVM"), FIntPoint(7, 5), 3);
+	B->SpawnDirect(TEXT("Park"), FIntPoint(2, 9), 3);
+	B->SpawnDirect(TEXT("Ev"), FIntPoint(3, 5), 0);
+	B->SpawnDirect(TEXT("Ev"), FIntPoint(4, 10), 3);
+	B->SpawnDirect(TEXT("Ev"), FIntPoint(3, 3), 0);
+	B->SpawnDirect(TEXT("Yol"), FIntPoint(4, 5), 0);
+	for (int32 X = 4; X <= 8; ++X)
+	{
+		B->SpawnDirect(TEXT("Yol"), FIntPoint(X, 4), 0);
+	}
+	B->SpawnDirect(TEXT("Yol"), FIntPoint(4, 3), 0);
+	B->SpawnDirect(TEXT("Durak"), FIntPoint(6, 3), 1);
+	UE_LOG(LogSLLevel, Log, TEXT("SL_MENU kasaba kuruldu"));
 }
 
 int32 ASLLevelDirector::GetMoveCount() const
@@ -1470,6 +1535,10 @@ bool ASLLevelDirector::EvaluateTask(const FSLTask& Task, int32& OutProgress, int
 void ASLLevelDirector::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	if (LevelNumber == 0)
+	{
+		SpawnMenuTown();
+	}
 	SpawnFamilies();
 	ApplyUnlocks();
 	UpdateConnectionFx();

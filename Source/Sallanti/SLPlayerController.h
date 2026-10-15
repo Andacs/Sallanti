@@ -61,7 +61,16 @@ public:
 	UFUNCTION(Exec)
 	void SLTestLevel2();
 
-	/** N. bolumu bastan ac (1 ya da 2). */
+	/** Trailer cekimi: 3. bolumu sinematik oynar, her kareyi REC_f_#####.png olarak kaydeder.
+	 *  Sabit adim icin oyunu "-benchmark -fps=30" ile ac. Tools/trailer_yap.ps1 karelerden MP4 yapar. */
+	UFUNCTION(Exec)
+	void SLSinema();
+
+	/** Ana menuyu gezer (ana sayfa, bolumler, nasil oynanir, jenerik), her sayfada ekran goruntusu. */
+	UFUNCTION(Exec)
+	void SLTestMenu();
+
+	/** N. bolumu bastan ac (0 menu, 1-3). */
 	UFUNCTION(Exec)
 	void SLBolum(int32 Number);
 
@@ -114,6 +123,13 @@ private:
 	void TestLevel1Step();
 	void TestLevel2Step();
 	void TestLevel3Step();
+	void CinemaStep();
+	void MenuTestStep();
+	bool bRecording = false;
+	int32 RecFrame = 0;
+	float CinemaTime = 0.f;
+	float CaptionUntil = -1.f;
+	void Caption(const TCHAR* Text, float Seconds);
 	void MouseAtLocal(int32 Slot, const FVector& Local);
 	void MoveMouseToLocal(const FVector& Local);
 	void MoveMouseToScreen(const FVector2D& Screen);

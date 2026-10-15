@@ -173,6 +173,7 @@ public:
 	/** N. bolumun varsayilan gorevlerini ve ailelerini yazar (BeginPlay'den once cagrilir). */
 	void ConfigureLevel(int32 Number);
 	void ConfigureLevel3();
+	void ConfigureMenu();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
 	int32 LevelNumber = 1;
@@ -259,7 +260,11 @@ public:
 
 	int32 GetMoveCount() const;
 	/** Bolum basindan beri gecen saat dahil mutlak saat (7 = 1. gun 07:00, 31 = 2. gun 07:00). */
-	float GetTimeHours() const { return StartHour + GetMoveCount() * HoursPerMove; }
+	float GetTimeHours() const;
+
+	/** Menu: saat kendiliginden akar (saat/sn), gun dongusu arka planda doner. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Zaman")
+	float MenuHoursPerSecond = 0.35f;
 	int32 GetMovesLeft() const { return MoveLimit > 0 ? FMath::Max(0, MoveLimit - GetMoveCount()) : -1; }
 
 	/** Otobus: bu turden bir bina (durak) yol agina bagliysa otobus o agda gidip gelir. Bos = otobus yok. */
@@ -391,6 +396,8 @@ private:
 	int32 HoveredFamily = INDEX_NONE;
 	bool bWasNight = false;
 	bool bIntroOver = false;
+	bool bMenuSpawned = false;
+	void SpawnMenuTown();
 
 	void Say(int32 I, const FString& Text, float Seconds = -1.f);
 	void UpdateChatter(float DeltaSeconds);

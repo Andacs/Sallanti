@@ -38,12 +38,18 @@ public:
 	/** Yonetici son gorev bitince cagirir. */
 	void HandleLevelComplete();
 
-	/** Oynanan bolum. Seviye URL'sinden okunur: "L_Test?Bolum=2". */
+	/** Ana menu mu (bolum 0)? Secenek verilmezse oyun menuyle acilir. */
+	bool IsMenu() const { return LevelNumber == 0; }
+
+	/** Menu acilinca jenerik dogrudan baslasin (son bolum bitince "Emegi gecenler"). */
+	bool bCreditsOnStart = false;
+
+	/** Oynanan bolum. Seviye URL'sinden okunur: "L_Test?Bolum=2". 0 = ana menu. */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Bolum")
 	int32 LevelNumber = 1;
 
 	/** Ayni haritayi N. bolumle bastan acar (F5, Space, Enter hepsi buradan). */
-	void TravelToLevel(int32 Number);
+	void TravelToLevel(int32 Number, bool bCredits = false);
 
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 
