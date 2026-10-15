@@ -212,6 +212,17 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
   nefes, yürürken sekme, mutluyken ara ara zıplama, mutsuzken eğik baş, fare üstündeyken biri zıplar,
   seçilince altta halka. Bina konunca kısa "boing" (`ASLPlaceable::PlayPop`).
 - **Tahtayı çevirme:** Z / X kamerayı 90° döndürür (yumuşak); yeni binanın kapısı yine kameraya bakar.
+- **HUD "Gökyüzü pusulası" (16 Ekim, Andaç 3 yönden C'yi seçti:
+  https://claude.ai/artifact/FNFkufSuNDvnZLMMMCkqhp).** Kart/panel yok. Üstte güneşin yolu: güneş/ay saate göre
+  yayda, boncuklar hamle sınırı varsa hamleler (dolu = harcandı), yoksa günün saatleri; altında bölüm adı
+  aralıklı büyük harf, gün · saat · kalan hamle, eğitimde sıradaki görev + nokta ilerleme, altında ipucu.
+  Solda aileler takımyıldızı (dolu = mutlu, mercan halka = mutsuz, kesik "?" = tanışmadın; tıklanır).
+  Sol altta **denge pusulası**: su terazisi gibi nokta platformun yattığı yöne kayar; kesik sarı halka
+  uyarı, mercan halka devrilme, boş halka elindekinin tahmini. Etrafındaki yayda bina daireleri (sayı =
+  stok; tıkla seç). Seçili ailede mercek + "İSTEDİĞİ / İSTEMEDİĞİ" kutuları. Sağ altta döndürme hapı,
+  sağ üstte müzik. Yazılar soluk krem hap zeminde (panelsiz yazı tahtada okunmuyordu; gece daha opak).
+  Eski kart HUD fonksiyonları (çekmece, görev kartı, denge barı) kodda duruyor ama çizilmiyor.
+  Fontlar şimdilik motorun Roboto'su; tasarımdaki Cinzel + Jost indirilip aktarılınca değişecek.
 - **Zorluk bölüme göre** (`ASLLevelDirector::bApplyTuning`, BeginPlay'de platforma yazılır): 1. bölüm
   eğitim (12 / 0,08 / 1,5 sn), 2. bölüm 10 / 0,09 / 1,3 sn, 3. bölüm 8 / 0,10 / 1,2 sn + hamle sınırı.
 - **Gece-gündüz:** her başarılı koyma/taşıma bir hamle (`USLBuildComponent::GetMoveCount`; geri alma ve

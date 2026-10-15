@@ -6,6 +6,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/Canvas.h"
 #include "GameFramework/HUD.h"
 #include "SLHUD.generated.h"
 
@@ -120,6 +121,25 @@ private:
 
 	/** Fare bu dikdortgenin ustunde mi; ustundeyse imlec el olur. */
 	bool Hover(const FRect& R);
+
+	// --- Gokyuzu pusulasi (C yonu) ---
+	float UiScale() const { return Canvas ? FMath::Max(0.6f, Canvas->ClipY / 800.f) : 1.f; }
+	void Arc(float CX, float CY, float R, float A0, float A1, float Thick, const FLinearColor& C, bool bDashed = false);
+	float PillAlpha(float Day) const;
+	void TextHalo(const FString& S, float X, float Y, const FLinearColor& C, float Scale);
+	void TextSpaced(const FString& S, float CenterX, float Y, float Scale, float Spacing, const FLinearColor& C);
+	void OutlineRound(float X, float Y, float W, float H, float R, float Thick, const FLinearColor& Line, const FLinearColor& Fill);
+	void DrawSky(const ASLLevelDirector& D);
+	void DrawConstellation(ASLLevelDirector& D);
+	void DrawLens(const ASLLevelDirector& D, int32 Fam);
+	void DrawCompass(const ASLPlatform& P, const USLBuildComponent& B);
+	void DrawRotateButtons();
+	void DrawHintC(const ASLPlatform& P, const USLBuildComponent& B, const ASLLevelDirector* D);
+	void DrawEndC(const ASLPlatform& P, bool bLevelComplete);
+	void DrawHomeNodes(const ASLLevelDirector& D);
+	FRect RotLeftRect;
+	FRect RotRightRect;
+	TArray<FRect> FamilyRowRects;
 
 	float DrawerOpen = 0.f;  // 0 kapali, 1 acik (cizim)
 	bool bDrawerWanted = false;

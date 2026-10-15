@@ -757,6 +757,18 @@ bool ASLLevelDirector::IsNeedMet(int32 Fam, int32 Need) const
 	return NeedMet.IsValidIndex(Fam) && NeedMet[Fam].IsValidIndex(Need) && NeedMet[Fam][Need];
 }
 
+FString ASLLevelDirector::DescribeNeed(int32 Fam, int32 Need, bool& bOutMet) const
+{
+	bOutMet = false;
+	if (!Families.IsValidIndex(Fam) || !Families[Fam].Needs.IsValidIndex(Need) || !GetHome(Fam))
+	{
+		return FString();
+	}
+	FString Detail;
+	bOutMet = EvaluateNeed(Families[Fam].Needs[Need], GetHome(Fam), &Detail) >= 0.999f;
+	return bOutMet ? FString(TEXT("tamam")) : Detail;
+}
+
 bool ASLLevelDirector::IsRequiredPlaced(FName Type) const
 {
 	const ASLPlatform* P = GetPlatform();

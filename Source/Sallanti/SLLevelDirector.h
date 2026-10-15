@@ -333,6 +333,8 @@ public:
 	bool GetFamilyBubble(int32 I, FString& Out) const;
 	/** Istek su an karsilaniyor mu (HUD istek karti). */
 	bool IsNeedMet(int32 Fam, int32 Need) const;
+	/** Istegin su anki durumu tek satir ("Park 3 birim uzakta (en fazla 2)" ya da "tamam"). */
+	FString DescribeNeed(int32 Fam, int32 Need, bool& bOutMet) const;
 	bool IsRequiredPlaced(FName Type) const;
 	/** Acik bolum: hedefe kalan (mutsuz aile sayisi + eksik plan). */
 	FString DescribeOpenGoal() const;

@@ -16,6 +16,9 @@ class SALLANTI_API ASLPlayerController : public APlayerController
 	GENERATED_BODY()
 
 public:
+	/** Tahtayi cevir (Z / X, HUD oklari). */
+	void RotateView(int32 Steps);
+
 	ASLPlayerController();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sallanti")
@@ -98,7 +101,6 @@ private:
 	void OnSlot6();
 	void OnRotateViewLeft();
 	void OnRotateViewRight();
-	void RotateView(int32 Steps);
 	void OnToggleMusic();
 	void OnNextLevel();
 	void OnUndo();
