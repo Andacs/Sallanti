@@ -1,9 +1,10 @@
 # Bir surecin ana penceresinin goruntusunu PNG olarak kaydeder (yalnizca o pencere; masaustu ve ustundeki
 # baska pencereler kaydedilmez: PrintWindow, PW_RENDERFULLCONTENT). Paketlenmis Shipping oyununu (konsol ve
 # log yok) denemek icin: oyun acik mi, ekranda ne var.
-#   powershell -File Tools\pencere_goruntu.ps1 -Process Sallanti -Out C:\...\kare.png
+#   powershell -File Tools\pencere_goruntu.ps1 -Process <Proje>-Win64-Shipping -Out C:\...\kare.png
+# Paketin pencereli sureci <Proje>-Win64-Shipping (<Proje>.exe yalnizca baslatici); editorden -game ile acildiysa UnrealEditor.
 param(
-    [string]$Process = "Sallanti",
+    [Parameter(Mandatory = $true)][string]$Process,
     [Parameter(Mandatory = $true)][string]$Out
 )
 Add-Type -AssemblyName System.Drawing

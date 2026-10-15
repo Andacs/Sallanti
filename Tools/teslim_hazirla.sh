@@ -7,7 +7,7 @@
 # Editor KAPALI olmali. Trailer once alinmis olmali (Tools/trailer_yap.sh).
 # Her madde uc sonuctan biri: TAMAM / BOZUK / OLCULEMEDI. Sonunda Build/Teslim/TESLIM_OZET.txt yazilir;
 # formu doldururken bu dosya ve README acik dursun.
-# Sallanti provasinda (15 Ekim) elle yapilan adimlarin betigi: paket 2 dk 14 sn, ZIP ~1 dk, deneme ~1 dk.
+# Sallanti provasinda (15 Ekim) olculdu: tamami 3 dk 22 sn (paket 111 sn, ZIP + temiz klasorde deneme ~1,5 dk).
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -69,7 +69,8 @@ else
     N=$(grep -c "^| $k " README.md)
     [ "$N" -ge 2 ] && tamam "'$k' iki beyanda da var" || bozuk "'$k' satiri iki beyan tablosunda birden yok (bulunan: $N)"
   done
-  grep -q "\[ *\]\|TODO\|___" README.md && bozuk "README'de doldurulmamis yer var (___, [ ], TODO)" || true
+  BOS=$(grep -nE '\[ *\]|\[\.\.\.\]|\[Oyun adı\]|\[Proje\]|Kullanıldı / Kullanılmadı|TODO|___' README.md || true)
+  [ -z "$BOS" ] && tamam "README'de sablon boslugu kalmamis" || { bozuk "README'de doldurulmamis yer var:"; echo "$BOS" | head -8; }
 fi
 
 baslik "5. Paket (Shipping)"
@@ -95,6 +96,8 @@ baslik "6. ZIP"
 if [ -f "$EXE" ]; then
   rm -f "$ZIP"
   ( cd "$ROOT/Build/Package/Windows" && "$WINTAR" -a -c -f "$(cygpath -w "$ZIP")" * )
+  # Git Bash'in GNU tar'i "-a" ile .zip adli bir TAR yazar, uyarmaz; Gezgin acamaz. Ilk iki bayt "PK" olmali.
+  [ "$(head -c 2 "$ZIP" 2>/dev/null)" = "PK" ] && tamam "dosya gercekten ZIP (PK imzasi)" || bozuk "$ZIP ZIP degil (tar mi?): Windows tar.exe ile yeniden olustur"
   BOYUT=$(stat -c %s "$ZIP" 2>/dev/null || echo 0)
   if [ "$BOYUT" -gt 0 ] && [ "$BOYUT" -lt 10737418240 ]; then tamam "ZIP $((BOYUT/1048576)) MB (sinir 10 GB)"; else bozuk "ZIP olusmadi ya da 10 GB'i asiyor ($BOYUT bayt)"; fi
 fi

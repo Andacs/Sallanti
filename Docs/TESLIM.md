@@ -15,7 +15,7 @@ https://game.ktimo.com.tr/jam/teslim
 | Oyun adı | [Sallantı] |
 | Kısa açıklama | [Sallanan bir adaya şehir kur, aileleri mutlu et, dengeyi koru. Her bina adanın ağırlık merkezini kaydırır; ailelerin istekleri birbirini zorlar.] |
 | Platform | Windows |
-| Oynanabilir sürüm | `Build/Teslim/Sallanti_Windows.zip` (Shipping, 682 MB; repoya girmez). 15 Ekim 20.20'de temiz klasöre açılıp çalıştırıldı: açılış videosu → ana menü ekranda görüldü (`Tools/pencere_goruntu.ps1`). Paket süresi 2 dk 14 sn. |
+| Oynanabilir sürüm | `Build/Teslim/Sallanti_Windows.zip` (Shipping, 348 MB; repoya girmez). `bash Tools/teslim_hazirla.sh` üretir ve dener: 15 Ekim 21.26'da commit `e8b7b78`'den paketlendi, temiz klasöre açıldı, ana menü ekranda görüldü (`Build/Teslim/deneme_ekrani.png`). Tamamı 3 dk 22 sn. **Not:** ilk elle yapılan ZIP (682 MB) aslında tar'dı, Windows açamazdı; betik artık `PK` imzasını kontrol ediyor. |
 | Video (≤ 1 dk, MP4) | `Build/Teslim/Sallanti_Trailer.mp4` (36,5 sn, 1920×1080, H.264 + AAC) |
 | Public repo | [https://github.com/Andacs/Sallanti] public (15 Ekim, girişsiz açıldığı denendi). Jam oyununun reposu da teslimden önce public olmalı (madde 6.5, aksi hâlde diskalifiye). |
 | Kurulum / çalıştırma / kontroller | `README.md` → "Çalıştırma" bölümü (EK A.3 şablonu) |
@@ -29,7 +29,7 @@ https://game.ktimo.com.tr/jam/teslim
 |---|---|
 | Takım 2–4 kişi | 4 kişi (Andaç, Yiğit, Mert, Asil) |
 | Oyun 48 saatte hazırlandı | **Sallantı için HAYIR** (prova). Jam oyunu için 16 Ekim 18.00 sonrası commit'ler kanıt. |
-| Build test edildi, ZIP hazır | `Build\paketle.bat` → ZIP → başka klasörde açıp çalıştır |
+| Build test edildi, ZIP hazır | `bash Tools/teslim_hazirla.sh` (paket, ZIP, temiz klasörde deneme, video, repo, beyanlar; sonuç `Build/Teslim/TESLIM_OZET.txt`) |
 | Video ≤ 1 dk MP4 | `bash Tools/trailer_yap.sh` |
 | Repo public, doğru bağlantı | Sallantı: tamam. Jam oyunu: public yap, tarayıcıda girişsiz aç, gizli bilgi taraması yap (`git grep -niE "token\|secret\|password\|apikey"`) |
 | ZIP ile repo uyumlu | ZIP'i son commit'ten üret, commit hash'ini not et |
