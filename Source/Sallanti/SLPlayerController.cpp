@@ -5,6 +5,7 @@
 #include "SLGameMode.h"
 #include "SLLevelDirector.h"
 #include "SLPlatform.h"
+#include "SLPlaceable.h"
 #include "SLHUD.h"
 #include "SLAmbience.h"
 #include "EngineUtils.h"
@@ -87,6 +88,8 @@ void ASLPlayerController::SetupInputComponent()
 	Bind(TEXT("IA_Slot5"), { EKeys::Five }, &ASLPlayerController::OnSlot5);
 	Bind(TEXT("IA_Slot6"), { EKeys::Six }, &ASLPlayerController::OnSlot6);
 	Bind(TEXT("IA_Music"), { EKeys::M }, &ASLPlayerController::OnToggleMusic);
+	Bind(TEXT("IA_ViewLeft"), { EKeys::Z }, &ASLPlayerController::OnRotateViewLeft);
+	Bind(TEXT("IA_ViewRight"), { EKeys::X }, &ASLPlayerController::OnRotateViewRight);
 	Bind(TEXT("IA_Next"), { EKeys::Enter }, &ASLPlayerController::OnNextLevel);
 	Bind(TEXT("IA_Undo"), { EKeys::BackSpace }, &ASLPlayerController::OnUndo);
 	Bind(TEXT("IA_Restart"), { EKeys::F5 }, &ASLPlayerController::OnRestart);
@@ -290,15 +293,59 @@ void ASLPlayerController::OnPlace()
 			return;
 		}
 	}
-	// Elde bir sey yoksa sol tik tasima baslatir: tiklanan nesne kaldirilir.
+	ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
+	ASLLevelDirector* Dir = GM ? GM->GetDirector() : nullptr;
+	const int32 Fam = Dir ? Dir->GetSelectedFamily() : INDEX_NONE;
+	// Elde bir sey yoksa sol tik tasima baslatir: tiklanan nesne kaldirilir. Aile seciliyken bos eve
+	// tiklamak aileyi o eve tasir (kaldirmaz).
 	if (Build->State == ESLBuildState::Idle && !Build->IsMoving())
 	{
+		if (Fam != INDEX_NONE)
+		{
+			ASLPlaceable* Under = Build->GetPlaceableUnderCursor();
+			if (Under && Under->Residents > 0 && Dir->GetHome(Fam) != Under && Dir->AssignFamilyToHouse(Fam, Under))
+			{
+				Dir->ClearFamilySelection();
+				return;
+			}
+		}
 		Build->TryPickUpUnderCursor();
 		return;
 	}
-	Build->TryPlace();
+	const bool bWasMoving = Build->IsMoving();
+	const int32 Before = Build->PlacedCount;
+	if (Build->TryPlace() && !bWasMoving && Build->PlacedCount > Before && Fam != INDEX_NONE)
+	{
+		// Aile seciliyken ev kuruldu: o aile tasinir.
+		ASLPlaceable* New = Build->GetLastPlaced();
+		if (New && New->Residents > 0 && Dir->AssignFamilyToHouse(Fam, New))
+		{
+			Dir->ClearFamilySelection();
+		}
+	}
 }
-void ASLPlayerController::OnCancel() { Build->Cancel(); }
+
+void ASLPlayerController::OnRotateViewLeft() { RotateView(-1); }
+void ASLPlayerController::OnRotateViewRight() { RotateView(1); }
+
+void ASLPlayerController::RotateView(int32 Steps)
+{
+	if (ASLCameraPawn* Cam = Cast<ASLCameraPawn>(GetPawn()))
+	{
+		Cam->RotateView(Steps);
+		// Yeni binanin kapisi kameraya baksin: ilk bakista -Y (3), her ceyrek turda bir yon.
+		Build->DefaultFacing = (3 + Cam->GetViewSteps()) & 3;
+		ASLGameMode::PlaySfx(this, TEXT("SFX_Cekmece"), 0, 0.6f, 1.2f);
+	}
+}
+void ASLPlayerController::OnCancel()
+{
+	Build->Cancel();
+	if (ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>(); GM && GM->GetDirector())
+	{
+		GM->GetDirector()->ClearFamilySelection();
+	}
+}
 void ASLPlayerController::OnRotate() { Build->RotateGhost(1); }
 void ASLPlayerController::OnRotateBack() { Build->RotateGhost(-1); }
 void ASLPlayerController::OnSlot1() { Build->SelectSlot(0); }
@@ -508,7 +555,8 @@ void ASLPlayerController::TestLevel2Step()
 	ASLHUD* HUD = GetHUD<ASLHUD>();
 	ASLCameraPawn* Cam = Cast<ASLCameraPawn>(GetPawn());
 	ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
-	const ASLLevelDirector* D = GM ? GM->GetDirector() : nullptr;
+	ASLLevelDirector* D = GM ? GM->GetDirector() : nullptr;
+	const ASLPlatform* Plat = GM ? GM->GetPlatform() : nullptr;
 	if (HUD)
 	{
 		UE_LOG(LogSLInput, Log, TEXT("SL_HINT %s"), *HUD->GetCurrentHint());
@@ -517,50 +565,73 @@ void ASLPlayerController::TestLevel2Step()
 	{
 		for (int32 F = 0; F < D->Families.Num(); ++F)
 		{
-			UE_LOG(LogSLInput, Log, TEXT("SL_FAMILY_STATE %s mutluluk %.2f (%s)"), *D->Families[F].Name, D->GetHappiness(F), *D->GetFamilyStatus(F));
+			FString Bubble;
+			D->GetFamilyBubble(F, Bubble);
+			UE_LOG(LogSLInput, Log, TEXT("SL_FAMILY_STATE %s mutluluk %.2f (%s) balon: %s"), *D->Families[F].Name, D->GetHappiness(F), *D->GetFamilyStatus(F), *Bubble);
 		}
+		UE_LOG(LogSLInput, Log, TEXT("SL_TIME saat %.1f hamle %d kalan %d"), D->GetTimeHours(), D->GetMoveCount(), D->GetMovesLeft());
 	}
-	// Hucre merkezi yerel = -300 + 50i. Ev (4,6) kapi (4,5) | Hastane 2x2 (9,6) kapi (9,5)(10,5) |
-	// AVM 3x3 (5,6) kapi (6,5) | yol (4..10, 5) | durak once (2,2): yola bakmiyor -> gecersiz; sonra (8,4)
-	// yon 1 (onu +Y): kapi onu (8,5) yolda -> gecerli, otobus baslar, Demir ailesi durakta belirir |
-	// Demir evi (1,10): duraga 7+6 = 13 birim -> mutsuz | evi kaldir, (9,3)'e: 1+1 = 2 birim -> mutlu -> bolum sonu.
+	// Gercek fare bu makinede guvenilmez (kullanici oynatiyor): tiklamalarin yaptigini dogrudan cagir.
+	// Aileye tiklama = SelectFamily; aile seciliyken ev kurma = AssignFamilyToHouse (OnPlace ayni seyi yapar).
+	auto Place = [this](int32 Slot, float X, float Y, int32 Facing)
+	{
+		SLGhost(Slot, X, Y);
+		Build->SetFacing(Facing);
+		const bool bOk = Build->TryPlace();
+		UE_LOG(LogSLInput, Log, TEXT("SL_PLACE_RESULT %s slot %d (%.0f,%.0f) yon %d"), bOk ? TEXT("OK") : TEXT("BLOCKED"), Slot, X, Y, Facing);
+		Build->Cancel();
+		return bOk;
+	};
+	auto PlaceHomeFor = [&](int32 Fam, float X, float Y, int32 Facing)
+	{
+		if (D)
+		{
+			D->SelectFamily(Fam);
+		}
+		if (Place(1, X, Y, Facing) && D)
+		{
+			D->AssignFamilyToHouse(Fam, Build->GetLastPlaced());
+			D->ClearFamilySelection();
+		}
+	};
+
+	// Acik bolum (16 Eki). Hucre merkezi = -300 + 50i. Ev (4,6) kapi (4,5) | Hastane 2x2 (9,6) kapi (9,5) |
+	// AVM 3x3 (5,6) kapi (6,5) | yol (4..10,5) | durak (8,4) yon 1 -> Demir otobusle gelir | Demir evi
+	// once (1,10): uzak -> mutsuz | evi (7,4) yon 1'e tasi: kapi (7,5) yolda, duraga 1 -> mutlu -> bitis.
 	switch (I)
 	{
 	case 1: Shot(TEXT("L2_0_baslangic")); break;
-	case 2: SLPlace(1, -100.f, 0.f); break;
-	case 12: Shot(TEXT("L2_1_kaya_yerlesti")); break;
-	case 13: SLPlace(2, 175.f, 25.f); break;
-	case 14: SLPlace(3, 0.f, 50.f); break;
-	case 15: case 16: case 17: case 18: case 19: case 20: case 21:
-		SLPlace(4, -300.f + 50.f * (4 + (I - 15)), -50.f);
+	case 2: if (D) { D->SelectFamily(0); } break;
+	case 3: Shot(TEXT("L2_1_kaya_istek")); break;
+	case 4: PlaceHomeFor(0, -100.f, 0.f, 3); break;
+	case 14: Place(2, 175.f, 25.f, 3); break;
+	case 15: Place(3, 0.f, 50.f, 3); break;
+	case 16: case 17: case 18: case 19: case 20: case 21: case 22:
+		Place(4, -300.f + 50.f * (4 + (I - 16)), -50.f, 0);
 		break;
-	case 22: Build->Cancel(); Shot(TEXT("L2_2_yollar")); break;
-	case 23: SLGhost(5, -200.f, -200.f); Shot(TEXT("L2_3a_durak_gecersiz"));
+	case 23: Shot(TEXT("L2_2_yollar")); break;
+	case 24: SLGhost(5, -200.f, -200.f); Shot(TEXT("L2_3a_durak_gecersiz"));
 		UE_LOG(LogSLInput, Log, TEXT("SL_DURAK gecersiz bekleniyor: %s (%s)"), *UEnum::GetValueAsString(Build->State), Build->GetBlockedReason()); break;
-	case 24: SLGhost(5, 100.f, -100.f); Build->SetFacing(1); Shot(TEXT("L2_3b_durak_hayalet")); break;
-	case 25: UE_LOG(LogSLInput, Log, TEXT("SL_DURAK gecerli bekleniyor: %s (%s)"), *UEnum::GetValueAsString(Build->State), Build->GetBlockedReason());
-		Build->TryPlace(); break;
-	case 27: Shot(TEXT("L2_3c_durak_otobus")); break;
-	case 30: Shot(TEXT("L2_4_otobus_yolda")); break;
+	case 25: Build->Cancel(); Place(5, 100.f, -100.f, 1); break;
+	case 28: Shot(TEXT("L2_3c_demir_geldi")); break;
+	case 29: if (D) { D->SelectFamily(1); } break;
+	case 30: Shot(TEXT("L2_4_demir_istek")); break;
 	case 31: SLGhost(1, -250.f, 200.f); break;
-	case 32: Shot(TEXT("L2_5a_uzak_hayalet")); break;                             // bolge bir kare sonra cizilir
-	case 33: Build->TryPlace(); Build->Cancel(); break;
+	case 32: Shot(TEXT("L2_5a_uzak_hayalet")); break;
+	case 33: if (Build->TryPlace() && D) { D->AssignFamilyToHouse(1, Build->GetLastPlaced()); D->ClearFamilySelection(); } Build->Cancel(); break;
 	case 56: Shot(TEXT("L2_5b_demir_mutsuz")); break;
 	case 57:
-		if (const ASLPlatform* P = GM ? GM->GetPlatform() : nullptr)
-		{
-			Build->PickUp(P->FindPlaceableAt(FIntPoint(1, 10)));
-		}
+		if (Plat) { Build->PickUp(Plat->FindPlaceableAt(FIntPoint(1, 10))); }
 		Build->SetFacing(1);
 		Build->SetAimOverride(FVector2D(50.f, -100.f));
 		break;
 	case 58: Shot(TEXT("L2_6a_tasima_yakin")); break;
-	case 59: OnPlace(); Build->Cancel(); break;
-	case 62: Shot(TEXT("L2_6b_mutlu")); break;
-	case 64: Shot(TEXT("L2_7_tamamlandi")); if (Cam) { Cam->Zoom(5.f); } break;
-	case 67: Shot(TEXT("L2_8_yakin")); SLSaat(23.f); break;
-	case 68: Shot(TEXT("L2_9_gece")); break;
-	case 69:
+	case 59: Build->TryPlace(); Build->Cancel(); break;
+	case 63: Shot(TEXT("L2_6b_mutlu")); break;
+	case 65: Shot(TEXT("L2_7_tamamlandi")); RotateView(1); break;
+	case 68: Shot(TEXT("L2_8_cevrildi")); if (Cam) { Cam->Zoom(5.f); } SLSaat(23.f); break;
+	case 70: Shot(TEXT("L2_9_gece_yakin")); break;
+	case 72:
 		GetWorldTimerManager().ClearTimer(SelfTestTimer);
 		UE_LOG(LogSLInput, Log, TEXT("SL_TESTL2_DONE tamam=%d"), GM && GM->IsLevelComplete() ? 1 : 0);
 		ConsoleCommand(TEXT("quit"));
@@ -581,8 +652,10 @@ void ASLPlayerController::TestLevel3Step()
 	const int32 I = SelfTestIndex++;
 	SLReport();
 	ASLHUD* HUD = GetHUD<ASLHUD>();
+	ASLCameraPawn* Cam = Cast<ASLCameraPawn>(GetPawn());
 	ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
-	const ASLLevelDirector* D = GM ? GM->GetDirector() : nullptr;
+	ASLLevelDirector* D = GM ? GM->GetDirector() : nullptr;
+	const ASLPlatform* Plat = GM ? GM->GetPlatform() : nullptr;
 	if (HUD)
 	{
 		UE_LOG(LogSLInput, Log, TEXT("SL_HINT %s"), *HUD->GetCurrentHint());
@@ -591,15 +664,14 @@ void ASLPlayerController::TestLevel3Step()
 	{
 		for (int32 F = 0; F < D->Families.Num(); ++F)
 		{
-			UE_LOG(LogSLInput, Log, TEXT("SL_FAMILY_STATE %s mutluluk %.2f (%s)"), *D->Families[F].Name, D->GetHappiness(F), *D->GetFamilyStatus(F));
+			FString Bubble;
+			D->GetFamilyBubble(F, Bubble);
+			UE_LOG(LogSLInput, Log, TEXT("SL_FAMILY_STATE %s mutluluk %.2f (%s) balon: %s"), *D->Families[F].Name, D->GetHappiness(F), *D->GetFamilyStatus(F), *Bubble);
 		}
 		UE_LOG(LogSLInput, Log, TEXT("SL_TIME saat %.1f hamle %d kalan %d"), D->GetTimeHours(), D->GetMoveCount(), D->GetMovesLeft());
 	}
-	// Hucre merkezi yerel = -300 + 50i; 2x2 merkezi = -325 + 50(min+1); 3x3 = -325 + 50(min+1.5).
-	// Hastane 2x2 (4,6) yon 3 kapi (4,5)(5,5) | Yilmaz evi (3,5) yon 0 kapi (4,5): hastaneye 2 birim |
-	// AVM 3x3 (7,5) kapi (8,4) | Park 2x2 (2,9) | Demir evi once (6,9): AVM'ye 3 birim -> mutsuz;
-	// sonra (4,10): parka 1, AVM'ye 6 -> mutlu | yol (4,5) (4..8,4) | Durak (6,3) yon 1 kapi (6,4) |
-	// Aydin evi (3,3) yon 0 kapi (4,3) + yol (4,3): Yilmazlara 2 birim, duraga bagli. 16 hamle / 24.
+	// Gercek fare bu makinede guvenilmez (kullanici oynatiyor): tiklamalarin yaptigini dogrudan cagir.
+	// Aileye tiklama = SelectFamily; aile seciliyken ev kurma = AssignFamilyToHouse (OnPlace ayni seyi yapar).
 	auto Place = [this](int32 Slot, float X, float Y, int32 Facing)
 	{
 		SLGhost(Slot, X, Y);
@@ -607,45 +679,58 @@ void ASLPlayerController::TestLevel3Step()
 		const bool bOk = Build->TryPlace();
 		UE_LOG(LogSLInput, Log, TEXT("SL_PLACE_RESULT %s slot %d (%.0f,%.0f) yon %d"), bOk ? TEXT("OK") : TEXT("BLOCKED"), Slot, X, Y, Facing);
 		Build->Cancel();
+		return bOk;
 	};
+	auto PlaceHomeFor = [&](int32 Fam, float X, float Y, int32 Facing)
+	{
+		if (D)
+		{
+			D->SelectFamily(Fam);
+		}
+		if (Place(1, X, Y, Facing) && D)
+		{
+			D->AssignFamilyToHouse(Fam, Build->GetLastPlaced());
+			D->ClearFamilySelection();
+		}
+	};
+
+	// Acik bolum. Hastane 2x2 (4,6) yon 3 kapi (4,5) | Yilmaz evi (3,5) yon 0 kapi (4,5) | AVM (7,5) kapi
+	// (8,4) | Park (2,9) | Demir evi once (6,9): AVM'ye 3, parka 3 -> mutsuz; sonra (4,10) | yol (4,5)
+	// (4..8,4) | Durak (6,3) yon 1 -> Aydin gelir | Aydin evi (3,3) yon 0 + yol (4,3). 15 hamle / 24.
 	switch (I)
 	{
 	case 1: Shot(TEXT("L3_0_baslangic")); break;
 	case 2: Place(2, -75.f, 25.f, 3); break;                 // Hastane
-	case 3: SLGhost(1, -150.f, -50.f); Build->SetFacing(0); break;
-	case 4: Shot(TEXT("L3_1a_yilmaz_hayalet")); break;     // sari bolge: hastaneye 3 birim
-	case 5: Build->TryPlace(); Build->Cancel(); break;     // Yilmaz evi
-	case 24: Place(3, 100.f, 0.f, 3); break;                // AVM (Yilmazlar yerlesince acilir)
-	case 25: Shot(TEXT("L3_2_avm")); break;
-	case 27: Place(6, -175.f, 175.f, 3); break;             // Park (2,9)
-	case 28: SLGhost(1, 0.f, 150.f); Build->SetFacing(3); break; // Demir evi AVM'ye yakin (6,9)
-	case 29: Shot(TEXT("L3_3a_demir_hayalet_yakin")); break;
-	case 30: Build->TryPlace(); Build->Cancel(); break;
-	case 48: Shot(TEXT("L3_3b_demir_mutsuz")); break;
-	case 50:
-		if (const ASLPlatform* P = GM ? GM->GetPlatform() : nullptr)
-		{
-			Build->PickUp(P->FindPlaceableAt(FIntPoint(6, 9)));
-		}
-		Build->SetAimOverride(FVector2D(-100.f, 200.f));       // (4,10)
+	case 3: if (D) { D->SelectFamily(0); } break;            // Yilmaz: istekleri acilir
+	case 4: Shot(TEXT("L3_1a_yilmaz_istek")); break;
+	case 5: SLGhost(1, -150.f, -50.f); Build->SetFacing(0); break;
+	case 6: Shot(TEXT("L3_1b_yilmaz_bolge")); break;
+	case 7: if (Build->TryPlace() && D) { D->AssignFamilyToHouse(0, Build->GetLastPlaced()); D->ClearFamilySelection(); } Build->Cancel(); break;
+	case 20: Place(3, 100.f, 0.f, 3); break;                 // AVM
+	case 21: Place(6, -175.f, 175.f, 3); break;              // Park (2,9)
+	case 22: if (D) { D->SelectFamily(1); } SLGhost(1, 0.f, 150.f); Build->SetFacing(3); break; // Demir, AVM'ye yakin
+	case 23: Shot(TEXT("L3_2a_demir_hayalet_yakin")); break;
+	case 24: if (Build->TryPlace() && D) { D->AssignFamilyToHouse(1, Build->GetLastPlaced()); D->ClearFamilySelection(); } Build->Cancel(); break;
+	case 40: Shot(TEXT("L3_2b_demir_mutsuz")); break;
+	case 41:
+		if (Plat) { Build->PickUp(Plat->FindPlaceableAt(FIntPoint(6, 9))); }
+		Build->SetAimOverride(FVector2D(-100.f, 200.f));        // (4,10)
 		break;
-	case 51: Shot(TEXT("L3_3c_tasima")); break;
-	case 52: OnPlace(); Build->Cancel(); break;
-	case 53: Place(4, -100.f, -50.f, 0); break;              // yol (4,5)
-	case 54: case 55: case 56: case 57: case 58:
-		Place(4, -300.f + 50.f * (4 + (I - 54)), -100.f, 0);  // yol (4..8, 4)
+	case 42: Shot(TEXT("L3_2c_tasima")); break;
+	case 43: Build->TryPlace(); Build->Cancel(); break;
+	case 44: Place(4, -100.f, -50.f, 0); break;              // yol (4,5)
+	case 45: case 46: case 47: case 48: case 49:
+		Place(4, -300.f + 50.f * (4 + (I - 45)), -100.f, 0);  // yol (4..8, 4)
 		break;
-	case 59: Shot(TEXT("L3_4_yollar")); break;
-	case 60: Place(5, 0.f, -150.f, 1); break;               // Durak (6,3)
-	case 63: Shot(TEXT("L3_5_durak_otobus")); break;
-	case 64: SLGhost(1, -150.f, -150.f); Build->SetFacing(0); break; // Aydin evi (3,3)
-	case 65: Shot(TEXT("L3_6a_aydin_hayalet")); break;
-	case 66: Build->TryPlace(); Build->Cancel(); break;
-	case 67: Place(4, -100.f, -150.f, 0); break;             // yol (4,3)
-	case 84: Shot(TEXT("L3_7_tamamlandi")); break;
-	case 85: SLSaat(21.f); break;
-	case 86: Shot(TEXT("L3_8_gece")); break;
-	case 88:
+	case 50: Shot(TEXT("L3_3_yollar")); break;
+	case 51: Place(5, 0.f, -150.f, 1); break;               // Durak (6,3) -> Aydin otobusle gelir
+	case 54: Shot(TEXT("L3_4_aydin_geldi")); break;
+	case 55: PlaceHomeFor(2, -150.f, -150.f, 0); break;      // Aydin evi (3,3)
+	case 56: Place(4, -100.f, -150.f, 0); break;             // yol (4,3)
+	case 74: Shot(TEXT("L3_5_tamamlandi")); RotateView(-1); break;
+	case 77: Shot(TEXT("L3_6_cevrildi")); SLSaat(21.f); break;
+	case 79: Shot(TEXT("L3_7_gece")); break;
+	case 81:
 		GetWorldTimerManager().ClearTimer(SelfTestTimer);
 		UE_LOG(LogSLInput, Log, TEXT("SL_TESTL3_DONE tamam=%d hamle=%d"), GM && GM->IsLevelComplete() ? 1 : 0, D ? D->GetMoveCount() : -1);
 		ConsoleCommand(TEXT("quit"));

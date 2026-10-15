@@ -78,6 +78,11 @@ private:
 	/** Evlerin ustunde mutluluk yuzu (dunyaya bagli). */
 	void DrawHomeFaces(const ASLLevelDirector& D);
 	void DrawFace(float CX, float CY, float R, float Happy01);
+	/** Aileler: ustlerinde "?" (istekleri bilinmiyor), konusma balonlari, secilinin istek karti. */
+	void DrawFamilyOverlays(ASLLevelDirector& D);
+	void DrawBubble(const FString& S, const FVector& WorldAnchor, float MaxW, float Scale, const FLinearColor& Fill);
+	void DrawWishCard(const ASLLevelDirector& D, int32 Fam);
+	int32 FamilyUnderMouse(const ASLLevelDirector& D) const;
 	/** Sag ust: gun, saat (gunes/ay), kalan hamle, muzik dugmesi. */
 	void DrawClock(const ASLLevelDirector& D);
 	void DrawSpeakerIcon(float CX, float CY, float S, bool bOn, const FLinearColor& C);

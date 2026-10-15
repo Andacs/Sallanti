@@ -1,6 +1,7 @@
 #include "SLLevelDirector.h"
 
 #include "SLBuildComponent.h"
+#include "SLAmbience.h"
 #include "SLBus.h"
 #include "SLFamily.h"
 #include "SLGameMode.h"
@@ -45,6 +46,35 @@ namespace
 	}
 }
 
+namespace
+{
+	FSLNeed NeedL(ESLNeedKind Kind, const TCHAR* Type, const TCHAR* Label, const TCHAR* Complaint, const TCHAR* Met,
+		int32 MaxCells = 4, int32 MinCells = 4, int32 FamilyIndex = 0)
+	{
+		FSLNeed N;
+		N.Kind = Kind;
+		N.Type = Type;
+		N.Label = Label;
+		N.Complaint = Complaint;
+		N.MetLine = Met;
+		N.MaxCells = MaxCells;
+		N.MinCells = MinCells;
+		N.FamilyIndex = FamilyIndex;
+		return N;
+	}
+
+	FSLTask OpenGoal(const TCHAR* Text, const TCHAR* Intro, std::initializer_list<FName> Unlocks)
+	{
+		FSLTask T;
+		T.Text = Text;
+		T.Speech = Intro;
+		T.Kind = ESLTaskKind::FamiliesHappy;
+		T.Unlocks = Unlocks;
+		T.Speaker = 0;
+		return T;
+	}
+}
+
 ASLLevelDirector::ASLLevelDirector()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -62,6 +92,10 @@ void ASLLevelDirector::ConfigureLevel(int32 Number)
 	MoveLimit = 0;
 	StartHour = 7.f;
 	HoursPerMove = 1.f;
+	bOpenLevel = false;
+	bAutoAssign = true;
+	RequiredTypes.Reset();
+	SlotLimits.Reset();
 	if (Number == 3)
 	{
 		ConfigureLevel3();
@@ -69,85 +103,7 @@ void ASLLevelDirector::ConfigureLevel(int32 Number)
 	}
 	if (Number == 2)
 	{
-		// 2. bolum (15 Eki, Andac): iki aile, otobus duragi, mutluluk. Kaya ailesi hastaneye ve AVM'ye yol
-		// ister; Demir ailesi otobusle gelir, evinin duraga en fazla 3 birim (hucre) uzak olmasini ister.
-		// Iki aile de mutlu olunca bolum biter.
-		LevelTitle = TEXT("2. Bölüm: Otobüs durağı");
-		NextLevelNumber = 3;
-		bNeighborsArrive = false;
-		BusStopType = TEXT("Durak");
-		FinalSpeech = TEXT("İki aile de çok mutlu. Teşekkürler başkan!");
-		// 1. bolumden zor (16 Eki, Andac: "genel zorlugu artir"): platform hafif, egim hizli, sayac kisa.
-		bApplyTuning = true;
-		TunePlatformMass = 10.f;
-		TuneTiltPerCm = 0.09f;
-		TuneFailSeconds = 1.3f;
-
-		FSLFamilyDef Kaya;
-		Kaya.Name = TEXT("Kaya ailesi");
-		Kaya.WaitLocal = FVector(-230.f, -250.f, 0.f);
-		Kaya.Tint = FLinearColor(0.15f, 0.35f, 0.75f);
-		Kaya.Needs.Add(MakeNeed(ESLNeedKind::ConnectedTo, TEXT("Hastane"), TEXT("Hastaneye yol"),
-			TEXT("Evimizden hastaneye yol yok. Çocuklar hastalanırsa ne yapacağız?")));
-		Kaya.Needs.Add(MakeNeed(ESLNeedKind::ConnectedTo, TEXT("AVM"), TEXT("AVM'ye yol"),
-			TEXT("Evimizden AVM'ye yol yok, alışverişe gidemiyoruz.")));
-		Families.Add(Kaya);
-
-		FSLFamilyDef Demir;
-		Demir.Name = TEXT("Demir ailesi");
-		Demir.WaitLocal = FVector(-285.f, 150.f, 0.f);
-		Demir.Tint = FLinearColor(0.85f, 0.38f, 0.35f);
-		Demir.ArriveAtTask = 6;
-		Demir.bArriveAtStop = true;
-		// 16 Eki (Andac): sinir 3 -> 4 birim; ev duraga yolla da bagli olmali.
-		Demir.Needs.Add(MakeNeed(ESLNeedKind::NearType, TEXT("Durak"), TEXT("Durağa yakın"),
-			TEXT("Durak çok uzak, otobüse yetişemiyoruz! Evimiz durağa en fazla 4 birim olmalı."), 4));
-		Demir.Needs.Add(MakeNeed(ESLNeedKind::ConnectedTo, TEXT("Durak"), TEXT("Durağa yol"),
-			TEXT("Evimizden durağa giden yol yok! Kapımızın önüne yol yapar mısın?")));
-		Families.Add(Demir);
-
-		Tasks.Add(MakeTask(TEXT("Kaya ailesi için bir ev kur"),
-			TEXT("Merhaba başkan! Yeni mahalleye ilk biz taşınıyoruz. Bize bir ev yapar mısın?"),
-			TEXT("Çok güzel bir ev!"),
-			TEXT("Evi merkeze yakın koy: bu bölümde iki aile ve otobüs durağı da gelecek."),
-			ESLTaskKind::PlaceType, TEXT("Ev"), { TEXT("Ev") }));
-		Tasks.Add(MakeTask(TEXT("Kaya ailesi eve yerleşsin"),
-			TEXT("Hemen eşyalarımızı taşıyoruz!"), TEXT(""),
-			TEXT("Aile kapıya yürüyor, biraz bekle."),
-			ESLTaskKind::FamilyMovedIn, TEXT("Ev"), {}));
-		Tasks.Add(MakeTask(TEXT("Bir hastane kur"),
-			TEXT("Hastane ve AVM olmadan bu mahallede mutlu olamayız."), TEXT(""),
-			TEXT("Hastaneyi evin karşı tarafına koy: ağırlıklar birbirini dengeler."),
-			ESLTaskKind::PlaceType, TEXT("Hastane"), { TEXT("Hastane"), TEXT("AVM"), TEXT("Yol") }));
-		Tasks.Add(MakeTask(TEXT("Bir alışveriş merkezi kur"),
-			TEXT("AVM'yi de unutma. Ama çok ağır, dengeye dikkat!"), TEXT("Harika!"),
-			TEXT("Koymadan önce bara bak: tahmin işareti kırmızıya geçiyorsa başka yer seç."),
-			ESLTaskKind::PlaceType, TEXT("AVM"), {}));
-		FSLTask Roads = MakeTask(TEXT("Evi, hastaneyi ve AVM'yi yollarla bağla"),
-			TEXT("Evimizden hastaneye ve AVM'ye yol yaparsan çok mutlu oluruz."),
-			TEXT("Artık her yere gidebiliyoruz!"),
-			TEXT("Yol, binaların kapı önündeki sarı karelere değmeli."),
-			ESLTaskKind::ConnectRoads, TEXT("Yol"), {});
-		Roads.ConnectTypes = { TEXT("Ev"), TEXT("Hastane"), TEXT("AVM") };
-		Tasks.Add(Roads);
-		Tasks.Add(MakeTask(TEXT("Yolun kenarına otobüs durağı kur"),
-			TEXT("Yeni komşular otobüsle geliyormuş. Yollarımızın birleştiği yere bir durak koyar mısın?"),
-			TEXT("Otobüs geliyor!"),
-			TEXT("Durağın önü (sarı kare) evi, hastaneyi ve AVM'yi birleştiren yola değmeli."),
-			ESLTaskKind::PlaceType, TEXT("Durak"), { TEXT("Durak") }));
-		Tasks.Add(MakeTask(TEXT("Demir ailesine durağa yakın bir ev kur"),
-			TEXT("Merhaba! Biz her gün otobüsle işe gidiyoruz. Evimiz durağa en fazla 4 birim uzak olsun ve yolla bağlansın."),
-			TEXT(""),
-			TEXT("Ev elindeyken durağın çevresi sarı yanar. Oraya koy, sonra kapısını yola bağla."),
-			ESLTaskKind::PlaceType, TEXT("Ev"), {}, 2, 1));
-		Tasks.Add(MakeTask(TEXT("Demir ailesi eve yerleşsin"),
-			TEXT("Eşyalarımızı getiriyoruz!"), TEXT(""),
-			TEXT("Aile duraktan kapıya yürüyor."),
-			ESLTaskKind::FamilyMovedIn, TEXT("Ev"), {}, 2, 1));
-		Tasks.Add(MakeTask(TEXT("İki aileyi de mutlu et"),
-			TEXT(""), TEXT(""),
-			TEXT("Soldaki kartta mutsuz ailenin ne istediği yazıyor. Binayı tıklayıp taşıyabilirsin."),
-			ESLTaskKind::FamiliesHappy, TEXT(""), {}, 1, 1));
+		ConfigureLevel2();
 		return;
 	}
 
@@ -193,14 +149,15 @@ void ASLLevelDirector::ConfigureLevel(int32 Number)
 
 void ASLLevelDirector::ConfigureLevel3()
 {
-	// 3. bolum (16 Eki): "Is This Seat Taken?" gibi herkesin bir istegi var; istekler birbirini zorlar.
-	// Yilmazlar (yasli): hastaneye yakin ve yolla bagli. Demirler (cocuklu): parka yakin, AVM'nin
-	// gurultusunden uzak. Aydinlar (Yilmazlarin cocuklari, otobusle gelir): anne-babalarina yakin, duraga
-	// yolla bagli. Ustune: platform daha hafif, egim daha hizli, 24 hamle (her hamle 2 saat: iki gun).
+	// 3. bolum, acik (16 Eki): "Is This Seat Taken?" gibi. Yilmazlar ve Demirler bastan burada; isteklerini
+	// tiklayarak ogrenirsin. Aydinlar durak kurulunca otobusle gelir. Istekler birbirini zorlar; stok
+	// sinirli; platform hafif; 24 hamle (her hamle 2 saat).
 	LevelNumber = 3;
 	LevelTitle = TEXT("3. Bölüm: Komşular");
 	NextLevelNumber = 0;
 	bNeighborsArrive = false;
+	bOpenLevel = true;
+	bAutoAssign = false;
 	BusStopType = TEXT("Durak");
 	FinalSpeech = TEXT("Herkes istediği yerde. Bu mahalle bir harika başkan!");
 	bApplyTuning = true;
@@ -209,83 +166,111 @@ void ASLLevelDirector::ConfigureLevel3()
 	TuneFailSeconds = 1.2f;
 	MoveLimit = 24;
 	HoursPerMove = 2.f;
+	RequiredTypes = { TEXT("Hastane"), TEXT("AVM"), TEXT("Park"), TEXT("Durak") };
+	SlotLimits = { { TEXT("Ev"), 3 }, { TEXT("Hastane"), 1 }, { TEXT("AVM"), 1 }, { TEXT("Park"), 1 }, { TEXT("Durak"), 1 }, { TEXT("Yol"), 12 } };
 
 	FSLFamilyDef Yilmaz;
 	Yilmaz.Name = TEXT("Yılmaz ailesi");
 	Yilmaz.WaitLocal = FVector(-230.f, -250.f, 0.f);
 	Yilmaz.Tint = FLinearColor(0.45f, 0.35f, 0.70f);
-	Yilmaz.Needs.Add(MakeNeed(ESLNeedKind::NearType, TEXT("Hastane"), TEXT("Hastaneye yakın"),
-		TEXT("Yaşlıyız, hastane yürüme mesafesinde olsun: en fazla 3 birim."), 3));
-	Yilmaz.Needs.Add(MakeNeed(ESLNeedKind::ConnectedTo, TEXT("Hastane"), TEXT("Hastaneye yol"),
-		TEXT("Hastane yakın ama yol yok, oraya nasıl gideceğiz?")));
+	Yilmaz.bWishesHidden = true;
+	Yilmaz.Greeting = TEXT("Biz yaşlıyız evladım. Hastane yürüme mesafesinde olsun, yolu da olsun.");
+	Yilmaz.WaitLines = { TEXT("Dizlerim ağrıyor, bir ev bulsak..."), TEXT("Gençken burası tarlaydı."), TEXT("Torunlar ne zaman gelecek?") };
+	Yilmaz.HappyLines = { TEXT("Çay demledim, buyur başkan."), TEXT("Torunlar yakında, ne güzel."), TEXT("Hastane yakın, içim rahat.") };
+	Yilmaz.Needs.Add(NeedL(ESLNeedKind::NearType, TEXT("Hastane"), TEXT("Hastaneye yakın"),
+		TEXT("Hastane çok uzak, bu yaşta yürüyemem! En fazla 3 birim."), TEXT("Hastane hemen şurada, oh be."), 3));
+	Yilmaz.Needs.Add(NeedL(ESLNeedKind::ConnectedTo, TEXT("Hastane"), TEXT("Hastaneye yol"),
+		TEXT("Hastane yakın ama yol yok, oraya nasıl gideceğiz?"), TEXT("Hastaneye yolumuz var.")));
 	Families.Add(Yilmaz);
 
 	FSLFamilyDef Demir;
 	Demir.Name = TEXT("Demir ailesi");
 	Demir.WaitLocal = FVector(-285.f, 150.f, 0.f);
 	Demir.Tint = FLinearColor(0.85f, 0.38f, 0.35f);
-	Demir.ArriveAtTask = 4;
-	Demir.Needs.Add(MakeNeed(ESLNeedKind::NearType, TEXT("Park"), TEXT("Parka yakın"),
-		TEXT("Çocuklar parkta oynasın: park evimize en fazla 2 birim olmalı."), 2));
-	Demir.Needs.Add(MakeNeed(ESLNeedKind::FarFrom, TEXT("AVM"), TEXT("AVM'den uzak"),
-		TEXT("AVM çok gürültülü, bebek uyuyamıyor! En az 4 birim uzak olalım."), 4, 4));
+	Demir.bWishesHidden = true;
+	Demir.Greeting = TEXT("Çocuklarımız için parka yakın oturalım. Ama AVM'nin gürültüsünden uzak!");
+	Demir.WaitLines = { TEXT("Çocuklar sıkıldı!"), TEXT("Bebek uyuyor, sessiz olalım."), TEXT("Park var mı burada?") };
+	Demir.HappyLines = { TEXT("Çocuklar parkta, biz kahvede."), TEXT("Ne sessiz, ne güzel."), TEXT("Kaydıraktan yine düştü ama gülüyor.") };
+	Demir.Needs.Add(NeedL(ESLNeedKind::NearType, TEXT("Park"), TEXT("Parka yakın"),
+		TEXT("Park çok uzak, çocuklar nerede oynayacak? En fazla 2 birim."), TEXT("Park! Çocuklar bayılacak!"), 2));
+	Demir.Needs.Add(NeedL(ESLNeedKind::FarFrom, TEXT("AVM"), TEXT("AVM'den uzak"),
+		TEXT("AVM çok gürültülü, bebek uyuyamıyor! En az 4 birim uzak olalım."), TEXT("Ne güzel, sessiz sakin."), 4, 4));
 	Families.Add(Demir);
 
 	FSLFamilyDef Aydin;
 	Aydin.Name = TEXT("Aydın ailesi");
 	Aydin.WaitLocal = FVector(-285.f, 0.f, 0.f);
 	Aydin.Tint = FLinearColor(0.25f, 0.60f, 0.45f);
-	Aydin.ArriveAtTask = 9;
+	Aydin.ArriveWhenType = TEXT("Durak");
 	Aydin.bArriveAtStop = true;
-	Aydin.Needs.Add(MakeNeed(ESLNeedKind::NearFamily, TEXT(""), TEXT("Yılmazlara yakın"),
-		TEXT("Annemlerin yanında oturmak istiyoruz: Yılmazların evine en fazla 2 birim."), 2, 0, 0));
-	Aydin.Needs.Add(MakeNeed(ESLNeedKind::ConnectedTo, TEXT("Durak"), TEXT("Durağa yol"),
-		TEXT("İşe otobüsle gidiyoruz, evimizden durağa yol olmalı.")));
+	Aydin.bWishesHidden = true;
+	Aydin.Greeting = TEXT("Biz Yılmazların çocuklarıyız! Annemlerin yanında oturalım, işe de otobüsle gidiyoruz.");
+	Aydin.WaitLines = { TEXT("Annemler nerede oturuyor?"), TEXT("Otobüs çok rahattı."), TEXT("Bu ada sallanıyor mu, bana mı öyle geliyor?") };
+	Aydin.HappyLines = { TEXT("Annem yine börek yapmış!"), TEXT("İşe otobüsle on dakika."), TEXT("Komşuluk böyle olur.") };
+	Aydin.Needs.Add(NeedL(ESLNeedKind::NearFamily, TEXT(""), TEXT("Yılmazlara yakın"),
+		TEXT("Annemler çok uzakta kaldı! Evleri en fazla 2 birim olsun."), TEXT("Annemlerin yanındayız!"), 2, 0, 0));
+	Aydin.Needs.Add(NeedL(ESLNeedKind::ConnectedTo, TEXT("Durak"), TEXT("Durağa yol"),
+		TEXT("Evimizden durağa yol yok, işe nasıl gideceğiz?"), TEXT("Otobüse yürüyerek gidiyoruz.")));
 	Families.Add(Aydin);
 
-	Tasks.Add(MakeTask(TEXT("Bir hastane kur"),
-		TEXT("Merhaba başkan! Biz yaşlıyız, buraya önce bir hastane lazım."), TEXT(""),
-		TEXT("Bu bölümde platform daha hafif: ağır binaları merkeze yakın tut. Her hamle 2 saat, 24 hamlen var."),
-		ESLTaskKind::PlaceType, TEXT("Hastane"), { TEXT("Hastane"), TEXT("Ev"), TEXT("Yol") }));
-	Tasks.Add(MakeTask(TEXT("Yılmazlara hastaneye yakın bir ev kur"),
-		TEXT("Evimiz hastaneye en fazla 3 birim olsun, yolla da bağlansın."), TEXT("Tam istediğimiz gibi!"),
-		TEXT("Ev elindeyken uygun yerler sarı yanar."),
-		ESLTaskKind::PlaceType, TEXT("Ev"), {}));
-	Tasks.Add(MakeTask(TEXT("Yılmazlar eve yerleşsin"), TEXT("Eşyaları taşıyoruz, yavaş yavaş..."), TEXT(""),
-		TEXT("Aile kapıya yürüyor."), ESLTaskKind::FamilyMovedIn, TEXT("Ev"), {}));
-	Tasks.Add(MakeTask(TEXT("Bir alışveriş merkezi kur"),
-		TEXT("Mahalleye bir AVM de gerek. Ama çok ağır ve gürültülü!"), TEXT(""),
-		TEXT("AVM'yi hastanenin karşısına koy; yakında çocuklu bir aile gelecek, AVM'nin yanında oturmak istemeyecek."),
-		ESLTaskKind::PlaceType, TEXT("AVM"), { TEXT("AVM"), TEXT("Park") }));
-	Tasks.Add(MakeTask(TEXT("Demirler için bir park kur"),
-		TEXT("Merhaba! Çocuklarımız için bir park lazım. AVM'nin gürültüsünden de uzak olalım."), TEXT(""),
-		TEXT("Parkı AVM'den uzağa koy: Demirlerin evi parka yakın, AVM'ye uzak olmalı."),
-		ESLTaskKind::PlaceType, TEXT("Park"), {}, 1, 1));
-	Tasks.Add(MakeTask(TEXT("Demirlere parka yakın, AVM'den uzak bir ev kur"),
-		TEXT("Park en fazla 2 birim, AVM en az 4 birim uzakta olsun."), TEXT(""),
-		TEXT("Sarı bölge iki isteği birden tutan yerler."),
-		ESLTaskKind::PlaceType, TEXT("Ev"), {}, 2, 1));
-	Tasks.Add(MakeTask(TEXT("Demirler eve yerleşsin"), TEXT("Çocuklar parka koşuyor!"), TEXT(""),
-		TEXT("Aile kapıya yürüyor."), ESLTaskKind::FamilyMovedIn, TEXT("Ev"), {}, 2, 1));
-	FSLTask Roads = MakeTask(TEXT("Evi, hastaneyi ve AVM'yi yollarla bağla"),
-		TEXT("Hastaneye yol yaparsan içimiz rahat eder."), TEXT("Artık hastaneye yürüyebiliyoruz."),
-		TEXT("Yol, kapı önündeki sarı karelere değmeli. Hamlelerini say: yol karoları da hamle."),
-		ESLTaskKind::ConnectRoads, TEXT("Yol"), {});
-	Roads.ConnectTypes = { TEXT("Ev"), TEXT("Hastane"), TEXT("AVM") };
-	Tasks.Add(Roads);
-	Tasks.Add(MakeTask(TEXT("Yolun kenarına otobüs durağı kur"),
-		TEXT("Oğlumuz otobüsle geliyor! Yolların birleştiği yere bir durak kur."), TEXT("Otobüs geliyor!"),
-		TEXT("Durağın önü evi, hastaneyi ve AVM'yi birleştiren yola bakmalı."),
-		ESLTaskKind::PlaceType, TEXT("Durak"), { TEXT("Durak") }));
-	Tasks.Add(MakeTask(TEXT("Aydınlara Yılmazların yanında bir ev kur"),
-		TEXT("Merhaba! Annemlerin en fazla 2 birim yakınında, durağa yolla bağlı bir ev istiyoruz."), TEXT(""),
-		TEXT("Sarı bölge Yılmazların evinin çevresi. Kapısını durağa giden yola bağlamayı unutma."),
-		ESLTaskKind::PlaceType, TEXT("Ev"), {}, 3, 2));
-	Tasks.Add(MakeTask(TEXT("Aydınlar eve yerleşsin"), TEXT("Annemlerin yanındayız, ne güzel!"), TEXT(""),
-		TEXT("Aile duraktan kapıya yürüyor."), ESLTaskKind::FamilyMovedIn, TEXT("Ev"), {}, 3, 2));
-	Tasks.Add(MakeTask(TEXT("Üç aileyi de mutlu et"), TEXT(""), TEXT(""),
-		TEXT("Soldaki kartta kimin neyi istemediği yazıyor. Binayı tıklayıp taşı; taşımak da hamle."),
-		ESLTaskKind::FamiliesHappy, TEXT(""), {}, 1, 0));
+	Tasks.Add(OpenGoal(TEXT("Herkes mutlu olsun"),
+		TEXT("Hoş geldin başkan! Burada herkesin bir isteği var. Üstümüze tıkla, anlatalım."),
+		{ TEXT("Ev"), TEXT("Hastane"), TEXT("AVM"), TEXT("Yol"), TEXT("Park"), TEXT("Durak") }));
+}
+
+
+void ASLLevelDirector::ConfigureLevel2()
+{
+	// 2. bolum, acik (16 Eki): sirali gorev yok. Kaya ailesi bastan burada; istekleri tiklayinca acilir.
+	// Durak konunca Demir ailesi otobusle gelir. Hedef: iki aile mutlu + hastane, AVM, durak kurulu.
+	LevelNumber = 2;
+	LevelTitle = TEXT("2. Bölüm: Otobüs durağı");
+	NextLevelNumber = 3;
+	bNeighborsArrive = false;
+	bOpenLevel = true;
+	bAutoAssign = false;
+	BusStopType = TEXT("Durak");
+	FinalSpeech = TEXT("İki aile de çok mutlu. Teşekkürler başkan!");
+	bApplyTuning = true;
+	TunePlatformMass = 10.f;
+	TuneTiltPerCm = 0.09f;
+	TuneFailSeconds = 1.3f;
+	RequiredTypes = { TEXT("Hastane"), TEXT("AVM"), TEXT("Durak") };
+	SlotLimits = { { TEXT("Ev"), 2 }, { TEXT("Hastane"), 1 }, { TEXT("AVM"), 1 }, { TEXT("Durak"), 1 }, { TEXT("Yol"), 16 } };
+
+	FSLFamilyDef Kaya;
+	Kaya.Name = TEXT("Kaya ailesi");
+	Kaya.WaitLocal = FVector(-230.f, -250.f, 0.f);
+	Kaya.Tint = FLinearColor(0.15f, 0.35f, 0.75f);
+	Kaya.bWishesHidden = true;
+	Kaya.Greeting = TEXT("Merhaba başkan! Evimizden hastaneye ve AVM'ye yol olsun, başka bir şey istemeyiz.");
+	Kaya.WaitLines = { TEXT("Nereye yerleşeceğiz acaba?"), TEXT("Eşyalar ağır, çabuk olalım!"), TEXT("Burası çok güzel bir ada.") };
+	Kaya.HappyLines = { TEXT("Bu mahalleyi çok sevdik."), TEXT("Akşam yürüyüşü yapalım mı?"), TEXT("Komşular çok tatlı.") };
+	Kaya.Needs.Add(NeedL(ESLNeedKind::ConnectedTo, TEXT("Hastane"), TEXT("Hastaneye yol"),
+		TEXT("Evimizden hastaneye yol yok. Çocuklar hastalanırsa ne yapacağız?"), TEXT("Hastaneye yolumuz var, içimiz rahat!")));
+	Kaya.Needs.Add(NeedL(ESLNeedKind::ConnectedTo, TEXT("AVM"), TEXT("AVM'ye yol"),
+		TEXT("Evimizden AVM'ye yol yok, alışverişe gidemiyoruz."), TEXT("AVM'ye yürüyerek gidebiliyoruz!")));
+	Families.Add(Kaya);
+
+	FSLFamilyDef Demir;
+	Demir.Name = TEXT("Demir ailesi");
+	Demir.WaitLocal = FVector(-285.f, 150.f, 0.f);
+	Demir.Tint = FLinearColor(0.85f, 0.38f, 0.35f);
+	Demir.ArriveWhenType = TEXT("Durak");
+	Demir.bArriveAtStop = true;
+	Demir.bWishesHidden = true;
+	Demir.Greeting = TEXT("Selam! Her gün otobüsle işe gidiyoruz. Evimiz durağa yakın olsun, kapımızdan durağa yol gitsin.");
+	Demir.WaitLines = { TEXT("Otobüs yolculuğu uzundu!"), TEXT("Durağa yakın bir ev, lütfen."), TEXT("Burada kim oturuyor?") };
+	Demir.HappyLines = { TEXT("Otobüs tam vaktinde!"), TEXT("Ne huzurlu bir yer."), TEXT("İşe yetiştik bugün de.") };
+	Demir.Needs.Add(NeedL(ESLNeedKind::NearType, TEXT("Durak"), TEXT("Durağa yakın"),
+		TEXT("Durak çok uzak, otobüse yetişemiyoruz! En fazla 4 birim olmalı."), TEXT("Durak hemen yanımızda, harika!"), 4));
+	Demir.Needs.Add(NeedL(ESLNeedKind::ConnectedTo, TEXT("Durak"), TEXT("Durağa yol"),
+		TEXT("Kapımızdan durağa yol yok!"), TEXT("Kapıdan durağa yol var!")));
+	Families.Add(Demir);
+
+	Tasks.Add(OpenGoal(TEXT("Herkes mutlu olsun"),
+		TEXT("Hoş geldin başkan! Önce bizimle tanış: üstümüze tıkla."),
+		{ TEXT("Ev"), TEXT("Hastane"), TEXT("AVM"), TEXT("Yol"), TEXT("Durak") }));
 }
 
 ASLPlatform* ASLLevelDirector::GetPlatform() const
@@ -364,7 +349,25 @@ void ASLLevelDirector::BeginPlay()
 	Homes.SetNum(Families.Num());
 	Happiness.Init(0.f, Families.Num());
 	DisplayHappiness.Init(0.f, Families.Num());
+	Discovered.Init(false, Families.Num());
+	for (int32 I = 0; I < Families.Num(); ++I)
+	{
+		Discovered[I] = !Families[I].bWishesHidden;
+	}
+	NeedMet.SetNum(Families.Num());
+	NeedInit.Init(false, Families.Num());
+	BubbleText.SetNum(Families.Num());
+	BubbleUntil.Init(-1.f, Families.Num());
+	NextChat.Init(0.f, Families.Num());
+	for (int32 I = 0; I < Families.Num(); ++I)
+	{
+		NextChat[I] = 4.f + 3.f * I;
+	}
 	ApplyTuning();
+	if (USLBuildComponent* B = GetBuild())
+	{
+		B->Limits = SlotLimits;
+	}
 	UE_LOG(LogSLLevel, Log, TEXT("SL_LEVEL %d %s, %d gorev, %d aile"), LevelNumber, *LevelTitle, Tasks.Num(), Families.Num());
 }
 
@@ -444,7 +447,18 @@ void ASLLevelDirector::SpawnFamilies()
 	for (int32 I = 0; I < Families.Num() && I < FamilyActors.Num(); ++I)
 	{
 		const FSLFamilyDef& Def = Families[I];
-		if (FamilyActors[I] || (CurrentTask < Def.ArriveAtTask && !bLevelComplete))
+		if (FamilyActors[I])
+		{
+			continue;
+		}
+		if (!Def.ArriveWhenType.IsNone())
+		{
+			if (!IsRequiredPlaced(Def.ArriveWhenType))
+			{
+				continue;
+			}
+		}
+		else if (!bOpenLevel && CurrentTask < Def.ArriveAtTask && !bLevelComplete)
 		{
 			continue;
 		}
@@ -477,6 +491,10 @@ void ASLLevelDirector::SpawnFamilies()
 			UE_LOG(LogSLLevel, Log, TEXT("SL_FAMILY %s geldi (%.0f,%.0f)"), *Def.Name, Wait.X, Wait.Y);
 		}
 		FamilyActors[I] = F;
+		if (bOpenLevel && Def.bWishesHidden && I > 0)
+		{
+			Say(I, TEXT("Merhaba! Yeni geldik, bize bir tıklar mısın?"));
+		}
 	}
 }
 
@@ -499,23 +517,13 @@ int32 ASLLevelDirector::FindFamilyOfHome(const ASLPlaceable* House) const
 
 bool ASLLevelDirector::GetFamilyAnchor(int32 I, FVector& Out) const
 {
-	if (!IsFamilyPresent(I))
+	const ASLFamily* F = GetFamilyActor(I);
+	if (!F || F->IsHidden())
 	{
 		return false;
 	}
-	if (FamilyActors[I]->IsWaitingVisible())
-	{
-		Out = FamilyActors[I]->GetSpeechAnchor();
-		return true;
-	}
-	const ASLPlaceable* Home = GetHome(I);
-	if (Home && !Home->bHeld)
-	{
-		const FBox B = Home->GetComponentsBoundingBox(false);
-		Out = FVector(B.GetCenter().X, B.GetCenter().Y, B.Max.Z + 40.f);
-		return true;
-	}
-	return false;
+	Out = F->GetSpeechAnchor();
+	return true;
 }
 
 bool ASLLevelDirector::GetSpeech(FString& OutText, FVector& OutWorldAnchor) const
@@ -531,6 +539,15 @@ bool ASLLevelDirector::GetSpeech(FString& OutText, FVector& OutWorldAnchor) cons
 	{
 		OutText = DoneText;
 		Speaker = DoneSpeaker;
+	}
+	else if (bOpenLevel)
+	{
+		// Acik bolum: yalnizca giris cumlesi, ilk aile secilene kadar. Gerisi ailelerin kendi balonlari.
+		if (!bIntroOver && Tasks.IsValidIndex(0))
+		{
+			OutText = Tasks[0].Speech;
+			Speaker = 0;
+		}
 	}
 	else if (Tasks.IsValidIndex(CurrentTask))
 	{
@@ -585,15 +602,45 @@ void ASLLevelDirector::StartFamilies()
 	{
 		return;
 	}
-	// Evi silinen (geri alinan) aile tekrar bekler.
+	// Aileler: evi yoksa bekledigi yerde, evine yuruyorsa yolda, vardiysa kapinin onunde. Ev elde ise gizli.
 	for (int32 I = 0; I < FamilyActors.Num(); ++I)
 	{
-		if (FamilyActors[I] && !FamilyActors[I]->IsWaitingVisible() && !Homes[I].IsValid())
+		ASLFamily* F = FamilyActors[I];
+		if (!F)
 		{
-			FamilyActors[I]->SetWaitingVisible(true);
+			continue;
+		}
+		ASLPlaceable* Home = Homes[I].Get();
+		if (Homes[I].IsStale() || (Homes[I].IsValid() && !Home))
+		{
+			Homes[I] = nullptr; // ev geri alindi: aile tekrar bekler
+			Home = nullptr;
+			F->GetRootComponent()->SetRelativeLocation(Families[I].WaitLocal);
+		}
+		if (Home && Home->bHeld)
+		{
+			F->SetWaitingVisible(false);
+			continue;
+		}
+		F->SetWaitingVisible(true);
+		if (Home && F->ConsumeArrived())
+		{
+			Home->MarkFamilyArrived();
+			F->Hop();
+			UE_LOG(LogSLLevel, Log, TEXT("SL_FAMILY %s eve yerlesti (%d,%d)"), *Families[I].Name, Home->CellMin.X, Home->CellMin.Y);
+		}
+		if (Home && Home->bResidentsArrived && !F->IsWalking())
+		{
+			// Ev tasindiysa aile de yeni kapinin onune.
+			F->GetRootComponent()->SetRelativeLocation(Home->GetDoorSpotLocal());
+			F->GetRootComponent()->SetRelativeRotation(FRotator(0, Home->GetDoorSpotYaw(), 0));
+		}
+		else if (Home && !Home->bResidentsArrived && !F->IsWalking())
+		{
+			F->WalkPath(Home->GetArrivalPath(F->GetRootComponent()->GetRelativeLocation()), Home->GetDoorSpotYaw());
 		}
 	}
-	// En son konan bostaki eve, bekleyen ilk aile yerlesir.
+	// Bos evler: 1. bolumde bekleyen ilk aile en son konan bos eve kendiliginden tasinir; acik bolumde oyuncu secer.
 	const TArray<TWeakObjectPtr<ASLPlaceable>>& All = P->GetPlaceables();
 	for (int32 K = All.Num() - 1; K >= 0; --K)
 	{
@@ -603,36 +650,208 @@ void ASLLevelDirector::StartFamilies()
 			continue;
 		}
 		int32 Fam = INDEX_NONE;
-		for (int32 I = 0; I < FamilyActors.Num() && Fam == INDEX_NONE; ++I)
+		for (int32 I = 0; bAutoAssign && I < FamilyActors.Num() && Fam == INDEX_NONE; ++I)
 		{
-			if (FamilyActors[I] && FamilyActors[I]->IsWaitingVisible() && !Homes[I].IsValid())
+			if (FamilyActors[I] && !Homes[I].IsValid())
 			{
 				Fam = I;
 			}
 		}
-		FVector Start;
 		if (Fam != INDEX_NONE)
 		{
-			// Bekleyen aile tam bulundugu yerden yuruyerek gider (figurler el degistirir).
-			Start = FamilyActors[Fam]->GetRootComponent()->GetRelativeLocation();
-			FamilyActors[Fam]->SetWaitingVisible(false);
-			Homes[Fam] = House;
-			House->ResidentTint = Families[Fam].Tint;
-			UE_LOG(LogSLLevel, Log, TEXT("SL_FAMILY %s eve yuruyor (%d,%d)"), *Families[Fam].Name, House->CellMin.X, House->CellMin.Y);
+			AssignFamilyToHouse(Fam, House);
 		}
-		else if (bNeighborsArrive)
+		else if (bNeighborsArrive && !bOpenLevel)
 		{
-			// Ailesi olmayan ev: kapinin baktigi yondeki kenardan gelen yeni komsular.
+			// Ailesi olmayan ev: kapinin baktigi yondeki kenardan gelen yeni komsular (evin kendi figurleri).
 			const FVector C = House->GetRootComponent()->GetRelativeLocation();
 			const float H = P->HalfExtent - 20.f;
 			const FIntPoint D = House->GetFacingDir();
-			Start = D.X != 0 ? FVector(D.X * H, C.Y, 0.f) : FVector(C.X, D.Y * H, 0.f);
+			House->StartResidentsArrival(D.X != 0 ? FVector(D.X * H, C.Y, 0.f) : FVector(C.X, D.Y * H, 0.f));
 		}
-		else
+	}
+}
+
+bool ASLLevelDirector::AssignFamilyToHouse(int32 I, ASLPlaceable* House)
+{
+	ASLFamily* F = GetFamilyActor(I);
+	if (!F || !House || House->Residents <= 0 || House->bHeld)
+	{
+		return false;
+	}
+	if (Homes[I].Get() == House)
+	{
+		return true;
+	}
+	if (House->HasResidentsStarted())
+	{
+		return false; // baska ailenin evi
+	}
+	if (ASLPlaceable* Old = Homes[I].Get())
+	{
+		Old->MarkFamilyAssigned(false);
+	}
+	Homes[I] = House;
+	NeedInit[I] = false;
+	House->MarkFamilyAssigned(true);
+	House->ResidentTint = Families[I].Tint;
+	F->WalkPath(House->GetArrivalPath(F->GetRootComponent()->GetRelativeLocation()), House->GetDoorSpotYaw());
+	if (bOpenLevel)
+	{
+		Say(I, TEXT("Hemen taşınıyoruz!"));
+	}
+	ASLGameMode::PlaySfx(this, TEXT("SFX_Konusma"), 0);
+	UE_LOG(LogSLLevel, Log, TEXT("SL_FAMILY %s eve yuruyor (%d,%d)"), *Families[I].Name, House->CellMin.X, House->CellMin.Y);
+	return true;
+}
+
+void ASLLevelDirector::SelectFamily(int32 I)
+{
+	if (!IsFamilyPresent(I))
+	{
+		return;
+	}
+	const bool bFirst = !Discovered[I];
+	Discovered[I] = true;
+	SelectedFamily = I;
+	bIntroOver = true;
+	if (ASLFamily* F = GetFamilyActor(I))
+	{
+		F->Hop();
+	}
+	if (bFirst && !Families[I].Greeting.IsEmpty())
+	{
+		Say(I, Families[I].Greeting, BubbleSeconds + 2.f);
+	}
+	else if (!GetHome(I))
+	{
+		Say(I, TEXT("Bize bir ev kur ya da boş bir eve tıkla, hemen taşınalım."));
+	}
+	ASLGameMode::PlaySfx(this, TEXT("SFX_Konusma"), 1);
+	UE_LOG(LogSLLevel, Log, TEXT("SL_SELECT %s (istekler %s)"), *Families[I].Name, bFirst ? TEXT("ilk kez acildi") : TEXT("acik"));
+}
+
+void ASLLevelDirector::Say(int32 I, const FString& Text, float Seconds)
+{
+	if (!BubbleText.IsValidIndex(I) || Text.IsEmpty())
+	{
+		return;
+	}
+	BubbleText[I] = Text;
+	BubbleUntil[I] = GetWorld()->GetTimeSeconds() + (Seconds > 0.f ? Seconds : BubbleSeconds);
+	NextChat[I] = BubbleUntil[I] + FMath::FRandRange(ChatterSeconds.X, ChatterSeconds.Y);
+}
+
+bool ASLLevelDirector::GetFamilyBubble(int32 I, FString& Out) const
+{
+	if (!BubbleText.IsValidIndex(I) || !GetWorld() || GetWorld()->GetTimeSeconds() > BubbleUntil[I])
+	{
+		return false;
+	}
+	Out = BubbleText[I];
+	return !Out.IsEmpty();
+}
+
+bool ASLLevelDirector::IsNeedMet(int32 Fam, int32 Need) const
+{
+	return NeedMet.IsValidIndex(Fam) && NeedMet[Fam].IsValidIndex(Need) && NeedMet[Fam][Need];
+}
+
+bool ASLLevelDirector::IsRequiredPlaced(FName Type) const
+{
+	const ASLPlatform* P = GetPlatform();
+	for (const TWeakObjectPtr<ASLPlaceable>& W : P ? P->GetPlaceables() : TArray<TWeakObjectPtr<ASLPlaceable>>())
+	{
+		if (W.Get() && !W->bHeld && W->TypeId == Type)
 		{
-			continue; // bos kalir; sonra gelen aile buraya yerlesebilir
+			return true;
 		}
-		House->StartResidentsArrival(Start);
+	}
+	return false;
+}
+
+FString ASLLevelDirector::DescribeOpenGoal() const
+{
+	TArray<FString> Missing;
+	const USLBuildComponent* B = GetBuild();
+	for (const FName& T : RequiredTypes)
+	{
+		if (!IsRequiredPlaced(T))
+		{
+			const int32 S = B ? B->FindSlotById(T) : INDEX_NONE;
+			Missing.Add(B && B->Slots.IsValidIndex(S) ? B->Slots[S].Label : T.ToString());
+		}
+	}
+	int32 Happy = 0;
+	for (int32 I = 0; I < Families.Num(); ++I)
+	{
+		Happy += IsFamilyHappy(I) ? 1 : 0;
+	}
+	FString Out = FString::Printf(TEXT("Mutlu aile %d / %d"), Happy, Families.Num());
+	if (Missing.Num())
+	{
+		Out += TEXT(" · Eksik: ") + FString::Join(Missing, TEXT(", "));
+	}
+	return Out;
+}
+
+void ASLLevelDirector::UpdateChatter(float DeltaSeconds)
+{
+	if (!bOpenLevel || bLevelComplete || !GetWorld())
+	{
+		return;
+	}
+	const float Now = GetWorld()->GetTimeSeconds();
+	// Gece/sabah selami: saat donumunde bir aile soyler.
+	const float Day = ASLAmbience::DaylightAt(GetTimeHours());
+	const bool bNight = Day < 0.3f;
+	if (bNight != bWasNight)
+	{
+		bWasNight = bNight;
+		for (int32 I = 0; I < FamilyActors.Num(); ++I)
+		{
+			if (GetHome(I))
+			{
+				Say(I, bNight ? TEXT("İyi geceler komşular!") : TEXT("Günaydın! Ne güzel bir sabah."));
+				break;
+			}
+		}
+	}
+	for (int32 I = 0; I < FamilyActors.Num(); ++I)
+	{
+		if (!FamilyActors[I] || Now < NextChat[I] || Now < BubbleUntil[I])
+		{
+			continue;
+		}
+		const FSLFamilyDef& Def = Families[I];
+		FString Line;
+		const ASLPlaceable* Home = GetHome(I);
+		if (!Discovered[I])
+		{
+			Line = TEXT("Psst, başkan! Bize tıkla, ne istediğimizi anlatalım.");
+		}
+		else if (!Home)
+		{
+			Line = Def.WaitLines.Num() ? Def.WaitLines[FMath::RandRange(0, Def.WaitLines.Num() - 1)] : FString(TEXT("Bir ev bulsak..."));
+		}
+		else if (!IsFamilyHappy(I))
+		{
+			for (int32 N = 0; N < Def.Needs.Num() && Line.IsEmpty(); ++N)
+			{
+				Line = IsNeedMet(I, N) ? FString() : Def.Needs[N].Complaint;
+			}
+		}
+		else if (Def.HappyLines.Num())
+		{
+			Line = Def.HappyLines[FMath::RandRange(0, Def.HappyLines.Num() - 1)];
+		}
+		if (Line.IsEmpty())
+		{
+			NextChat[I] = Now + 5.f;
+			continue;
+		}
+		Say(I, Line);
+		ASLGameMode::PlaySfx(this, TEXT("SFX_Konusma"), 0, 0.5f, FMath::FRandRange(0.9f, 1.15f));
 	}
 }
 
@@ -757,11 +976,36 @@ void ASLLevelDirector::UpdateHappiness(float DeltaSeconds)
 		else if (!Home->bHeld) // tasinirken eski degeri koru
 		{
 			float Sum = 0.f;
+			TArray<bool> Met;
 			for (const FSLNeed& N : Families[I].Needs)
 			{
-				Sum += EvaluateNeed(N, Home, nullptr);
+				const float V = EvaluateNeed(N, Home, nullptr);
+				Sum += V;
+				Met.Add(V >= 0.999f);
 			}
 			Happiness[I] = Families[I].Needs.Num() ? Sum / Families[I].Needs.Num() : 1.f;
+			// Istek degisince aile tepki verir: karsilandi -> sevinir, bozuldu -> sikayet (yalniz evdeyken).
+			if (Home->bResidentsArrived)
+			{
+				if (NeedInit[I] && bOpenLevel)
+				{
+					for (int32 N = 0; N < Met.Num(); ++N)
+					{
+						if (NeedMet[I].IsValidIndex(N) && Met[N] != NeedMet[I][N])
+						{
+							Say(I, Met[N] ? Families[I].Needs[N].MetLine : Families[I].Needs[N].Complaint);
+							break;
+						}
+					}
+				}
+				NeedInit[I] = true;
+			}
+			NeedMet[I] = Met;
+		}
+		if (ASLFamily* F = GetFamilyActor(I))
+		{
+			// Evsiz aile "notr" (ne zipliyor ne bas egik); evdeyse mutluluguna gore.
+			F->SetMood(Home ? Happiness[I] : 0.6f, SelectedFamily == I, HoveredFamily == I);
 		}
 		const bool bWasHappy = DisplayHappiness[I] >= 0.999f;
 		DisplayHappiness[I] = FMath::FInterpConstantTo(DisplayHappiness[I], Happiness[I], DeltaSeconds, HappinessLerpSpeed);
@@ -786,7 +1030,7 @@ bool ASLLevelDirector::HasFamilyNeeds() const
 
 bool ASLLevelDirector::IsFamilyHappy(int32 I) const
 {
-	return IsFamilyPresent(I) && GetHome(I) && GetHappiness(I) >= 0.999f;
+	return IsFamilyPresent(I) && GetHome(I) && GetHome(I)->bResidentsArrived && GetHappiness(I) >= 0.999f;
 }
 
 FString ASLLevelDirector::GetFamilyStatus(int32 I) const
@@ -817,16 +1061,21 @@ FString ASLLevelDirector::GetFamilyStatus(int32 I) const
 
 int32 ASLLevelDirector::FamilyForPlacement(const ASLPlaceable* Moving) const
 {
-	// Kimin evi olacak: tasinan evin ailesi, yoksa gelmis ama evi olmayan ilk aile.
+	// Kimin evi olacak: tasinan evin ailesi; sonra secili aile; 1. bolumde evi olmayan ilk aile.
+	// Acik bolumde istekleri bilinmeyen ailenin bolgesi gosterilmez (once tikla, ogren).
 	int32 Fam = FindFamilyOfHome(Moving);
-	for (int32 I = 0; I < Families.Num() && Fam == INDEX_NONE; ++I)
+	if (Fam == INDEX_NONE && IsFamilyPresent(SelectedFamily))
+	{
+		Fam = SelectedFamily;
+	}
+	for (int32 I = 0; bAutoAssign && I < Families.Num() && Fam == INDEX_NONE; ++I)
 	{
 		if (IsFamilyPresent(I) && !GetHome(I))
 		{
 			Fam = I;
 		}
 	}
-	return Fam;
+	return (Fam != INDEX_NONE && IsFamilyDiscovered(Fam)) ? Fam : INDEX_NONE;
 }
 
 bool ASLLevelDirector::DescribeHomePlacement(const ASLPlaceable* Ghost, const ASLPlaceable* Moving, FString& Out, bool& bGood) const
@@ -1194,6 +1443,13 @@ bool ASLLevelDirector::EvaluateTask(const FSLTask& Task, int32& OutProgress, int
 		{
 			OutProgress += IsFamilyHappy(I) ? 1 : 0;
 		}
+		for (const FName& T : RequiredTypes)
+		{
+			if (!IsRequiredPlaced(T))
+			{
+				return false; // mahalle plani eksik
+			}
+		}
 		break;
 	}
 	return OutProgress >= OutGoal;
@@ -1218,6 +1474,7 @@ void ASLLevelDirector::Tick(float DeltaSeconds)
 	}
 	StartFamilies();
 	UpdateHappiness(DeltaSeconds);
+	UpdateChatter(DeltaSeconds);
 	UpdateBus();
 	UpdateNearZone();
 	CheckMoveLimit(DeltaSeconds);
@@ -1241,6 +1498,16 @@ void ASLLevelDirector::Tick(float DeltaSeconds)
 		}
 		UE_LOG(LogSLLevel, Log, TEXT("SL_TASK_DONE %d: %s"), CurrentTask + 1, *Tasks[CurrentTask].Text);
 		ASLGameMode::PlaySfx(this, bLast ? TEXT("SFX_Bolum") : TEXT("SFX_Gorev"), bLast ? 5 : 4);
+		if (bLast)
+		{
+			for (ASLFamily* F : FamilyActors)
+			{
+				if (F)
+				{
+					F->Hop(); // herkes sevincle ziplar
+				}
+			}
+		}
 		if (!Tasks[CurrentTask].DoneSpeech.IsEmpty())
 		{
 			DoneText = Tasks[CurrentTask].DoneSpeech;

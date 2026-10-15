@@ -90,6 +90,15 @@ public:
 	/** Tekerlek: + yakinlastir, - uzaklastir (tik sayisi). */
 	void Zoom(float Ticks);
 
+	/** Tahtayi cevir (16 Eki): kamera tahtanin etrafinda 90 derece adimlarla doner (Z / X, HUD oklari). */
+	void RotateView(int32 Steps);
+	/** 0..3: bastaki bakistan kac ceyrek tur. Yeni binanin kapisi kameraya baksin diye BuildComponent okur. */
+	int32 GetViewSteps() const { return ((ViewSteps % 4) + 4) % 4; }
+
+	/** Donus yumusakligi (FInterpTo hizi). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
+	float RotateInterpSpeed = 7.f;
+
 	float GetTargetDistance() const { return TargetDistance; }
 	void SetTargetDistance(float D) { TargetDistance = FMath::Clamp(D, ZoomMin, ZoomMax); }
 
@@ -98,5 +107,7 @@ public:
 
 private:
 	float TargetDistance = 2900.f;
+	float TargetYaw = 45.f;
+	int32 ViewSteps = 0;
 	FVector2D PanOffset = FVector2D::ZeroVector;
 };

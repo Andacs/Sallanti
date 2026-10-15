@@ -111,8 +111,32 @@ void USLBuildComponent::SpawnGhostFor(const FSLSlot& Slot)
 	}
 }
 
+int32 USLBuildComponent::GetRemaining(FName Id) const
+{
+	const int32* L = Limits.Find(Id);
+	if (!L)
+	{
+		return -1;
+	}
+	int32 Used = 0;
+	if (const ASLPlatform* P = GetPlatform())
+	{
+		for (const TWeakObjectPtr<ASLPlaceable>& W : P->GetPlaceables())
+		{
+			Used += (W.Get() && W->TypeId == Id) ? 1 : 0;
+		}
+	}
+	return FMath::Max(0, *L - Used);
+}
+
 void USLBuildComponent::SelectSlot(int32 Index)
 {
+	if (bBuildEnabled && Slots.IsValidIndex(Index) && GetRemaining(Slots[Index].Id) == 0)
+	{
+		// Stok bitti: secilmez (tasimak icin binaya tikla).
+		ASLGameMode::PlaySfx(this, TEXT("SFX_Gecersiz"), 0, 0.8f);
+		return;
+	}
 	if (bBuildEnabled && Slots.IsValidIndex(Index) && !IsSlotUnlocked(Index))
 	{
 		ASLGameMode::PlaySfx(this, TEXT("SFX_Gecersiz"), 0, 0.8f);
@@ -369,13 +393,14 @@ bool USLBuildComponent::TryPlace()
 		{
 			++MoveCount; // ayni yere geri koymak hamle sayilmaz
 		}
+		P->PlayPop();
 		ASLGameMode::PlaySfx(this, P->bFlat ? TEXT("SFX_YolKoy") : TEXT("SFX_Yerlestir"), 1);
 		UE_LOG(LogSLBuild, Log, TEXT("SL_MOVE %s (%d,%d) yon %d -> (%d,%d) yon %d"), *P->TypeId.ToString(),
 			MovingOrigCell.X, MovingOrigCell.Y, MovingOrigFacing, GhostCellMin.X, GhostCellMin.Y, GhostFacing);
 		return true;
 	}
 
-	if (!Slots.IsValidIndex(SelectedSlot) || !IsSlotUnlocked(SelectedSlot))
+	if (!Slots.IsValidIndex(SelectedSlot) || !IsSlotUnlocked(SelectedSlot) || GetRemaining(Slots[SelectedSlot].Id) == 0)
 	{
 		return false;
 	}
@@ -393,6 +418,7 @@ bool USLBuildComponent::TryPlace()
 	Platform->RegisterPlaceable(P);
 	PlacedStack.Add(P);
 	++PlacedCount;
+	P->PlayPop();
 	++MoveCount;
 	// Pitch hafif oynasin: art arda konan yollar makineli tufek gibi duyulmasin.
 	ASLGameMode::PlaySfx(this, P->bFlat ? TEXT("SFX_YolKoy") : TEXT("SFX_Yerlestir"), 1, 1.f, FMath::FRandRange(0.94f, 1.06f));
@@ -404,6 +430,11 @@ bool USLBuildComponent::TryPlace()
 	UE_LOG(LogSLBuild, Log, TEXT("SL_PLACE %s cell=(%d,%d) level=%d foot=(%d,%d) yon=%d giris=%s mass=%.1f rel=%s"),
 		*P->TypeId.ToString(), GhostCellMin.X, GhostCellMin.Y, GhostLevel, P->GetFootprint().X, P->GetFootprint().Y,
 		P->Facing, Ent.IsEmpty() ? TEXT("-") : *Ent, P->Mass, *P->GetRootComponent()->GetRelativeLocation().ToString());
+	if (GetRemaining(P->TypeId) == 0)
+	{
+		Cancel(); // stok bitti: hayalet elde kalmasin
+		return true;
+	}
 	UpdateGhost();
 	return true;
 }
@@ -438,6 +469,28 @@ bool USLBuildComponent::PickUp(ASLPlaceable* Target)
 	UE_LOG(LogSLBuild, Log, TEXT("SL_PICKUP %s (%d,%d)"), *Target->TypeId.ToString(), MovingOrigCell.X, MovingOrigCell.Y);
 	UpdateGhost();
 	return true;
+}
+
+ASLPlaceable* USLBuildComponent::GetPlaceableUnderCursor() const
+{
+	const ASLPlatform* Platform = GetPlatform();
+	if (!Platform)
+	{
+		return nullptr;
+	}
+	if (const APlayerController* PC = Cast<APlayerController>(GetOwner()); PC && !bAimOverride)
+	{
+		FHitResult Hit;
+		if (PC->GetHitResultUnderCursor(ECC_Visibility, false, Hit))
+		{
+			if (ASLPlaceable* P = Cast<ASLPlaceable>(Hit.GetActor()))
+			{
+				return P;
+			}
+		}
+	}
+	FVector2D Aim;
+	return GetAimLocal(Aim) ? Platform->FindPlaceableAt(Platform->LocalToCell(Aim)) : nullptr;
 }
 
 bool USLBuildComponent::TryPickUpUnderCursor()

@@ -154,7 +154,20 @@ public:
 	/** Tasima: verilen nesneyi kaldirir (test ve UI icin). */
 	bool PickUp(ASLPlaceable* Target);
 
+	/** Imlecin altindaki nesne (kaldirmadan). Aile atamasi icin. */
+	ASLPlaceable* GetPlaceableUnderCursor() const;
+
 	bool IsMoving() const { return Moving != nullptr; }
+
+	/** Son yeni konan nesne (aile atamasi icin). */
+	ASLPlaceable* GetLastPlaced() const { return PlacedStack.Num() ? PlacedStack.Last().Get() : nullptr; }
+
+	/** Bolumun stok siniri (Yigit/bolum yoneticisi yazar): tur -> en fazla adet. Yoksa sinirsiz. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Yerlestirme")
+	TMap<FName, int32> Limits;
+
+	/** Bu turden kac tane daha konabilir; sinir yoksa -1. */
+	int32 GetRemaining(FName Id) const;
 
 	/** Basarili koyma ve tasima sayisi (gece-gunduz ve hamle siniri bunu okur). Geri alma azaltmaz. */
 	int32 GetMoveCount() const { return MoveCount; }

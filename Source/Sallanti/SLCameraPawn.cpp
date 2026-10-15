@@ -29,6 +29,7 @@ void ASLCameraPawn::BeginPlay()
 {
 	Super::BeginPlay();
 	TargetDistance = FMath::Clamp(Distance, ZoomMin, ZoomMax);
+	TargetYaw = Yaw;
 	ApplyCamera();
 }
 
@@ -36,6 +37,12 @@ void ASLCameraPawn::Zoom(float Ticks)
 {
 	// Carpimsal adim: her tik uzakligin sabit bir orani, yakin ve uzakta ayni "his".
 	TargetDistance = FMath::Clamp(TargetDistance * FMath::Pow(1.f - ZoomStepFraction, Ticks), ZoomMin, ZoomMax);
+}
+
+void ASLCameraPawn::RotateView(int32 Steps)
+{
+	ViewSteps += Steps;
+	TargetYaw += 90.f * Steps;
 }
 
 void ASLCameraPawn::PanByScreen(float DX, float DY, float ViewportW)
@@ -59,6 +66,11 @@ void ASLCameraPawn::Tick(float DeltaSeconds)
 	if (!FMath::IsNearlyEqual(Distance, TargetDistance, 0.5f))
 	{
 		Distance = FMath::FInterpTo(Distance, TargetDistance, DeltaSeconds, ZoomInterpSpeed);
+		ApplyCamera();
+	}
+	if (!FMath::IsNearlyEqual(Yaw, TargetYaw, 0.05f))
+	{
+		Yaw = FMath::FInterpTo(Yaw, TargetYaw, DeltaSeconds, RotateInterpSpeed);
 		ApplyCamera();
 	}
 }

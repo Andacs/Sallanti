@@ -103,9 +103,13 @@ struct FSLNeed
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
 	FString Label;
 
-	/** Karsilanmazken ailenin sikayeti (son gorevde balon). */
+	/** Karsilanmazken ailenin sikayeti (balon; istek bozulunca da soylenir). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
 	FString Complaint;
+
+	/** Istek karsilandigi an ailenin sevinci (balon). Bos = sessiz. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	FString MetLine;
 };
 
 USTRUCT(BlueprintType)
@@ -127,6 +131,26 @@ struct FSLFamilyDef
 	/** Otobusle gelir: duragin onunde belirir (durak yoksa WaitLocal'da). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
 	bool bArriveAtStop = false;
+
+	/** Bu turden bir bina konunca gelir (bos = ArriveAtTask'a bakar). Ornek: Durak -> otobusle gelen aile. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	FName ArriveWhenType;
+
+	/** Istekler gizli: oyuncu aileye tiklayinca ogrenir ("Is This Seat Taken?"). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	bool bWishesHidden = false;
+
+	/** Tiklaninca soyledigi tanisma cumlesi. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	FString Greeting;
+
+	/** Mutluyken ara ara soyledikleri. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	TArray<FString> HappyLines;
+
+	/** Ev beklerken soyledikleri. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	TArray<FString> WaitLines;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
 	FLinearColor Tint = FLinearColor(0.15f, 0.35f, 0.75f);
@@ -174,6 +198,31 @@ public:
 	/** Bolum sonu icin platformun dengede olmasi gerekir mi? (devriliyor durumunda bitmez) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
 	bool bRequireBalanceToComplete = true;
+
+	/** Acik bolum (16 Eki, Andac: "gorevler sirayla, simulasyon gibi"): sirali gorev yok, tek hedef
+	 *  (herkes mutlu + RequiredTypes kurulu). Binalar bastan acik ama stoklu (SlotLimits). Aile seciliyken
+	 *  ev kurmak ya da bos eve tiklamak aileyi oraya tasir. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
+	bool bOpenLevel = false;
+
+	/** Acik bolumde bitis icin kurulmus olmasi gereken turler (mahalle plani). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
+	TArray<FName> RequiredTypes;
+
+	/** Bolumun stoklari (BuildComponent::Limits'e yazilir). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
+	TMap<FName, int32> SlotLimits;
+
+	/** Yeni eve bekleyen ilk aile kendiliginden tasinir (1. bolum). Kapaliysa oyuncu secer. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
+	bool bAutoAssign = true;
+
+	/** Ailelerin kendiliginden konusma araligi, sn. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Aile")
+	FVector2D ChatterSeconds = FVector2D(9.f, 16.f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Aile")
+	float BubbleSeconds = 3.2f;
 
 	/** Bolum bitince son soz. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
@@ -269,6 +318,25 @@ public:
 
 	ASLBus* GetBus() const { return Bus; }
 
+	// --- Aileyle etkilesim (HUD ve PlayerController cagirir) ---
+
+	/** Aileye tiklandi: istekleri acilir, secilir, ziplar, tanisma cumlesini soyler. */
+	void SelectFamily(int32 I);
+	void ClearFamilySelection() { SelectedFamily = INDEX_NONE; }
+	int32 GetSelectedFamily() const { return SelectedFamily; }
+	void SetHoveredFamily(int32 I) { HoveredFamily = I; }
+	bool IsFamilyDiscovered(int32 I) const { return Discovered.IsValidIndex(I) && Discovered[I]; }
+	/** Aileyi bu eve tasi (bos olmali). Eski evi bosalir. */
+	bool AssignFamilyToHouse(int32 I, ASLPlaceable* House);
+	ASLFamily* GetFamilyActor(int32 I) const { return FamilyActors.IsValidIndex(I) ? FamilyActors[I].Get() : nullptr; }
+	/** Ailenin su anki konusma balonu (kendiliginden konusma, tepki). */
+	bool GetFamilyBubble(int32 I, FString& Out) const;
+	/** Istek su an karsilaniyor mu (HUD istek karti). */
+	bool IsNeedMet(int32 Fam, int32 Need) const;
+	bool IsRequiredPlaced(FName Type) const;
+	/** Acik bolum: hedefe kalan (mutsuz aile sayisi + eksik plan). */
+	FString DescribeOpenGoal() const;
+
 private:
 	ASLPlatform* GetPlatform() const;
 	USLBuildComponent* GetBuild() const;
@@ -310,6 +378,21 @@ private:
 
 	int32 UnlockedForTask = -1;
 	float OutOfMovesTimer = 0.f;
+
+	TArray<bool> Discovered;
+	TArray<TArray<bool>> NeedMet;
+	TArray<bool> NeedInit;
+	TArray<FString> BubbleText;
+	TArray<float> BubbleUntil;
+	TArray<float> NextChat;
+	int32 SelectedFamily = INDEX_NONE;
+	int32 HoveredFamily = INDEX_NONE;
+	bool bWasNight = false;
+	bool bIntroOver = false;
+
+	void Say(int32 I, const FString& Text, float Seconds = -1.f);
+	void UpdateChatter(float DeltaSeconds);
+	void ConfigureLevel2();
 
 	void ApplyTuning();
 	void CheckMoveLimit(float DeltaSeconds);

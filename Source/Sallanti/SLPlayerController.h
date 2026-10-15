@@ -96,6 +96,9 @@ private:
 	void OnSlot4();
 	void OnSlot5();
 	void OnSlot6();
+	void OnRotateViewLeft();
+	void OnRotateViewRight();
+	void RotateView(int32 Steps);
 	void OnToggleMusic();
 	void OnNextLevel();
 	void OnUndo();

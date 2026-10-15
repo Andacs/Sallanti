@@ -199,6 +199,19 @@ public:
 
 	bool HasResidentsStarted() const { return bResidentsStarted; }
 
+	/** Aile aktoru (ASLFamily) bu eve atandi / vardi. Evin kendi figurleri dogmaz; aile kapinin onunde durur. */
+	void MarkFamilyAssigned(bool bAssigned) { bResidentsStarted = bAssigned; if (!bAssigned) { bResidentsArrived = false; } }
+	void MarkFamilyArrived() { bResidentsStarted = true; bResidentsArrived = true; }
+
+	/** Platform yerelinde: aile buradan kapinin onune nasil yurur (binanin icinden gecmez). Son nokta kapi onu. */
+	TArray<FVector> GetArrivalPath(const FVector& StartPlatformLocal) const;
+	/** Platform yerelinde: ailenin evde durdugu yer (kapinin onu, giris yolunun yani) ve yuzu. */
+	FVector GetDoorSpotLocal() const;
+	float GetDoorSpotYaw() const { return 90.f * Facing; }
+
+	/** Konunca kisa "boing": %88 -> %106 -> %100 (sifir olcek yok). */
+	void PlayPop();
+
 	/** Platform uzerindeki XY ayak izi, donmeyi hesaba katarak. */
 	FIntPoint GetFootprint() const { return (Facing & 1) ? FIntPoint(SizeCells.Y, SizeCells.X) : FIntPoint(SizeCells.X, SizeCells.Y); }
 
@@ -282,6 +295,8 @@ private:
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> WindowMIDs;
 
 	float NightGlow = 0.f;
+	float PopTime = -1.f;
+	bool TickPop(float DeltaSeconds);
 
 	UPROPERTY(Transient)
 	TObjectPtr<UStaticMesh> ConeMesh;

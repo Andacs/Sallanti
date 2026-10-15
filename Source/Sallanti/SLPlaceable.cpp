@@ -898,7 +898,8 @@ void ASLPlaceable::StartResidentsArrival(const FVector& StartPlatformLocal)
 
 bool ASLPlaceable::TickResidents(float DeltaSeconds)
 {
-	if (!bResidentsStarted || bResidentsArrived)
+	// Figursuz ev (aile aktoru yuruyor, 16 Eki): bos liste "hepsi vardi" sayiliyordu, ev aile gelmeden doluyordu.
+	if (!bResidentsStarted || bResidentsArrived || ResidentMeshes.Num() == 0)
 	{
 		return false;
 	}
@@ -935,12 +936,75 @@ bool ASLPlaceable::TickResidents(float DeltaSeconds)
 	return true;
 }
 
+FVector ASLPlaceable::GetDoorSpotLocal() const
+{
+	// Kapi yuzunun (+X) plakadaki onu, giris yolunun yaninda (yolu kapatmasin).
+	const float PX = 0.5f * PlateSizeX(), PY = 0.5f * PlateSizeY();
+	const FVector LocalSpot(PX - 3.f, -FMath::Min(PY - 6.f, BodyHalfY() * 0.75f + 6.f), 0.f);
+	return GetRootComponent()->GetRelativeTransform().TransformPosition(LocalSpot) * FVector(1, 1, 0);
+}
+
+TArray<FVector> ASLPlaceable::GetArrivalPath(const FVector& StartPlatformLocal) const
+{
+	// StartResidentsArrival ile ayni kural, platform yerelinde: kapi aileye donuk degilse once yan sokak.
+	const FTransform Rel = GetRootComponent()->GetRelativeTransform();
+	const FVector Start = Rel.InverseTransformPosition(StartPlatformLocal);
+	const float Gap = 12.f;
+	const float PlateHalfX = 0.5f * PlateSizeX(), PlateHalfY = 0.5f * PlateSizeY();
+	TArray<FVector> Local;
+	if (Start.X < PlateHalfX + Gap)
+	{
+		const float S = Start.Y >= 0.f ? 1.f : -1.f;
+		const float Lane = S * FMath::Max(FMath::Abs(Start.Y), PlateHalfY + Gap);
+		Local.Add(FVector(Start.X, Lane, 0.f));
+		Local.Add(FVector(PlateHalfX + Gap, Lane, 0.f));
+	}
+	TArray<FVector> Out;
+	for (const FVector& L : Local)
+	{
+		Out.Add(Rel.TransformPosition(L) * FVector(1, 1, 0));
+	}
+	Out.Add(GetDoorSpotLocal());
+	return Out;
+}
+
+void ASLPlaceable::PlayPop()
+{
+	if (bGhost)
+	{
+		return;
+	}
+	PopTime = 0.f;
+	SetActorTickEnabled(true);
+}
+
+bool ASLPlaceable::TickPop(float DeltaSeconds)
+{
+	if (PopTime < 0.f)
+	{
+		return false;
+	}
+	PopTime += DeltaSeconds;
+	const float T = FMath::Clamp(PopTime / 0.32f, 0.f, 1.f);
+	// Asagi basik basla, hafif tas, otur: sonumlu yay.
+	const float S = 1.f - 0.12f * FMath::Exp(-6.f * T) * FMath::Cos(T * 9.f);
+	SetActorRelativeScale3D(FVector(1.f / FMath::Sqrt(S), 1.f / FMath::Sqrt(S), S));
+	if (T >= 1.f)
+	{
+		SetActorRelativeScale3D(FVector::OneVector);
+		PopTime = -1.f;
+		return false;
+	}
+	return true;
+}
+
 void ASLPlaceable::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	const bool bWalking = TickResidents(DeltaSeconds);
 	const bool bFx = TickFx(DeltaSeconds);
-	if (!bWalking && !bFx)
+	const bool bPop = TickPop(DeltaSeconds);
+	if (!bWalking && !bFx && !bPop)
 	{
 		SetActorTickEnabled(false);
 	}

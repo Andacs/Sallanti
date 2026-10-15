@@ -32,7 +32,8 @@ Bağlayıcı spec'ler: `C:\Dev\JamKit\09_MEKANIK_SPEC.md` (kod), `C:\Dev\JamKit\
 
 **Bitecekler:** mekanik · bir seviye · kazanma/kaybetme · yeniden başlama · çalışan paket
 
-**Bitmeyecekler:** envanter, NPC/AI, ayrı state system, karakter animasyonu, yıkım VFX'i, menü.
+**Bitmeyecekler:** envanter, NPC/AI, ayrı state system, yıkım VFX'i, menü. (Karakter animasyonu
+listedeydi; 16 Ekim'de Andaç istedi, koddan basit animasyon yapıldı.)
 (İkinci seviye bu listedeydi; 15 Ekim'de Andaç 2. bölümü, 16 Ekim'de 3. bölümü istedi, ikisi de yapıldı.
 Dördüncü bölüm için tekrar sorulur.)
 
@@ -198,6 +199,19 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
   parka ≤2, AVM'ye ≥4 (`FarFrom`, gürültü); **Aydın** (Yılmazların çocukları, otobüsle) Yılmaz evine ≤2
   (`NearFamily`) ve durağa yolla bağlı. Yeni bina **Park** 2×2 kütle 3 (6. kısayol). Zorluk: platform 8,
   eğim 0,10/cm, devrilme 1,2 sn, **24 hamle** (her hamle 2 saat; biterse "HAMLE BİTTİ"). Test çözümü 15 hamle.
+- **Açık bölümler (16 Ekim, Andaç: "görevler sırayla, simülasyon gibi"):** 2. ve 3. bölümde sıralı görev
+  yok (`ASLLevelDirector::bOpenLevel`). Tek hedef: herkes mutlu + mahalle planı (`RequiredTypes`) kurulu.
+  Binalar baştan açık ama **stoklu** (`SlotLimits`: 3. bölümde 3 Ev, 12 Yol...). Ailelerin istekleri
+  **gizli**; ailenin üstündeki sarı "?" işaretine tıklayınca istek kartı açılır, aile seçilir. Seçiliyken
+  ev kurmak ya da boş bir eve tıklamak aileyi oraya taşır (`AssignFamilyToHouse`); başka eve tıklayınca
+  taşınırlar. Sarı bölge yalnızca istekleri bilinen aile için. Otobüsle gelenler `ArriveWhenType` Durak.
+  Aileler kendiliğinden konuşur (bekleme / şikâyet / mutlu cümleleri), bir istek karşılandığı ya da
+  bozulduğu an tepki verir (`FSLNeed::MetLine` / `Complaint`), akşam "iyi geceler" der.
+- **Aileler (`ASLFamily`):** gövde + baş + saç figürleri, kendileri yürür (evin eski figürleri yalnızca
+  1. bölümün komşuları için). Eve varınca kapının önünde dururlar; ev taşınırsa onunla gider. Animasyon:
+  nefes, yürürken sekme, mutluyken ara ara zıplama, mutsuzken eğik baş, fare üstündeyken biri zıplar,
+  seçilince altta halka. Bina konunca kısa "boing" (`ASLPlaceable::PlayPop`).
+- **Tahtayı çevirme:** Z / X kamerayı 90° döndürür (yumuşak); yeni binanın kapısı yine kameraya bakar.
 - **Zorluk bölüme göre** (`ASLLevelDirector::bApplyTuning`, BeginPlay'de platforma yazılır): 1. bölüm
   eğitim (12 / 0,08 / 1,5 sn), 2. bölüm 10 / 0,09 / 1,3 sn, 3. bölüm 8 / 0,10 / 1,2 sn + hamle sınırı.
 - **Gece-gündüz:** her başarılı koyma/taşıma bir hamle (`USLBuildComponent::GetMoveCount`; geri alma ve
@@ -220,6 +234,11 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
 - Katalog (`USLBuildComponent::Slots`): Ev **1×1×1 kütle 2** (3 kişi), Hastane 2×2×3 12, AVM 3×3×4 36,
   Yol 1×1 düz 0,5, **Durak 1×1 kütle 1** (5. kısayol; gövde kutusu gizli, sundurma koddan),
   **Park 2×2 kütle 3** (6. kısayol; kapısız, çimen, göl, ağaç, bank). Mert'in mesh'leri `Slots[i].Mesh`'e bağlanır (mesh varken kod kapı çizmez).
+
+**Açık bölümler ekranda görüldü (16 Ekim, `SLTestLevel2/3`):** "?" işaretli aileler, istek kartı, aile
+seçiliyken kurulan eve yürüyüş, kapı önünde duran aileler, sarı bölge, tepkiler, döndürülmüş görünüş, gece.
+Testler tıklamanın yaptığı işi (`SelectFamily`, `AssignFamilyToHouse`) doğrudan çağırıyor; **gerçek fareyle
+aileye tıklama görülmedi.**
 
 **3. bölüm ekranda görüldü (16 Ekim, `SLTestLevel3`):** sarı bölge (Yılmaz: hastane çevresi; Demir: parka
 yakın ve AVM'den uzak), Demir'in evi AVM'ye 3 birim → mutsuz ("Park 3 birim uzakta, AVM çok yakın"),
@@ -283,6 +302,8 @@ sebebi, CoM, ayarlar).
 | F5 / Space | Baştan (Space yalnızca devrilince ya da bölüm bitince) |
 | Enter | Bölüm bitince sonraki bölüm |
 | M | Müziği aç / kapa |
+| Z / X | Tahtayı sola / sağa çevir |
+| Aileye tıkla | İsteklerini öğren, seç (seçiliyken ev kur ya da boş eve tıkla) |
 | H | Geliştirici paneli |
 
 Konsol (`~`): `SLKnobs` ayarları listeler, `SLSet <Ad> <Değer>` derlemeden değiştirir. Kalıcı değildir.
