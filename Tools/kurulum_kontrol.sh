@@ -25,7 +25,8 @@ sure() { local s=$1; echo "$((s/60)) dk $((s%60)) sn"; }
 
 baslik "K1. Araclar"
 for a in git gh ffmpeg ffprobe python; do
-  command -v "$a" > /dev/null && tamam "$a: $(surum "$a" --version)" || bozuk "$a bulunamadi (kur ya da terminali yeniden ac)"
+  B="--version"; case $a in ffmpeg|ffprobe) B="-version";; esac   # ffmpeg tek tire istiyor
+  command -v "$a" > /dev/null && tamam "$a: $(surum "$a" $B | cut -c1-60)" || bozuk "$a bulunamadi (kur ya da terminali yeniden ac)"
 done
 git lfs version > /dev/null 2>&1 && tamam "git lfs: $(surum git lfs version)" || bozuk "git lfs yok: git lfs install"
 PYV=$(python -c "import sys;print('%d.%d'%sys.version_info[:2])" 2>/dev/null || echo yok)
