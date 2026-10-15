@@ -82,6 +82,8 @@ void ASLPlayerController::SetupInputComponent()
 	Bind(TEXT("IA_Slot2"), { EKeys::Two }, &ASLPlayerController::OnSlot2);
 	Bind(TEXT("IA_Slot3"), { EKeys::Three }, &ASLPlayerController::OnSlot3);
 	Bind(TEXT("IA_Slot4"), { EKeys::Four }, &ASLPlayerController::OnSlot4);
+	Bind(TEXT("IA_Slot5"), { EKeys::Five }, &ASLPlayerController::OnSlot5);
+	Bind(TEXT("IA_Next"), { EKeys::Enter }, &ASLPlayerController::OnNextLevel);
 	Bind(TEXT("IA_Undo"), { EKeys::BackSpace }, &ASLPlayerController::OnUndo);
 	Bind(TEXT("IA_Restart"), { EKeys::F5 }, &ASLPlayerController::OnRestart);
 	Bind(TEXT("IA_Again"), { EKeys::SpaceBar }, &ASLPlayerController::OnAgain);
@@ -89,7 +91,14 @@ void ASLPlayerController::SetupInputComponent()
 }
 
 void ASLPlayerController::OnUndo() { Build->UndoLast(); }
-void ASLPlayerController::OnRestart() { RestartLevel(); }
+void ASLPlayerController::OnRestart()
+{
+	// Ayni bolumu bastan (RestartLevel URL secenegini korumayabilir; bolum numarasini acikca ver).
+	if (ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>())
+	{
+		GM->TravelToLevel(GM->LevelNumber);
+	}
+}
 
 void ASLPlayerController::OnAgain()
 {
@@ -97,7 +106,7 @@ void ASLPlayerController::OnAgain()
 	const ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
 	if (GM && GM->IsRoundOver())
 	{
-		RestartLevel();
+		OnRestart();
 	}
 }
 
@@ -292,6 +301,26 @@ void ASLPlayerController::OnSlot1() { Build->SelectSlot(0); }
 void ASLPlayerController::OnSlot2() { Build->SelectSlot(1); }
 void ASLPlayerController::OnSlot3() { Build->SelectSlot(2); }
 void ASLPlayerController::OnSlot4() { Build->SelectSlot(3); }
+void ASLPlayerController::OnSlot5() { Build->SelectSlot(4); }
+
+void ASLPlayerController::OnNextLevel()
+{
+	// Enter yalnizca bolum bittiyse ve sonraki bolum varsa.
+	ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
+	const ASLLevelDirector* D = GM ? GM->GetDirector() : nullptr;
+	if (GM && D && GM->IsLevelComplete() && D->NextLevelNumber > 0)
+	{
+		GM->TravelToLevel(D->NextLevelNumber);
+	}
+}
+
+void ASLPlayerController::SLBolum(int32 Number)
+{
+	if (ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>())
+	{
+		GM->TravelToLevel(Number);
+	}
+}
 
 void ASLPlayerController::SLGhost(int32 Slot, float LocalX, float LocalY)
 {
@@ -438,6 +467,79 @@ void ASLPlayerController::TestLevel1Step()
 	case 49:
 		GetWorldTimerManager().ClearTimer(SelfTestTimer);
 		UE_LOG(LogSLInput, Log, TEXT("SL_TESTL1_DONE"));
+		ConsoleCommand(TEXT("quit"));
+		break;
+	default: break;
+	}
+}
+
+void ASLPlayerController::SLTestLevel2()
+{
+	SelfTestIndex = 0;
+	SLSet(TEXT("SwayAmplitude"), TEXT("0"));
+	GetWorldTimerManager().SetTimer(SelfTestTimer, this, &ASLPlayerController::TestLevel2Step, 0.5f, true, 1.0f);
+}
+
+void ASLPlayerController::TestLevel2Step()
+{
+	const int32 I = SelfTestIndex++;
+	SLReport();
+	ASLHUD* HUD = GetHUD<ASLHUD>();
+	ASLCameraPawn* Cam = Cast<ASLCameraPawn>(GetPawn());
+	ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
+	const ASLLevelDirector* D = GM ? GM->GetDirector() : nullptr;
+	if (HUD)
+	{
+		UE_LOG(LogSLInput, Log, TEXT("SL_HINT %s"), *HUD->GetCurrentHint());
+	}
+	if (D)
+	{
+		for (int32 F = 0; F < D->Families.Num(); ++F)
+		{
+			UE_LOG(LogSLInput, Log, TEXT("SL_FAMILY_STATE %s mutluluk %.2f (%s)"), *D->Families[F].Name, D->GetHappiness(F), *D->GetFamilyStatus(F));
+		}
+	}
+	// Hucre merkezi yerel = -300 + 50i. Ev (4,6) kapi (4,5) | Hastane 2x2 (9,6) kapi (9,5)(10,5) |
+	// AVM 3x3 (5,6) kapi (6,5) | yol (4..10, 5) | durak once (2,2): yola bakmiyor -> gecersiz; sonra (8,4)
+	// yon 1 (onu +Y): kapi onu (8,5) yolda -> gecerli, otobus baslar, Demir ailesi durakta belirir |
+	// Demir evi (1,10): duraga 7+6 = 13 birim -> mutsuz | evi kaldir, (9,3)'e: 1+1 = 2 birim -> mutlu -> bolum sonu.
+	switch (I)
+	{
+	case 1: Shot(TEXT("L2_0_baslangic")); break;
+	case 2: SLPlace(1, -100.f, 0.f); break;
+	case 12: Shot(TEXT("L2_1_kaya_yerlesti")); break;
+	case 13: SLPlace(2, 175.f, 25.f); break;
+	case 14: SLPlace(3, 0.f, 50.f); break;
+	case 15: case 16: case 17: case 18: case 19: case 20: case 21:
+		SLPlace(4, -300.f + 50.f * (4 + (I - 15)), -50.f);
+		break;
+	case 22: Build->Cancel(); Shot(TEXT("L2_2_yollar")); break;
+	case 23: SLGhost(5, -200.f, -200.f); Shot(TEXT("L2_3a_durak_gecersiz"));
+		UE_LOG(LogSLInput, Log, TEXT("SL_DURAK gecersiz bekleniyor: %s (%s)"), *UEnum::GetValueAsString(Build->State), Build->GetBlockedReason()); break;
+	case 24: SLGhost(5, 100.f, -100.f); Build->SetFacing(1); Shot(TEXT("L2_3b_durak_hayalet")); break;
+	case 25: UE_LOG(LogSLInput, Log, TEXT("SL_DURAK gecerli bekleniyor: %s (%s)"), *UEnum::GetValueAsString(Build->State), Build->GetBlockedReason());
+		Build->TryPlace(); break;
+	case 27: Shot(TEXT("L2_3c_durak_otobus")); break;
+	case 30: Shot(TEXT("L2_4_otobus_yolda")); break;
+	case 31: SLGhost(1, -250.f, 200.f); break;
+	case 32: Shot(TEXT("L2_5a_uzak_hayalet")); break;                             // bolge bir kare sonra cizilir
+	case 33: Build->TryPlace(); Build->Cancel(); break;
+	case 56: Shot(TEXT("L2_5b_demir_mutsuz")); break;
+	case 57:
+		if (const ASLPlatform* P = GM ? GM->GetPlatform() : nullptr)
+		{
+			Build->PickUp(P->FindPlaceableAt(FIntPoint(1, 10)));
+		}
+		Build->SetAimOverride(FVector2D(150.f, -150.f));
+		break;
+	case 58: Shot(TEXT("L2_6a_tasima_yakin")); break;
+	case 59: OnPlace(); Build->Cancel(); break;
+	case 62: Shot(TEXT("L2_6b_mutlu")); break;
+	case 64: Shot(TEXT("L2_7_tamamlandi")); if (Cam) { Cam->Zoom(5.f); } break;
+	case 67: Shot(TEXT("L2_8_yakin")); break;
+	case 69:
+		GetWorldTimerManager().ClearTimer(SelfTestTimer);
+		UE_LOG(LogSLInput, Log, TEXT("SL_TESTL2_DONE tamam=%d"), GM && GM->IsLevelComplete() ? 1 : 0);
 		ConsoleCommand(TEXT("quit"));
 		break;
 	default: break;

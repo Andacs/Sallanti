@@ -37,6 +37,15 @@ public:
 	/** Yonetici son gorev bitince cagirir. */
 	void HandleLevelComplete();
 
+	/** Oynanan bolum. Seviye URL'sinden okunur: "L_Test?Bolum=2". */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Bolum")
+	int32 LevelNumber = 1;
+
+	/** Ayni haritayi N. bolumle bastan acar (F5, Space, Enter hepsi buradan). */
+	void TravelToLevel(int32 Number);
+
+	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
+
 	/** Ses efekti iste. Ayni karede birden fazla istek gelirse yalnizca en yuksek oncelikli calar
 	 *  ("bir olay, bir ses": yol konup ayni anda baglaninca tik degil can duyulur). */
 	static void PlaySfx(const UObject* WorldContext, FName Name, int32 Priority = 0, float Volume = 1.f, float Pitch = 1.f);

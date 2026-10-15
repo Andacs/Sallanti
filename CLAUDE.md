@@ -32,8 +32,8 @@ Bağlayıcı spec'ler: `C:\Dev\JamKit\09_MEKANIK_SPEC.md` (kod), `C:\Dev\JamKit\
 
 **Bitecekler:** mekanik · bir seviye · kazanma/kaybetme · yeniden başlama · çalışan paket
 
-**Bitmeyecekler:** envanter, NPC/AI, ayrı state system, karakter animasyonu, yıkım VFX'i, menü,
-ikinci seviye.
+**Bitmeyecekler:** envanter, NPC/AI, ayrı state system, karakter animasyonu, yıkım VFX'i, menü.
+(İkinci seviye bu listedeydi; 15 Ekim'de Andaç 2. bölümü istedi, yapıldı. Üçüncü bölüm için tekrar sorulur.)
 
 **Kesme sırası:** 1. HUD denge göstergesi (platformun kırmızı nabzı yeter) 2. ses 3. kazanma sayacı
 (sadece kaybetme + yeniden başlatma kalır)
@@ -180,8 +180,24 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
   1. Ev kur (yalnızca Ev açık) → 2. aile kameraya bakan kenardan yürüyüp eve girer →
   3. Hastane (açılır) → 4. AVM (açılır) → 5. Yol açılır; Ev, Hastane, AVM aynı yol ağına değsin.
   Bitince "BÖLÜM TAMAMLANDI", Space tekrar.
+- **2. bölüm: Otobüs durağı** (15 Ekim, Andaç; `ASLLevelDirector::ConfigureLevel(2)`). İki aile, mutluluk:
+  1–2. Kaya ailesine ev, yerleşir → 3–4. Hastane, AVM → 5. yollarla bağla (Kaya mutlu: evinin yolu
+  hastaneye ve AVM'ye değiyor) → 6. **Durak**: önü (sarı kare) Ev+Hastane+AVM'yi birleştiren yola
+  bakmalı, yoksa konmaz → otobüs (`ASLBus`) o ağda duraktan en uzak karoya gidip gelir, durakta bekler →
+  7–8. Demir ailesi duraktan iner, ona ev kur → 9. **iki aile de mutlu**. Demir'in isteği: evi durağa
+  en fazla **3 birim** (hücre, |dx|+|dy|, `FSLNeed::MaxCells`); uzaksa mutsuz (bar %10–45, uzaklaştıkça
+  azalır). Ev elindeyken durağın 3 birimlik çevresi sarı yanar, ipucu uzaklığı söyler. Sol altta
+  "Aileler" kartı (yüz, bar, karşılanmayan istek), evlerin üstünde yüz. Mutsuz aile son görevde şikâyet eder.
+  1. bölüm bitince **Enter** 2. bölümü açar. Bölüm numarası URL'de: `L_Test?Bolum=2`
+  (`ASLGameMode::LevelNumber`); F5/Space aynı bölümü baştan açar. 1. bölümün çekmecesinde Durak görünmez.
 - Katalog (`USLBuildComponent::Slots`): Ev **1×1×1 kütle 2** (3 kişi), Hastane 2×2×3 12, AVM 3×3×4 36,
-  Yol 1×1 düz 0,5. Mert'in mesh'leri `Slots[i].Mesh`'e bağlanır (mesh varken kod kapı çizmez).
+  Yol 1×1 düz 0,5, **Durak 1×1 kütle 1** (5. kısayol; gövde kutusu gizli, sundurma koddan). Mert'in mesh'leri `Slots[i].Mesh`'e bağlanır (mesh varken kod kapı çizmez).
+
+**2. bölüm ekranda görüldü (15 Ekim, `SLTestLevel2`):** Kaya mutlu (%100) yollar bağlanınca, durak
+yola bakmayınca reddediliyor ("önü yola bakmalı"), doğru yerde otobüs başlıyor (rota 5 karo), Demir
+duraktan çıkıp uzak eve (13 birim) yürüyor → %10 mutsuz + şikâyet balonu, evi (9,3)'e (2 birim) taşıyınca
+mutlu → bölüm sonu. 1. bölüm aynı derlemeyle yine baştan sona bitti, sonunda "Enter: 2. bölüm".
+**Görülmedi:** gerçek Enter tuşuyla bölüm geçişi (test URL ile açtı), 5 tuşu, otobüsün uzun rota / kavşakta davranışı.
 
 **Çalışıyor ve ekranda görüldü:** boş proje paketi (Shipping) açılıyor · temiz klon derleniyor ·
 **1. bölüm baştan sona** (`SLTestLevel1`, 14 Ekim): kilitli slot reddi, ailenin yürüyüp yerleşmesi,
@@ -222,7 +238,7 @@ sebebi, CoM, ayarlar).
 
 | Tuş | Ne yapar |
 |---|---|
-| Çekmece (sağ kenar) / Tab | Aç-kapa, karta tıkla: seç. 1–4 kısayol |
+| Çekmece (sağ kenar) / Tab | Aç-kapa, karta tıkla: seç. 1–5 kısayol |
 | Sol tık | Seçiliyken koy · boştayken bir binayı kaldır (taşı) |
 | Sağ tık sürükle / C | Haritayı kaydır / ortala |
 | R / Q | Elindekini saat yönünde / tersine 90° çevir (kapının yönü) |
@@ -230,11 +246,13 @@ sebebi, CoM, ayarlar).
 | Sağ tık (sürüklemeden) / Esc | Bırak · taşırken eski yerine koy |
 | Backspace | Son konanı geri al |
 | F5 / Space | Baştan (Space yalnızca devrilince ya da bölüm bitince) |
+| Enter | Bölüm bitince sonraki bölüm |
 | H | Geliştirici paneli |
 
 Konsol (`~`): `SLKnobs` ayarları listeler, `SLSet <Ad> <Değer>` derlemeden değiştirir. Kalıcı değildir.
 `SLTestLevel1` bölümü otomatik oynayıp ölçer, ekran görüntüleri `Saved/Screenshots/WindowsEditor/SL_L1_*.png`;
-`SLReport` anlık eğim/CoM/görevi loga yazar. Eski `SLSelfTest`/`SLTest8` eski kataloga bağlıydı, kaldırıldı.
+`SLTestLevel2` 2. bölümü oynar (oyunu `"/Game/Sallanti/Maps/L_Test?Bolum=2"` ile aç; `Build\oyna.bat 2`),
+görüntüler `SL_L2_*.png`. `SLBolum 2` konsoldan bölüm değiştirir. `SLReport` anlık eğim/CoM/görevi loga yazar. Eski `SLSelfTest`/`SLTest8` eski kataloga bağlıydı, kaldırıldı.
 
 Spec çakışması: kesme listesi "R ile yeniden başlat" diyor, girdi tablosu R'yi döndürmeye veriyor.
 R döndürme kaldı, yeniden başlatma F5.

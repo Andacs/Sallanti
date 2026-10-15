@@ -274,6 +274,7 @@ private:
 
 	void BuildEntrance();
 	void BuildDecor();
+	void BuildStopDecor();
 	void ClearDecor();
 	UStaticMeshComponent* AddDecor(UStaticMesh* InMesh, const FVector& Loc, const FVector& SizeCm, const FLinearColor& Color, const FRotator& Rot = FRotator::ZeroRotator);
 	void AddCypress(const FVector& Base, float Height);

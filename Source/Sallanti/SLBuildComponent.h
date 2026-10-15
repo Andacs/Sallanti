@@ -55,6 +55,10 @@ struct FSLSlot
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
 	int32 Residents = 0;
 
+	/** Yalnizca kapi onu bu turlerin hepsine degen bir yol agina bakiyorsa konur (Durak: Ev, Hastane, AVM). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	TArray<FName> RequireNetworkTypes;
+
 	/** Bos = gri kup. Mert'in mesh'i gelince buraya. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
 	TObjectPtr<UStaticMesh> Mesh;

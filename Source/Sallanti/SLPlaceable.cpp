@@ -122,6 +122,40 @@ void ASLPlaceable::ApplyVisuals()
 
 // --- Cozy suslemesi -------------------------------------------------------------------------------
 
+void ASLPlaceable::BuildStopDecor()
+{
+	// Otobus duragi: govde kutusu yerine sundurma. Onu (+X) yola acik: iki direk, turkuaz cati, arkada cam,
+	// bank, yanda yuvarlak "D" tabelali direk. Kutu gizli; isin plakaya duser (tiklayinca tasinir).
+	Mesh->SetVisibility(false);
+	const float Base = PlateHeightCm;
+	const float PX = 0.5f * PlateSizeX(), PY = 0.5f * PlateSizeY();
+	const float H = 30.f;
+	const float Back = -PX + 6.f, Front = PX - 8.f;
+	for (int32 S = -1; S <= 1; S += 2)
+	{
+		AddDecor(DefaultCube, FVector(Front, S * (PY - 6.f), Base + 0.5f * H), FVector(2.5f, 2.5f, H), FLinearColor(0.55f, 0.55f, 0.60f));
+	}
+	AddDecor(DefaultCube, FVector(Back, 0, Base + 0.5f * H), FVector(2.f, 2.f * PY - 8.f, H), FLinearColor(0.70f, 0.85f, 0.95f)); // arka cam
+	AddDecor(DefaultCube, FVector(0.5f * (Back + Front), 0, Base + H + 1.5f), FVector(Front - Back + 8.f, 2.f * PY - 2.f, 3.f), AccentColor, FRotator(-6.f, 0, 0)); // cati
+	AddDecor(DefaultCube, FVector(Back + 7.f, 0, Base + 7.f), FVector(8.f, 2.f * PY - 16.f, 2.f), FLinearColor(0.80f, 0.55f, 0.40f)); // bank
+	AddDecor(DefaultCube, FVector(Back + 4.f, 0, Base + 3.5f), FVector(1.5f, 2.f * PY - 18.f, 7.f), FLinearColor(0.55f, 0.55f, 0.60f));
+	// Tabela: direk + disk (eksen +X) + "D"
+	const FVector Pole(Front, PY - 1.f, Base);
+	AddDecor(DefaultCube, Pole + FVector(0, 0, 22.f), FVector(1.6f, 1.6f, 44.f), FLinearColor(0.55f, 0.55f, 0.60f));
+	AddDecor(DiscMesh, Pole + FVector(0.8f, 0, 44.f), FVector(14.f, 14.f, 1.2f), RoofColor, FRotator(90.f, 0, 0));
+	UTextRenderComponent* Text = NewObject<UTextRenderComponent>(this);
+	Text->SetupAttachment(GetRootComponent());
+	Text->RegisterComponent();
+	Text->SetText(FText::FromString(TEXT("D")));
+	Text->SetHorizontalAlignment(EHTA_Center);
+	Text->SetVerticalAlignment(EVRTA_TextCenter);
+	Text->SetWorldSize(10.f);
+	Text->SetTextRenderColor(FColor::White);
+	Text->SetRelativeLocation(Pole + FVector(1.6f, 0, 44.f));
+	Text->SetCastShadow(false);
+	DecorParts.Add(Text);
+}
+
 void ASLPlaceable::ClearDecor()
 {
 	for (USceneComponent* C : DecorParts)
@@ -185,6 +219,11 @@ void ASLPlaceable::BuildDecor()
 	ClearDecor();
 	if (!bDecor || bFlat || bGhost || DisplayMesh || !DefaultCube || !ConeMesh || !SphereMesh || !GetWorld())
 	{
+		return;
+	}
+	if (TypeId == TEXT("Durak"))
+	{
+		BuildStopDecor();
 		return;
 	}
 	const float HX = BodyHalfX(), HY = BodyHalfY();
@@ -316,7 +355,7 @@ void ASLPlaceable::BuildEntrance()
 	}
 	EntranceMarks.Reset();
 
-	if (!DisplayMesh)
+	if (!DisplayMesh && TypeId != TEXT("Durak")) // durakta kapi yok: sundurma onu acik
 	{
 		// Kapi govdenin yerel +X yuzunde, ortada; boyu ve eni govdeye gore.
 		const float FaceW = 2.f * BodyHalfY();
@@ -562,6 +601,7 @@ void ASLPlaceable::MakeGhost(UMaterialInterface* GhostMaterial)
 	Plate->SetCastShadow(false);
 	BuildRoadLinks(); // hayalette uzanti yok
 	ClearDecor();     // hayalet yalniz govde + plaka
+	Mesh->SetVisibility(true); // durak govdesini gizler; hayalette kutu gorunsun
 	if (GhostMaterial)
 	{
 		Mesh->SetMaterial(0, GhostMaterial);

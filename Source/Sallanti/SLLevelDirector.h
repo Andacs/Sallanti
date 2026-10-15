@@ -1,6 +1,6 @@
-// Bolum yoneticisi: gorev listesi, slot kilitleri, ailenin gelisi, yol baglantisi, bolum sonu.
-// Gorevler veridir (EditAnywhere): yeni bolum icin kod degil, bu listenin baska bir kopyasi yeter.
-// Seviyede bir tane varsa o kullanilir; yoksa GameMode 1. bolumun varsayilanlariyla dogurur.
+// Bolum yoneticisi: gorev listesi, slot kilitleri, ailelerin gelisi ve mutlulugu, yol baglantisi,
+// otobus, bolum sonu. Gorevler ve aileler veridir (EditAnywhere); ConfigureLevel(N) N. bolumun
+// varsayilanlarini yazar. Seviyede bir tane varsa o kullanilir; yoksa GameMode dogurur.
 
 #pragma once
 
@@ -8,6 +8,7 @@
 #include "GameFramework/Actor.h"
 #include "SLLevelDirector.generated.h"
 
+class ASLBus;
 class ASLFamily;
 class ASLPlaceable;
 class ASLPlatform;
@@ -17,8 +18,9 @@ UENUM(BlueprintType)
 enum class ESLTaskKind : uint8
 {
 	PlaceType,     // TypeId'den Count tane yerlestir
-	FamilyMovedIn, // TypeId binasina aile yerlessin
-	ConnectRoads   // ConnectTypes'in her birinden biri ayni yol agina degsin
+	FamilyMovedIn, // TypeId binalarindan Count tanesine aile yerlessin
+	ConnectRoads,  // ConnectTypes'in her birinden biri ayni yol agina degsin
+	FamiliesHappy  // butun ailelerin butun istekleri karsilansin
 };
 
 USTRUCT(BlueprintType)
@@ -58,6 +60,69 @@ struct FSLTask
 	/** Bu gorev BASLAYINCA acilan slotlar (tur kimligiyle). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
 	TArray<FName> Unlocks;
+
+	/** Konusan aile (Families indeksi). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	int32 Speaker = 0;
+};
+
+UENUM(BlueprintType)
+enum class ESLNeedKind : uint8
+{
+	ConnectedTo, // evin kapisindan giden yol agi Type'a degiyor
+	NearType     // evden en yakin Type binasina uzaklik <= MaxCells (hucre, sehir blogu: |dx|+|dy|)
+};
+
+/** Bir ailenin istegi. Mutluluk = isteklerin ortalamasi; hepsi tamamsa aile mutlu. */
+USTRUCT(BlueprintType)
+struct FSLNeed
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	ESLNeedKind Kind = ESLNeedKind::ConnectedTo;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	FName Type;
+
+	/** NearType: en fazla bu kadar hucre uzak. 2. bolum: 3 (Andac, 15 Eki). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti", meta = (ClampMin = "0"))
+	int32 MaxCells = 3;
+
+	/** HUD'da istegin kisa adi, ornegin "Durağa yakın". */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	FString Label;
+
+	/** Karsilanmazken ailenin sikayeti (son gorevde balon). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	FString Complaint;
+};
+
+USTRUCT(BlueprintType)
+struct FSLFamilyDef
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	FString Name = TEXT("Aile");
+
+	/** Gelince bekledigi yer (platform yerelinde, cm). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	FVector WaitLocal = FVector(-230.f, -250.f, 0.f);
+
+	/** Bu gorev baslayinca platformda belirir. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	int32 ArriveAtTask = 0;
+
+	/** Otobusle gelir: duragin onunde belirir (durak yoksa WaitLocal'da). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	bool bArriveAtStop = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	FLinearColor Tint = FLinearColor(0.15f, 0.35f, 0.75f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	TArray<FSLNeed> Needs;
 };
 
 UCLASS()
@@ -71,27 +136,55 @@ public:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
 
+	/** N. bolumun varsayilan gorevlerini ve ailelerini yazar (BeginPlay'den once cagrilir). */
+	void ConfigureLevel(int32 Number);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
+	int32 LevelNumber = 1;
+
+	/** Bolum bitince Enter bu bolume gecer. 0 = son bolum. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
+	int32 NextLevelNumber = 2;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
 	FString LevelTitle = TEXT("1. Bölüm: İlk mahalle");
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
 	TArray<FSLTask> Tasks;
 
-	/** Bolum bitince ailenin son sozu. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
-	FString FinalSpeech = TEXT("Mahallemiz hazır. Teşekkürler başkan!");
+	TArray<FSLFamilyDef> Families;
 
-	/** Tesekkur balonunun ekranda kalma suresi, sn. */
+	/** Ailesi olmayan yeni eve kenardan komsu gelsin mi (1. bolum). Kapaliysa ev bos kalir; sonra gelen
+	 *  aile bos eve yerlesir (2. bolum: ikinci aile oyuncunun kurdugu eve). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
-	float DoneSpeechSeconds = 2.5f;
-
-	/** Ailenin bolum basinda bekledigi yer (platform yerelinde, cm). Varsayilan: on kenar, kameraya yakin. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
-	FVector FamilyWaitLocal = FVector(-230.f, -250.f, 0.f);
+	bool bNeighborsArrive = true;
 
 	/** Bolum sonu icin platformun dengede olmasi gerekir mi? (devriliyor durumunda bitmez) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
 	bool bRequireBalanceToComplete = true;
+
+	/** Bolum bitince son soz. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
+	FString FinalSpeech = TEXT("Mahallemiz hazır. Teşekkürler başkan!");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
+	float DoneSpeechSeconds = 2.5f;
+
+	/** Otobus: bu turden bir bina (durak) yol agina bagliysa otobus o agda gidip gelir. Bos = otobus yok. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Otobus")
+	FName BusStopType;
+
+	/** Elde ev varken duraga yakin bolgenin rengi. Turkuaz nane karoda kayboluyordu (ekran goruntusu): sicak sari. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Otobus")
+	FLinearColor NearZoneColor = FLinearColor(1.f, 0.86f, 0.35f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Otobus", meta = (ClampMin = "0", ClampMax = "1"))
+	float NearZoneOpacity = 0.8f;
+
+	/** HUD'daki mutluluk barinin yaklasma hizi (1/sn). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Aile")
+	float HappinessLerpSpeed = 2.f;
 
 	// --- Durum (HUD okur) ---
 
@@ -101,7 +194,6 @@ public:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
 	bool bLevelComplete = false;
 
-	/** Mevcut gorevin ilerlemesi, ornegin yol gorevinde bagli bina sayisi. */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Sallanti|Durum")
 	int32 Progress = 0;
 
@@ -116,6 +208,25 @@ public:
 	/** Su an gosterilecek konusma balonu. false = balon yok. */
 	bool GetSpeech(FString& OutText, FVector& OutWorldAnchor) const;
 
+	// --- Aileler (HUD) ---
+
+	/** Bir ailenin istegi var mi (yoksa HUD mutluluk kartini cizmez). */
+	bool HasFamilyNeeds() const;
+	/** Aile platforma geldi mi. */
+	bool IsFamilyPresent(int32 I) const;
+	/** 0..1, isteklerin ortalamasi. Evi yoksa 0. */
+	float GetHappiness(int32 I) const { return Happiness.IsValidIndex(I) ? Happiness[I] : 0.f; }
+	float GetDisplayHappiness(int32 I) const { return DisplayHappiness.IsValidIndex(I) ? DisplayHappiness[I] : 0.f; }
+	bool IsFamilyHappy(int32 I) const;
+	/** Tek satir durum: "Mutlu" ya da karsilanmayan ilk istek ("Durak 5 birim uzakta, en fazla 3"). */
+	FString GetFamilyStatus(int32 I) const;
+	ASLPlaceable* GetHome(int32 I) const { return Homes.IsValidIndex(I) ? Homes[I].Get() : nullptr; }
+
+	/** Elde ev varken: buraya konursa (henuz evi olmayan / tasinan evin) ailenin NearType istegi. */
+	bool DescribeHomePlacement(const ASLPlaceable* Ghost, const ASLPlaceable* Moving, FString& Out, bool& bGood) const;
+
+	ASLBus* GetBus() const { return Bus; }
+
 private:
 	ASLPlatform* GetPlatform() const;
 	USLBuildComponent* GetBuild() const;
@@ -123,8 +234,17 @@ private:
 	void StartFamilies();
 	bool EvaluateTask(const FSLTask& Task, int32& OutProgress, int32& OutGoal) const;
 	void CompleteLevel();
-
-	void SpawnFamily();
+	void SpawnFamilies();
+	void UpdateHappiness(float DeltaSeconds);
+	void UpdateBus();
+	void UpdateNearZone();
+	/** 0..1. OutDetail: karsilanmadiysa kisa aciklama. Cell/Foot verilirse ev oradaymis gibi. */
+	float EvaluateNeed(const FSLNeed& Need, const ASLPlaceable* Home, FString* OutDetail, const ASLPlaceable* Ignore = nullptr) const;
+	/** Ev ayak izinden en yakin Type binasina sehir blogu uzakligi; yoksa -1. */
+	int32 DistanceToType(FIntPoint CellMin, FIntPoint Foot, FName Type, const ASLPlaceable* Ignore) const;
+	int32 FindFamilyOfHome(const ASLPlaceable* House) const;
+	/** Konusan ailenin balon capasi. */
+	bool GetFamilyAnchor(int32 I, FVector& Out) const;
 
 	/** Kapisina yol degen binalar: yeni baglananda efekt (bina halkasi + yol boyunca akan parlama). */
 	void UpdateConnectionFx();
@@ -132,12 +252,17 @@ private:
 	TSet<TWeakObjectPtr<ASLPlaceable>> ConnectedBuildings; // zayif isaretci: GC'ye UPROPERTY gerekmez
 
 	UPROPERTY(Transient)
-	TObjectPtr<ASLFamily> Family;
+	TArray<TObjectPtr<ASLFamily>> FamilyActors;
 
-	/** Ailenin yasadigi ev (ilk ev). Sonraki gorevlerin balonu bunun ustunden. */
-	TWeakObjectPtr<ASLPlaceable> FamilyHome;
+	TArray<TWeakObjectPtr<ASLPlaceable>> Homes;
+	TArray<float> Happiness;
+	TArray<float> DisplayHappiness;
+
+	UPROPERTY(Transient)
+	TObjectPtr<ASLBus> Bus;
 
 	FString DoneText;
+	int32 DoneSpeaker = 0;
 	FString LastSpeech;
 	float DoneUntil = -1.f;
 

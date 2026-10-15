@@ -54,7 +54,11 @@ public:
 	bool IsDrawerWanted() const { return bDrawerWanted; }
 
 	/** Test: cekmecedeki I. kartin ekran merkezi (son cizimden). */
-	FVector2D GetCardCenter(int32 Index) const { return CardRects.IsValidIndex(Index) ? CardRects[Index].GetCenter() : FVector2D::ZeroVector; }
+	FVector2D GetCardCenter(int32 SlotIndex) const
+	{
+		const int32 K = CardSlots.IndexOfByKey(SlotIndex);
+		return CardRects.IsValidIndex(K) ? CardRects[K].GetCenter() : FVector2D::ZeroVector;
+	}
 	FVector2D GetHandleCenter() const { return HandleRect.GetCenter(); }
 
 	/** Su an gosterilen egitim ipucu (test ve log icin). */
@@ -68,6 +72,11 @@ private:
 	void DrawHint(const ASLPlatform& P, const USLBuildComponent& B, const ASLLevelDirector* D);
 	void DrawSpeech(const ASLLevelDirector& D);
 	void DrawTasks(const ASLLevelDirector& D);
+	/** Sol: gorev kartinin altinda aileler ve mutluluk barlari (bolumde istek varsa). */
+	void DrawFamilies(const ASLLevelDirector& D);
+	/** Evlerin ustunde mutluluk yuzu (dunyaya bagli). */
+	void DrawHomeFaces(const ASLLevelDirector& D);
+	void DrawFace(float CX, float CY, float R, float Happy01);
 	void DrawDrawer(const USLBuildComponent& B, float DeltaSeconds);
 	void DrawCenterMessage(const ASLPlatform& P, bool bLevelComplete);
 	void DrawTestPanel(const ASLPlatform& P, const USLBuildComponent& B);
@@ -108,6 +117,8 @@ private:
 	FRect HandleRect;
 	FRect DrawerRect;
 	TArray<FRect> CardRects;
+	TArray<int32> CardSlots; // kart -> slot indeksi (bolumde kullanilmayan slotlar gizli)
+	float TasksBottom = 0.f;
 	float LastDrawTime = -1.f;
 
 	FString FlashText;

@@ -61,6 +61,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sallanti")
 	TObjectPtr<UInstancedStaticMeshComponent> ArcadeArches;
 
+	/** Bolge vurgusu karolari (M_Ghost, isiksiz yari saydam). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sallanti")
+	TObjectPtr<UInstancedStaticMeshComponent> ZoneTiles;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kaide")
 	bool bArcade = true;
 
@@ -249,6 +253,14 @@ public:
 	/** Hucrede duran (elde olmayan) nesne; yoksa nullptr. */
 	ASLPlaceable* FindPlaceableAt(const FIntPoint& Cell) const;
 
+	/** Yol agi (2. bolum): StartCells'ten yola girip 4 komsulukla yayilir. Bu aga degen binalarin
+	 *  turlerini dondurur (kapili bina kapi onu hucresinden, kapisizlar yan komsudan). Ignore sayilmaz.
+	 *  OutRoads verilirse agdaki yol hucreleri (bulunma sirasiyla). Yola girilemezse bos kume. */
+	TSet<FName> TypesOnRoadNetwork(const TArray<FIntPoint>& StartCells, const ASLPlaceable* Ignore = nullptr, TArray<FIntPoint>* OutRoads = nullptr) const;
+
+	/** Hucre vurgusu (orn. duraga yakin bolge): yari saydam karolar. Bos dizi = gizle. */
+	void SetZoneCells(const TArray<FIntPoint>& Cells, const FLinearColor& Color, float Opacity);
+
 	/** Yerel XY -> hucre indeksi. */
 	FIntPoint LocalToCell(const FVector2D& Local) const
 	{
@@ -286,6 +298,11 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> TileMID;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> ZoneMID;
+
+	uint32 ZoneSignature = 0;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UAudioComponent> Creak;

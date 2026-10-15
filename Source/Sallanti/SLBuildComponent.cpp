@@ -45,6 +45,11 @@ USLBuildComponent::USLBuildComponent()
 	FSLSlot Yol = Make(TEXT("Yol"), TEXT("Yol"), 1, 1, 1, 0.5f, FLinearColor(0.90f, 0.77f, 0.60f));
 	Yol.bFlat = true;
 	Slots.Add(Yol);
+	// 2. bolum: otobus duragi. Onu (sarı kare) evi, hastaneyi ve AVM'yi birlestiren yola bakmali.
+	FSLSlot Durak = Make(TEXT("Durak"), TEXT("Durak"), 1, 1, 1, 1.f, FLinearColor(0.97f, 0.93f, 0.86f));
+	Durak.bHasEntrance = true;
+	Durak.RequireNetworkTypes = { TEXT("Ev"), TEXT("Hastane"), TEXT("AVM") };
+	Slots.Add(Durak);
 }
 
 ASLPlatform* USLBuildComponent::GetPlatform() const
@@ -276,6 +281,23 @@ void USLBuildComponent::UpdateGhost()
 		{
 			bValid = false; // sehir plani: her hucrede tek nesne
 			BlockedReason = TEXT("hücre dolu");
+		}
+		const int32 SlotIdx = FindSlotById(Ghost->TypeId);
+		if (bValid && Slots.IsValidIndex(SlotIdx) && Slots[SlotIdx].RequireNetworkTypes.Num() > 0)
+		{
+			// Durak: kapi onu, istenen turlerin hepsine degen yol aginda mi?
+			const TSet<FName> Touch = Platform->TypesOnRoadNetwork(Ghost->GetEntranceCells(), Moving);
+			for (const FName& T : Slots[SlotIdx].RequireNetworkTypes)
+			{
+				if (!Touch.Contains(T))
+				{
+					bValid = false;
+					BlockedReason = Touch.Num() == 0
+						? TEXT("önü (sarı kare) yola bakmalı")
+						: TEXT("bu yol evi, hastaneyi ve AVM'yi birleştirmiyor");
+					break;
+				}
+			}
 		}
 	}
 

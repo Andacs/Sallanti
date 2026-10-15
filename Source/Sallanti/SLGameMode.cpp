@@ -119,10 +119,29 @@ ASLLevelDirector* ASLGameMode::GetDirector()
 		Director = *It;
 		return Director;
 	}
-	FActorSpawnParameters Params;
-	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	Director = GetWorld()->SpawnActor<ASLLevelDirector>(ASLLevelDirector::StaticClass(), FTransform::Identity, Params);
+	// Ertelenmis dogum: bolum verisi BeginPlay'den once yazilsin.
+	Director = GetWorld()->SpawnActorDeferred<ASLLevelDirector>(ASLLevelDirector::StaticClass(), FTransform::Identity,
+		nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (Director)
+	{
+		Director->ConfigureLevel(LevelNumber);
+		Director->FinishSpawning(FTransform::Identity);
+	}
 	return Director;
+}
+
+void ASLGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
+{
+	Super::InitGame(MapName, Options, ErrorMessage);
+	LevelNumber = FMath::Clamp(UGameplayStatics::GetIntOption(Options, TEXT("Bolum"), 1), 1, 2);
+	UE_LOG(LogTemp, Log, TEXT("SL_BOLUM %d (secenekler: %s)"), LevelNumber, *Options);
+}
+
+void ASLGameMode::TravelToLevel(int32 Number)
+{
+	const FString Map = UWorld::RemovePIEPrefix(GetWorld()->GetOutermost()->GetName());
+	UE_LOG(LogTemp, Log, TEXT("SL_TRAVEL %s bolum %d"), *Map, Number);
+	UGameplayStatics::OpenLevel(this, FName(*Map), true, FString::Printf(TEXT("Bolum=%d"), Number));
 }
 
 void ASLGameMode::HandleLevelComplete()

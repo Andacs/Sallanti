@@ -53,6 +53,15 @@ public:
 	UFUNCTION(Exec)
 	void SLTestLevel1();
 
+	/** 2. bolumu oynar (L_Test?Bolum=2 ile acilmis olmali): Kaya ailesi + hastane + AVM + yol, gecersiz ve
+	 *  gecerli durak, otobus, Demir ailesi uzak eve -> mutsuz, evi duraga yakina tasi -> mutlu -> bolum sonu. */
+	UFUNCTION(Exec)
+	void SLTestLevel2();
+
+	/** N. bolumu bastan ac (1 ya da 2). */
+	UFUNCTION(Exec)
+	void SLBolum(int32 Number);
+
 	/** Sag tikin "tiklama" sayilmasi icin en fazla surukleme, px. Fazlasi haritayi kaydirir. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
 	float PanClickThresholdPx = 6.f;
@@ -77,6 +86,8 @@ private:
 	void OnSlot2();
 	void OnSlot3();
 	void OnSlot4();
+	void OnSlot5();
+	void OnNextLevel();
 	void OnUndo();
 	void OnRestart();
 	void OnAgain();
@@ -86,6 +97,7 @@ private:
 	TArray<UObject*> GetKnobTargets() const;
 
 	void TestLevel1Step();
+	void TestLevel2Step();
 	void MouseAtLocal(int32 Slot, const FVector& Local);
 	void MoveMouseToLocal(const FVector& Local);
 	void MoveMouseToScreen(const FVector2D& Screen);

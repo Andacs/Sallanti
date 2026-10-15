@@ -73,7 +73,122 @@ ASLPlatform::ASLPlatform()
 	ArcadeLight = MakeIsm(TEXT("ArcadeLight"), CubeMesh.Object);
 	ArcadeDark = MakeIsm(TEXT("ArcadeDark"), CubeMesh.Object);
 	ArcadeArches = MakeIsm(TEXT("ArcadeArches"), CylMesh.Object);
+	ZoneTiles = MakeIsm(TEXT("ZoneTiles"), CubeMesh.Object);
+	ZoneTiles->SetCastShadow(false);
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> GhostMat(TEXT("/Game/Sallanti/Materials/M_Ghost.M_Ghost"));
+	if (GhostMat.Succeeded())
+	{
+		ZoneTiles->SetMaterial(0, GhostMat.Object);
+	}
 	ApplyDeckSize();
+}
+
+void ASLPlatform::SetZoneCells(const TArray<FIntPoint>& Cells, const FLinearColor& Color, float Opacity)
+{
+	uint32 Sig = HashCombine(GetTypeHash(Cells.Num()), GetTypeHash(Color.ToFColor(false).DWColor()));
+	for (const FIntPoint& C : Cells)
+	{
+		Sig = HashCombine(Sig, GetTypeHash(C));
+	}
+	if (Sig == ZoneSignature)
+	{
+		return; // her kare cagrilir; degismediyse ISM'i yeniden kurma
+	}
+	ZoneSignature = Sig;
+	ZoneTiles->ClearInstances();
+	const float S = FMath::Max(1.f, GridSize - TileGap) / 100.f;
+	for (const FIntPoint& C : Cells)
+	{
+		// Karonun (0.6) hemen ustu, plakanin (2) ve yolun (2.5) alti: binalarin altinda kalir.
+		ZoneTiles->AddInstance(FTransform(FQuat::Identity, FVector(CellToLocal(C.X + 0.5f), CellToLocal(C.Y + 0.5f), 0.9f), FVector(S, S, 0.4f / 100.f)));
+	}
+	if (!ZoneMID)
+	{
+		ZoneMID = ZoneTiles->CreateDynamicMaterialInstance(0);
+	}
+	if (ZoneMID)
+	{
+		ZoneMID->SetVectorParameterValue(TEXT("Color"), Color);
+		ZoneMID->SetScalarParameterValue(TEXT("Opacity"), Opacity);
+	}
+}
+
+TSet<FName> ASLPlatform::TypesOnRoadNetwork(const TArray<FIntPoint>& StartCells, const ASLPlaceable* Ignore, TArray<FIntPoint>* OutRoads) const
+{
+	auto RoadAt = [&](const FIntPoint& C) -> bool
+	{
+		const ASLPlaceable* R = FindPlaceableAt(C);
+		return R && R != Ignore && R->bFlat;
+	};
+	TArray<FIntPoint> Roads;
+	TSet<FIntPoint> Seen;
+	for (const FIntPoint& S : StartCells)
+	{
+		if (RoadAt(S) && !Seen.Contains(S))
+		{
+			Seen.Add(S);
+			Roads.Add(S);
+		}
+	}
+	const FIntPoint Dirs[4] = { {1, 0}, {0, 1}, {-1, 0}, {0, -1} };
+	for (int32 Q = 0; Q < Roads.Num() && Q < 2000; ++Q)
+	{
+		for (const FIntPoint& D : Dirs)
+		{
+			const FIntPoint N = Roads[Q] + D;
+			if (!Seen.Contains(N) && RoadAt(N))
+			{
+				Seen.Add(N);
+				Roads.Add(N);
+			}
+		}
+	}
+	TSet<FName> Types;
+	if (Roads.Num() == 0)
+	{
+		if (OutRoads)
+		{
+			OutRoads->Reset();
+		}
+		return Types;
+	}
+	for (const TWeakObjectPtr<ASLPlaceable>& Weak : Placeables)
+	{
+		const ASLPlaceable* B = Weak.Get();
+		if (!B || B->bHeld || B == Ignore || B->bFlat)
+		{
+			continue;
+		}
+		bool bTouch = false;
+		if (B->bHasEntrance)
+		{
+			for (const FIntPoint& E : B->GetEntranceCells())
+			{
+				bTouch |= Seen.Contains(E);
+			}
+		}
+		else
+		{
+			const FIntPoint Mn = B->CellMin, F = B->GetFootprint();
+			for (int32 X = Mn.X; X < Mn.X + F.X && !bTouch; ++X)
+			{
+				bTouch = Seen.Contains(FIntPoint(X, Mn.Y - 1)) || Seen.Contains(FIntPoint(X, Mn.Y + F.Y));
+			}
+			for (int32 Y = Mn.Y; Y < Mn.Y + F.Y && !bTouch; ++Y)
+			{
+				bTouch = Seen.Contains(FIntPoint(Mn.X - 1, Y)) || Seen.Contains(FIntPoint(Mn.X + F.X, Y));
+			}
+		}
+		if (bTouch)
+		{
+			Types.Add(B->TypeId);
+		}
+	}
+	if (OutRoads)
+	{
+		*OutRoads = MoveTemp(Roads);
+	}
+	return Types;
 }
 
 void ASLPlatform::BuildArcade()
