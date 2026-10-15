@@ -264,7 +264,7 @@ public:
 
 	/** Menu: saat kendiliginden akar (saat/sn), gun dongusu arka planda doner. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Zaman")
-	float MenuHoursPerSecond = 0.35f;
+	float MenuHoursPerSecond = 0.15f;
 	int32 GetMovesLeft() const { return MoveLimit > 0 ? FMath::Max(0, MoveLimit - GetMoveCount()) : -1; }
 
 	/** Otobus: bu turden bir bina (durak) yol agina bagliysa otobus o agda gidip gelir. Bos = otobus yok. */

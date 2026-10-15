@@ -14,7 +14,7 @@ https://game.ktimo.com.tr/jam/teslim
 | Oyun adı | [Sallantı] |
 | Kısa açıklama | [Sallanan bir adaya şehir kur, aileleri mutlu et, dengeyi koru. Her bina adanın ağırlık merkezini kaydırır; ailelerin istekleri birbirini zorlar.] |
 | Platform | Windows |
-| Oynanabilir sürüm | `Build/Teslim/Sallanti_Windows.zip` (Shipping paketi; teslimden önce temiz bir klasörde açılıp denenir) |
+| Oynanabilir sürüm | `Build/Teslim/Sallanti_Windows.zip` (Shipping, 682 MB; repoya girmez). 15 Ekim 20.20'de temiz klasöre açılıp çalıştırıldı: açılış videosu → ana menü ekranda görüldü (`Tools/pencere_goruntu.ps1`). Paket süresi 2 dk 14 sn. |
 | Video (≤ 1 dk, MP4) | `Build/Teslim/Sallanti_Trailer.mp4` (36,5 sn, 1920×1080, H.264 + AAC) |
 | Public repo | [https://github.com/Andacs/Sallanti] **şu an private: teslimden önce public yapılmalı (madde 6.5, aksi hâlde diskalifiye)** |
 | Kurulum / çalıştırma / kontroller | `README.md` → "Çalıştırma" bölümü (EK A.3 şablonu) |

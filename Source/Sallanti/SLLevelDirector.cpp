@@ -311,7 +311,7 @@ void ASLLevelDirector::ConfigureMenu()
 	bAutoAssign = true;
 	BusStopType = TEXT("Durak");
 	FinalSpeech.Reset();
-	StartHour = 15.f;
+	StartHour = 9.f; // menu gunduz acilsin; 0.15 saat/sn ile aksam ~1,5 dk sonra
 	const FLinearColor Tints[3] = { FLinearColor(0.45f, 0.35f, 0.70f), FLinearColor(0.85f, 0.38f, 0.35f), FLinearColor(0.25f, 0.60f, 0.45f) };
 	const FVector Waits[3] = { FVector(-285.f, -60.f, 0.f), FVector(-285.f, 150.f, 0.f), FVector(-230.f, -250.f, 0.f) };
 	for (int32 I = 0; I < 3; ++I)
