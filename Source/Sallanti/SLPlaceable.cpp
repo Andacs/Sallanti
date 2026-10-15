@@ -135,7 +135,7 @@ void ASLPlaceable::BuildStopDecor()
 	{
 		AddDecor(DefaultCube, FVector(Front, S * (PY - 6.f), Base + 0.5f * H), FVector(2.5f, 2.5f, H), FLinearColor(0.55f, 0.55f, 0.60f));
 	}
-	AddDecor(DefaultCube, FVector(Back, 0, Base + 0.5f * H), FVector(2.f, 2.f * PY - 8.f, H), FLinearColor(0.70f, 0.85f, 0.95f)); // arka cam
+	AddWindowPart(FVector(Back, 0, Base + 0.5f * H), FVector(2.f, 2.f * PY - 8.f, H)); // arka cam (gece yanar)
 	AddDecor(DefaultCube, FVector(0.5f * (Back + Front), 0, Base + H + 1.5f), FVector(Front - Back + 8.f, 2.f * PY - 2.f, 3.f), AccentColor, FRotator(-6.f, 0, 0)); // cati
 	AddDecor(DefaultCube, FVector(Back + 7.f, 0, Base + 7.f), FVector(8.f, 2.f * PY - 16.f, 2.f), FLinearColor(0.80f, 0.55f, 0.40f)); // bank
 	AddDecor(DefaultCube, FVector(Back + 4.f, 0, Base + 3.5f), FVector(1.5f, 2.f * PY - 18.f, 7.f), FLinearColor(0.55f, 0.55f, 0.60f));
@@ -156,8 +156,79 @@ void ASLPlaceable::BuildStopDecor()
 	DecorParts.Add(Text);
 }
 
+void ASLPlaceable::AddWindowPart(const FVector& Loc, const FVector& Size)
+{
+	// Isiksiz yari saydam malzeme (M_Ghost, opaklik 1): gece sicak sariya donunce "yanar".
+	UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+	C->SetStaticMesh(DefaultCube);
+	C->SetMobility(EComponentMobility::Movable);
+	C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	C->SetCastShadow(false);
+	C->SetupAttachment(GetRootComponent());
+	C->RegisterComponent();
+	C->SetRelativeScale3D(Size / 100.f);
+	C->SetRelativeLocation(Loc);
+	if (UMaterialInstanceDynamic* W = FxMaterial ? UMaterialInstanceDynamic::Create(FxMaterial, C) : nullptr)
+	{
+		W->SetScalarParameterValue(TEXT("Opacity"), 1.f);
+		C->SetMaterial(0, W);
+		WindowMIDs.Add(W);
+	}
+	DecorParts.Add(C);
+	SetNightGlow(NightGlow);
+}
+
+void ASLPlaceable::SetNightGlow(float Night)
+{
+	NightGlow = FMath::Clamp(Night, 0.f, 1.f);
+	const FLinearColor C = FMath::Lerp(WindowColor * WindowDayBrightness, WindowNightColor * WindowNightBrightness, NightGlow);
+	for (UMaterialInstanceDynamic* W : WindowMIDs)
+	{
+		if (W)
+		{
+			W->SetVectorParameterValue(TEXT("Color"), C);
+		}
+	}
+}
+
+void ASLPlaceable::BuildParkDecor()
+{
+	// Park 2x2: cimen plaka, capraz krem patika, kosede gol, yuvarlak agaclar + servi, bank, cicekler.
+	Mesh->SetVisibility(false);
+	PlateColor = FLinearColor(0.52f, 0.80f, 0.50f);
+	if (PlateMID)
+	{
+		PlateMID->SetVectorParameterValue(TEXT("Tint"), PlateColor);
+	}
+	const float Base = PlateHeightCm;
+	const float PX = 0.5f * PlateSizeX(), PY = 0.5f * PlateSizeY();
+	const FLinearColor Path(0.97f, 0.90f, 0.78f);
+	AddDecor(DefaultCube, FVector(0, 0, Base + 0.3f), FVector(2.f * PX - 10.f, 10.f, 0.6f), Path);
+	AddDecor(DefaultCube, FVector(0, 0, Base + 0.35f), FVector(10.f, 2.f * PY - 10.f, 0.7f), Path);
+	AddDecor(DiscMesh, FVector(0.45f * PX, 0.45f * PY, Base + 0.4f), FVector(0.65f * PX, 0.55f * PY, 0.8f), FLinearColor(0.45f, 0.70f, 0.95f)); // gol
+	auto Round = [&](const FVector& At, float H)
+	{
+		AddDecor(DefaultCube, At + FVector(0, 0, 0.3f * H), FVector(2.5f, 2.5f, 0.6f * H), FLinearColor(0.50f, 0.36f, 0.26f));
+		AddDecor(SphereMesh, At + FVector(0, 0, 0.75f * H), FVector(0.55f * H, 0.55f * H, 0.5f * H), BushColor * 0.9f);
+	};
+	Round(FVector(-0.55f * PX, -0.55f * PY, Base), 26.f);
+	Round(FVector(-0.55f * PX, 0.5f * PY, Base), 22.f);
+	AddCypress(FVector(0.55f * PX, -0.6f * PY, Base), 34.f);
+	AddCypress(FVector(0.7f * PX, -0.25f * PY, Base), 26.f);
+	AddDecor(DefaultCube, FVector(-0.1f * PX, -0.35f * PY, Base + 4.f), FVector(16.f, 5.f, 1.5f), FLinearColor(0.80f, 0.55f, 0.40f)); // bank
+	AddDecor(DefaultCube, FVector(-0.1f * PX, -0.35f * PY - 2.5f, Base + 6.5f), FVector(16.f, 1.2f, 4.f), FLinearColor(0.80f, 0.55f, 0.40f));
+	const FLinearColor Flowers[3] = { FLinearColor(0.98f, 0.55f, 0.60f), FLinearColor(1.f, 0.85f, 0.35f), FLinearColor(0.80f, 0.60f, 0.95f) };
+	for (int32 I = 0; I < 9; ++I)
+	{
+		const float A = I * 2.4f;
+		const FVector At(-0.35f * PX + 0.25f * PX * FMath::Cos(A), 0.2f * PY + 0.25f * PY * FMath::Sin(A), Base + 1.5f);
+		AddDecor(SphereMesh, At, FVector(3.f, 3.f, 3.f), Flowers[I % 3]);
+	}
+}
+
 void ASLPlaceable::ClearDecor()
 {
+	WindowMIDs.Reset();
 	for (USceneComponent* C : DecorParts)
 	{
 		if (C)
@@ -209,7 +280,7 @@ void ASLPlaceable::AddWindowGrid(int32 Face, float Bottom, float Top, int32 Rows
 			}
 			const FVector Loc = bAlongX ? FVector(T, Sign * Off, Z) : FVector(Sign * Off, T, Z);
 			const FVector Size = bAlongX ? FVector(WinW, 1.5f, WinH) : FVector(1.5f, WinW, WinH);
-			AddDecor(DefaultCube, Loc, Size, WindowColor);
+			AddWindowPart(Loc, Size);
 		}
 	}
 }
@@ -224,6 +295,11 @@ void ASLPlaceable::BuildDecor()
 	if (TypeId == TEXT("Durak"))
 	{
 		BuildStopDecor();
+		return;
+	}
+	if (TypeId == TEXT("Park"))
+	{
+		BuildParkDecor();
 		return;
 	}
 	const float HX = BodyHalfX(), HY = BodyHalfY();
@@ -288,8 +364,8 @@ void ASLPlaceable::BuildDecor()
 			const float Sign = (F < 2) ? 1.f : -1.f;
 			const float Off = (bAlongX ? HY : HX) + 0.4f;
 			const float Len = 2.f * (bAlongX ? HX : HY) * 0.86f;
-			AddDecor(DefaultCube, bAlongX ? FVector(0, Sign * Off, Base + 0.5f * GlassH + 4.f) : FVector(Sign * Off, 0, Base + 0.5f * GlassH + 4.f),
-				bAlongX ? FVector(Len, 1.5f, GlassH) : FVector(1.5f, Len, GlassH), WindowColor);
+			AddWindowPart(bAlongX ? FVector(0, Sign * Off, Base + 0.5f * GlassH + 4.f) : FVector(Sign * Off, 0, Base + 0.5f * GlassH + 4.f),
+				bAlongX ? FVector(Len, 1.5f, GlassH) : FVector(1.5f, Len, GlassH));
 			AddWindowGrid(F, Base + 0.52f * H, Base + 0.85f * H, 3, 4, 0.13f * Len, 0.08f * H, false);
 		}
 		const float DoorH = FMath::Min(H * 0.55f, 90.f);
@@ -504,8 +580,10 @@ void ASLPlaceable::BuildRoadShape()
 			const float T = Start + Step * (I + 0.5f);
 			const FVector2D P = C + Half * FVector2D(FMath::Cos(T), FMath::Sin(T));
 			UStaticMeshComponent* Seg = AddPiece(nullptr);
-			Seg->SetRelativeScale3D(FVector(Chord, Core, FlatHeightCm) / 100.f);
-			Seg->SetRelativeLocation(FVector(P.X, P.Y, Z));
+			// Komsu parcalar ust uste biniyor: tek/cift parca RoadZStepCm farkli yukseklikte (z-fighting).
+			const float SegH = FlatHeightCm - (I % 2) * RoadZStepCm;
+			Seg->SetRelativeScale3D(FVector(Chord, Core, SegH) / 100.f);
+			Seg->SetRelativeLocation(FVector(P.X, P.Y, 0.5f * SegH));
 			Seg->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(T) + 90.f, 0.f));
 		}
 		Mesh->SetVisibility(false); // collision kalir: imlec yine tutar
@@ -520,8 +598,9 @@ void ASLPlaceable::BuildRoadShape()
 		HalfBox->SetRelativeScale3D(FVector(bAlongX ? HalfCore : Core, bAlongX ? Core : HalfCore, FlatHeightCm) / 100.f);
 		HalfBox->SetRelativeLocation(FVector(D.X * 0.5f * HalfCore, D.Y * 0.5f * HalfCore, Z));
 		UStaticMeshComponent* Disc = AddPiece(DiscMesh);
-		Disc->SetRelativeScale3D(FVector(Core, Core, FlatHeightCm) / 100.f);
-		Disc->SetRelativeLocation(FVector(0.f, 0.f, Z));
+		const float DiscH = FlatHeightCm - RoadZStepCm; // yarim karonun altinda: ust yuzleri cakismasin
+		Disc->SetRelativeScale3D(FVector(Core, Core, DiscH) / 100.f);
+		Disc->SetRelativeLocation(FVector(0.f, 0.f, 0.5f * DiscH));
 		Mesh->SetVisibility(false);
 	}
 	else
@@ -537,10 +616,20 @@ void ASLPlaceable::SetRoadLinks(uint8 Mask)
 	{
 		BuildRoadShape();
 	}
+	// Uzantilar: kendi karosuyla 0.5 cm, komsunun uzantisiyla 1 cm ust uste biner. Ayni yukseklikte
+	// ust yuzler z-fighting yapiyordu (parlama dalgasi gecerken titreme). Uzanti karodan alcak, komsu
+	// iki yolun uzantisi da hucre paritesine gore birbirinden alcak/yuksek.
+	const float LinkH = FlatHeightCm - RoadZStepCm * (1 + ((CellMin.X + CellMin.Y) & 1));
+	const float Core = PlateSizeX();
+	const float Len = 0.5f * TileGap + 1.f;
 	for (int32 I = 0; I < RoadLinks.Num(); ++I)
 	{
 		if (RoadLinks[I])
 		{
+			const bool bAlongX = (I % 2) == 0;
+			const FVector Loc = RoadLinks[I]->GetRelativeLocation();
+			RoadLinks[I]->SetRelativeScale3D(FVector(bAlongX ? Len : Core, bAlongX ? Core : Len, LinkH) / 100.f);
+			RoadLinks[I]->SetRelativeLocation(FVector(Loc.X, Loc.Y, 0.5f * LinkH));
 			RoadLinks[I]->SetVisibility((Mask >> I) & 1);
 		}
 	}

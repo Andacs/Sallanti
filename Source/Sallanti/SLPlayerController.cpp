@@ -6,6 +6,8 @@
 #include "SLLevelDirector.h"
 #include "SLPlatform.h"
 #include "SLHUD.h"
+#include "SLAmbience.h"
+#include "EngineUtils.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/GameViewportClient.h"
@@ -83,6 +85,8 @@ void ASLPlayerController::SetupInputComponent()
 	Bind(TEXT("IA_Slot3"), { EKeys::Three }, &ASLPlayerController::OnSlot3);
 	Bind(TEXT("IA_Slot4"), { EKeys::Four }, &ASLPlayerController::OnSlot4);
 	Bind(TEXT("IA_Slot5"), { EKeys::Five }, &ASLPlayerController::OnSlot5);
+	Bind(TEXT("IA_Slot6"), { EKeys::Six }, &ASLPlayerController::OnSlot6);
+	Bind(TEXT("IA_Music"), { EKeys::M }, &ASLPlayerController::OnToggleMusic);
 	Bind(TEXT("IA_Next"), { EKeys::Enter }, &ASLPlayerController::OnNextLevel);
 	Bind(TEXT("IA_Undo"), { EKeys::BackSpace }, &ASLPlayerController::OnUndo);
 	Bind(TEXT("IA_Restart"), { EKeys::F5 }, &ASLPlayerController::OnRestart);
@@ -302,6 +306,23 @@ void ASLPlayerController::OnSlot2() { Build->SelectSlot(1); }
 void ASLPlayerController::OnSlot3() { Build->SelectSlot(2); }
 void ASLPlayerController::OnSlot4() { Build->SelectSlot(3); }
 void ASLPlayerController::OnSlot5() { Build->SelectSlot(4); }
+void ASLPlayerController::OnSlot6() { Build->SelectSlot(5); }
+
+void ASLPlayerController::OnToggleMusic()
+{
+	if (ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>())
+	{
+		GM->ToggleMusic();
+	}
+}
+
+void ASLPlayerController::SLSaat(float Hour)
+{
+	for (TActorIterator<ASLAmbience> It(GetWorld()); It; ++It)
+	{
+		It->DebugHourOverride = Hour;
+	}
+}
 
 void ASLPlayerController::OnNextLevel()
 {
@@ -530,16 +551,103 @@ void ASLPlayerController::TestLevel2Step()
 		{
 			Build->PickUp(P->FindPlaceableAt(FIntPoint(1, 10)));
 		}
-		Build->SetAimOverride(FVector2D(150.f, -150.f));
+		Build->SetFacing(1);
+		Build->SetAimOverride(FVector2D(50.f, -100.f));
 		break;
 	case 58: Shot(TEXT("L2_6a_tasima_yakin")); break;
 	case 59: OnPlace(); Build->Cancel(); break;
 	case 62: Shot(TEXT("L2_6b_mutlu")); break;
 	case 64: Shot(TEXT("L2_7_tamamlandi")); if (Cam) { Cam->Zoom(5.f); } break;
-	case 67: Shot(TEXT("L2_8_yakin")); break;
+	case 67: Shot(TEXT("L2_8_yakin")); SLSaat(23.f); break;
+	case 68: Shot(TEXT("L2_9_gece")); break;
 	case 69:
 		GetWorldTimerManager().ClearTimer(SelfTestTimer);
 		UE_LOG(LogSLInput, Log, TEXT("SL_TESTL2_DONE tamam=%d"), GM && GM->IsLevelComplete() ? 1 : 0);
+		ConsoleCommand(TEXT("quit"));
+		break;
+	default: break;
+	}
+}
+
+void ASLPlayerController::SLTestLevel3()
+{
+	SelfTestIndex = 0;
+	SLSet(TEXT("SwayAmplitude"), TEXT("0"));
+	GetWorldTimerManager().SetTimer(SelfTestTimer, this, &ASLPlayerController::TestLevel3Step, 0.5f, true, 1.0f);
+}
+
+void ASLPlayerController::TestLevel3Step()
+{
+	const int32 I = SelfTestIndex++;
+	SLReport();
+	ASLHUD* HUD = GetHUD<ASLHUD>();
+	ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
+	const ASLLevelDirector* D = GM ? GM->GetDirector() : nullptr;
+	if (HUD)
+	{
+		UE_LOG(LogSLInput, Log, TEXT("SL_HINT %s"), *HUD->GetCurrentHint());
+	}
+	if (D)
+	{
+		for (int32 F = 0; F < D->Families.Num(); ++F)
+		{
+			UE_LOG(LogSLInput, Log, TEXT("SL_FAMILY_STATE %s mutluluk %.2f (%s)"), *D->Families[F].Name, D->GetHappiness(F), *D->GetFamilyStatus(F));
+		}
+		UE_LOG(LogSLInput, Log, TEXT("SL_TIME saat %.1f hamle %d kalan %d"), D->GetTimeHours(), D->GetMoveCount(), D->GetMovesLeft());
+	}
+	// Hucre merkezi yerel = -300 + 50i; 2x2 merkezi = -325 + 50(min+1); 3x3 = -325 + 50(min+1.5).
+	// Hastane 2x2 (4,6) yon 3 kapi (4,5)(5,5) | Yilmaz evi (3,5) yon 0 kapi (4,5): hastaneye 2 birim |
+	// AVM 3x3 (7,5) kapi (8,4) | Park 2x2 (2,9) | Demir evi once (6,9): AVM'ye 3 birim -> mutsuz;
+	// sonra (4,10): parka 1, AVM'ye 6 -> mutlu | yol (4,5) (4..8,4) | Durak (6,3) yon 1 kapi (6,4) |
+	// Aydin evi (3,3) yon 0 kapi (4,3) + yol (4,3): Yilmazlara 2 birim, duraga bagli. 16 hamle / 24.
+	auto Place = [this](int32 Slot, float X, float Y, int32 Facing)
+	{
+		SLGhost(Slot, X, Y);
+		Build->SetFacing(Facing);
+		const bool bOk = Build->TryPlace();
+		UE_LOG(LogSLInput, Log, TEXT("SL_PLACE_RESULT %s slot %d (%.0f,%.0f) yon %d"), bOk ? TEXT("OK") : TEXT("BLOCKED"), Slot, X, Y, Facing);
+		Build->Cancel();
+	};
+	switch (I)
+	{
+	case 1: Shot(TEXT("L3_0_baslangic")); break;
+	case 2: Place(2, -75.f, 25.f, 3); break;                 // Hastane
+	case 3: SLGhost(1, -150.f, -50.f); Build->SetFacing(0); break;
+	case 4: Shot(TEXT("L3_1a_yilmaz_hayalet")); break;     // sari bolge: hastaneye 3 birim
+	case 5: Build->TryPlace(); Build->Cancel(); break;     // Yilmaz evi
+	case 24: Place(3, 100.f, 0.f, 3); break;                // AVM (Yilmazlar yerlesince acilir)
+	case 25: Shot(TEXT("L3_2_avm")); break;
+	case 27: Place(6, -175.f, 175.f, 3); break;             // Park (2,9)
+	case 28: SLGhost(1, 0.f, 150.f); Build->SetFacing(3); break; // Demir evi AVM'ye yakin (6,9)
+	case 29: Shot(TEXT("L3_3a_demir_hayalet_yakin")); break;
+	case 30: Build->TryPlace(); Build->Cancel(); break;
+	case 48: Shot(TEXT("L3_3b_demir_mutsuz")); break;
+	case 50:
+		if (const ASLPlatform* P = GM ? GM->GetPlatform() : nullptr)
+		{
+			Build->PickUp(P->FindPlaceableAt(FIntPoint(6, 9)));
+		}
+		Build->SetAimOverride(FVector2D(-100.f, 200.f));       // (4,10)
+		break;
+	case 51: Shot(TEXT("L3_3c_tasima")); break;
+	case 52: OnPlace(); Build->Cancel(); break;
+	case 53: Place(4, -100.f, -50.f, 0); break;              // yol (4,5)
+	case 54: case 55: case 56: case 57: case 58:
+		Place(4, -300.f + 50.f * (4 + (I - 54)), -100.f, 0);  // yol (4..8, 4)
+		break;
+	case 59: Shot(TEXT("L3_4_yollar")); break;
+	case 60: Place(5, 0.f, -150.f, 1); break;               // Durak (6,3)
+	case 63: Shot(TEXT("L3_5_durak_otobus")); break;
+	case 64: SLGhost(1, -150.f, -150.f); Build->SetFacing(0); break; // Aydin evi (3,3)
+	case 65: Shot(TEXT("L3_6a_aydin_hayalet")); break;
+	case 66: Build->TryPlace(); Build->Cancel(); break;
+	case 67: Place(4, -100.f, -150.f, 0); break;             // yol (4,3)
+	case 84: Shot(TEXT("L3_7_tamamlandi")); break;
+	case 85: SLSaat(21.f); break;
+	case 86: Shot(TEXT("L3_8_gece")); break;
+	case 88:
+		GetWorldTimerManager().ClearTimer(SelfTestTimer);
+		UE_LOG(LogSLInput, Log, TEXT("SL_TESTL3_DONE tamam=%d hamle=%d"), GM && GM->IsLevelComplete() ? 1 : 0, D ? D->GetMoveCount() : -1);
 		ConsoleCommand(TEXT("quit"));
 		break;
 	default: break;

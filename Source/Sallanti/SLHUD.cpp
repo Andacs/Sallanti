@@ -1,5 +1,7 @@
 #include "SLHUD.h"
 
+#include "SLAmbience.h"
+#include "EngineUtils.h"
 #include "SLBuildComponent.h"
 #include "SLCameraPawn.h"
 #include "SLGameMode.h"
@@ -157,8 +159,15 @@ void ASLHUD::DrawHUD()
 	const float Dt = LastDrawTime < 0.f ? 0.f : FMath::Min(Now - LastDrawTime, 0.1f);
 	LastDrawTime = Now;
 
-	const ASLPlayerController* PC = Cast<ASLPlayerController>(GetOwningPlayerController());
+	ASLPlayerController* PC = Cast<ASLPlayerController>(GetOwningPlayerController());
 	ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
+	NowReal = Now;
+	bAnyHover = false;
+	if (PC)
+	{
+		float MX = -1.f, MY = -1.f;
+		MousePos = PC->GetMousePosition(MX, MY) ? FVector2D(MX, MY) : FVector2D(-1000.f, -1000.f);
+	}
 	const ASLPlatform* P = GM ? GM->GetPlatform() : nullptr;
 	const ASLLevelDirector* D = GM ? GM->GetDirector() : nullptr;
 	const USLBuildComponent* B = PC ? PC->Build.Get() : nullptr;
@@ -177,7 +186,15 @@ void ASLHUD::DrawHUD()
 	DrawBalanceBar(*P, *B);
 	DrawHint(*P, *B, D);
 	DrawDrawer(*B, Dt);
+	if (D)
+	{
+		DrawClock(*D);
+	}
 	DrawCenterMessage(*P, GM->IsLevelComplete());
+	if (PC)
+	{
+		PC->CurrentMouseCursor = bAnyHover ? EMouseCursor::Hand : EMouseCursor::Default;
+	}
 	if (bShowTestPanel)
 	{
 		DrawTestPanel(*P, *B);
@@ -468,7 +485,17 @@ void ASLHUD::DrawTasks(const ASLLevelDirector& D)
 	}
 	const float LineH = 26.f * TextScale;
 	const float X = 20.f, Y0 = 16.f;
-	const float H = LineH * (D.Tasks.Num() + 1.5f) + 18.f;
+	// Uzun bolumde (3. bolum 12 gorev) liste kartlari ekrandan tasiriyordu: bitenlerden yalnizca son 1'i,
+	// ustte "n görev tamam" satiri; ileriden en fazla 4 gorev.
+	constexpr int32 MaxShown = 7;
+	int32 First = 0, Last = D.Tasks.Num() - 1;
+	if (D.Tasks.Num() > MaxShown)
+	{
+		First = FMath::Clamp(D.CurrentTask - 1, 0, D.Tasks.Num() - MaxShown);
+		Last = First + MaxShown - 1;
+	}
+	const int32 Rows = Last - First + 1 + (First > 0 ? 1 : 0);
+	const float H = LineH * (Rows + 1.5f) + 18.f;
 	Card(X, Y0, W + 36.f, H, 18.f, PanelColor);
 	TasksBottom = Y0 + H;
 
@@ -481,7 +508,12 @@ void ASLHUD::DrawTasks(const ASLLevelDirector& D)
 	Text(D.LevelTitle, X + 44.f, PinY - 0.5f * TSz.Y, Ink, TitleScale);
 
 	float Y = Y0 + 18.f + LineH * 1.3f;
-	for (int32 I = 0; I < D.Tasks.Num(); ++I)
+	if (First > 0)
+	{
+		Text(FString::Printf(TEXT("%d görev tamam"), First), X + 44.f, Y + 0.5f * LineH - 2.f - 0.5f * Measure(TEXT("A"), ItemScale, false).Y, Teal, ItemScale);
+		Y += LineH;
+	}
+	for (int32 I = First; I <= Last; ++I)
 	{
 		const FSLTask& T = D.Tasks[I];
 		const bool bDone = D.IsTaskDone(I);
@@ -532,6 +564,81 @@ void ASLHUD::DrawFace(float CX, float CY, float R, float Happy01)
 		DrawLine(CX - 0.4f * W, Y0 + S * Bend, CX + 0.4f * W, Y0 + S * Bend, Eye, T);
 		DrawLine(CX + 0.4f * W, Y0 + S * Bend, CX + W, Y0, Eye, T);
 	}
+}
+
+void ASLHUD::DrawSpeakerIcon(float CX, float CY, float S, bool bOn, const FLinearColor& C)
+{
+	DrawRect(C, CX - 0.45f * S, CY - 0.18f * S, 0.25f * S, 0.36f * S);
+	for (int32 I = 0; I < int32(0.35f * S); ++I)
+	{
+		const float Hh = 0.18f * S + I * 0.9f;
+		DrawRect(C, CX - 0.2f * S + I, CY - Hh, 1.f, 2.f * Hh);
+	}
+	if (bOn)
+	{
+		DrawLine(CX + 0.25f * S, CY - 0.2f * S, CX + 0.3f * S, CY, C, 2.f);
+		DrawLine(CX + 0.3f * S, CY, CX + 0.25f * S, CY + 0.2f * S, C, 2.f);
+		DrawLine(CX + 0.4f * S, CY - 0.35f * S, CX + 0.48f * S, CY, C, 2.f);
+		DrawLine(CX + 0.48f * S, CY, CX + 0.4f * S, CY + 0.35f * S, C, 2.f);
+	}
+	else
+	{
+		DrawLine(CX + 0.22f * S, CY - 0.25f * S, CX + 0.5f * S, CY + 0.25f * S, Red, 2.5f);
+		DrawLine(CX + 0.5f * S, CY - 0.25f * S, CX + 0.22f * S, CY + 0.25f * S, Red, 2.5f);
+	}
+}
+
+void ASLHUD::DrawClock(const ASLLevelDirector& D)
+{
+	if (!Ambience.IsValid())
+	{
+		for (TActorIterator<ASLAmbience> It(GetWorld()); It; ++It)
+		{
+			Ambience = *It;
+			break;
+		}
+	}
+	const float Abs = D.GetTimeHours();
+	const float Hour = Ambience.IsValid() ? Ambience->GetShownHour() : FMath::Fmod(Abs, 24.f);
+	const float Day01 = Ambience.IsValid() ? Ambience->GetDaylight() : ASLAmbience::DaylightAt(Hour);
+	const int32 DayN = FMath::FloorToInt(Abs / 24.f) + 1;
+	const int32 Left = D.GetMovesLeft();
+	const float W = 230.f, H = Left >= 0 ? 74.f : 50.f;
+	const float X = Canvas->ClipX - W - 16.f, Y = 16.f;
+	Card(X, Y, W, H, 20.f, PanelColor);
+	// Gunes (sari daire + isinlar) ya da ay (hilal: daire + kart renginde kaydirilmis daire).
+	const float IX = X + 28.f, IY = Y + 25.f;
+	if (Day01 >= 0.5f)
+	{
+		for (int32 I = 0; I < 8; ++I)
+		{
+			const float A = I * UE_PI / 4.f + NowReal * 0.3f;
+			DrawLine(IX + 10.f * FMath::Cos(A), IY + 10.f * FMath::Sin(A), IX + 14.f * FMath::Cos(A), IY + 14.f * FMath::Sin(A), Yellow, 2.f);
+		}
+		FillCircle(IX, IY, 8.f, Yellow);
+	}
+	else
+	{
+		FillCircle(IX, IY, 10.f, FLinearColor(0.55f, 0.60f, 0.95f));
+		FillCircle(IX + 5.f, IY - 3.f, 9.f, PanelColor);
+	}
+	const FString Clock = FString::Printf(TEXT("%d. gün  %02d:%02d"), DayN, FMath::FloorToInt(Hour), FMath::FloorToInt(FMath::Frac(Hour) * 60.f));
+	const FVector2D CS = Measure(Clock, 0.85f, false);
+	Text(Clock, X + 50.f, IY - 0.5f * CS.Y, Ink, 0.85f);
+	if (Left >= 0)
+	{
+		const FString M = FString::Printf(TEXT("Kalan hamle: %d"), Left);
+		Text(M, X + 50.f, Y + 46.f, Left <= 3 ? Red : Muted, 0.7f);
+	}
+	// Muzik dugmesi: hoparlor, ustune gelince daire.
+	MusicRect = { X + W - 44.f, Y + 7.f, 36.f, 36.f };
+	const bool bH = Hover(MusicRect);
+	const ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
+	if (bH)
+	{
+		FillCircle(MusicRect.X + 18.f, MusicRect.Y + 18.f, 17.f, Pale(Teal));
+	}
+	DrawSpeakerIcon(MusicRect.X + 16.f, MusicRect.Y + 18.f, 22.f, GM && GM->IsMusicOn(), bH ? Teal : Muted);
 }
 
 void ASLHUD::DrawFamilies(const ASLLevelDirector& D)
@@ -724,8 +831,12 @@ void ASLHUD::DrawDrawer(const USLBuildComponent& B, float DeltaSeconds)
 	DrawerRect = { PX, PY, DrawerWidth, PanelH };
 	HandleRect = { PX - HandleW, 0.5f * (Canvas->ClipY - HandleH), HandleW + 14.f, HandleH };
 
-	// Tutamak: panelin solunda yuvarlak sekme; ev simgesi, harf harf "BINALAR", yon oku.
-	Card(HandleRect.X, HandleRect.Y, HandleRect.W, HandleRect.H, 14.f, PanelColor);
+	// Tutamak: panelin solunda yuvarlak sekme; ev simgesi, harf harf "BINALAR", yon oku. Ustune gelince
+	// biraz disari cikar ve turkuaza boyanir.
+	const bool bHandleHover = Hover(HandleRect);
+	const float HandleNudge = bHandleHover ? 4.f : 0.f;
+	Card(HandleRect.X - HandleNudge, HandleRect.Y, HandleRect.W + HandleNudge, HandleRect.H, 14.f,
+		bHandleHover ? FMath::Lerp(PanelColor, Pale(Teal), 0.5f) : PanelColor);
 	DrawHouseIcon(HandleRect.X + 0.5f * HandleW, HandleRect.Y + 20.f, 16.f, Teal);
 	const FString Word = TEXT("BİNALAR");
 	const float LetterH = (HandleH - 56.f) / Word.Len();
@@ -737,10 +848,12 @@ void ASLHUD::DrawDrawer(const USLBuildComponent& B, float DeltaSeconds)
 	}
 	{
 		// Ok: kapaliyken "<" (cek), acikken ">" (it).
-		const float AX = HandleRect.X + 0.5f * HandleW, AY = HandleRect.Y + HandleH - 14.f;
+		const float Wig = bHandleHover ? 2.f * FMath::Sin(NowReal * 8.f) : 0.f;
+		const float AX = HandleRect.X + 0.5f * HandleW + Wig, AY = HandleRect.Y + HandleH - 14.f;
 		const float D = bDrawerWanted ? 3.f : -3.f;
-		DrawLine(AX - D, AY - 5.f, AX + D, AY, Muted, 2.f);
-		DrawLine(AX + D, AY, AX - D, AY + 5.f, Muted, 2.f);
+		const FLinearColor AC = bHandleHover ? Teal : Muted;
+		DrawLine(AX - D, AY - 5.f, AX + D, AY, AC, 2.f);
+		DrawLine(AX + D, AY, AX - D, AY + 5.f, AC, 2.f);
 	}
 
 	CardRects.Reset();
@@ -754,9 +867,17 @@ void ASLHUD::DrawDrawer(const USLBuildComponent& B, float DeltaSeconds)
 	const FVector2D HSz = Measure(TEXT("Binalar"), 1.0f, false);
 	Text(TEXT("Binalar"), PX + 52.f, PY + 30.f - 0.5f * HSz.Y, Ink, 1.0f);
 	{
+		// Daraltma oku: tiklayinca cekmece kapanir.
 		const float AX = PX + DrawerWidth - 28.f, AY = PY + 30.f;
-		DrawLine(AX - 3.f, AY - 6.f, AX + 3.f, AY, Muted, 2.5f);
-		DrawLine(AX + 3.f, AY, AX - 3.f, AY + 6.f, Muted, 2.5f);
+		HeaderCloseRect = { AX - 16.f, AY - 16.f, 32.f, 32.f };
+		const bool bH = Hover(HeaderCloseRect);
+		if (bH)
+		{
+			FillCircle(AX, AY, 15.f, Pale(Teal));
+		}
+		const FLinearColor AC = bH ? Teal : Muted;
+		DrawLine(AX - 3.f, AY - 6.f, AX + 3.f, AY, AC, 2.5f);
+		DrawLine(AX + 3.f, AY, AX - 3.f, AY + 6.f, AC, 2.5f);
 	}
 	float Y = PY + HeaderH;
 	for (int32 K = 0; K < N; ++K, Y += CardH + 10.f)
@@ -765,11 +886,23 @@ void ASLHUD::DrawDrawer(const USLBuildComponent& B, float DeltaSeconds)
 		const FSLSlot& S = B.Slots[I];
 		const bool bOpen = B.IsSlotUnlocked(I);
 		const bool bSel = B.SelectedSlot == I && !B.IsMoving();
-		const FRect R{ PX + 12.f, Y, DrawerWidth - 24.f, CardH };
-		CardRects.Add(R);
-		if (bSel)
+		const FRect Hit{ PX + 12.f, Y, DrawerWidth - 24.f, CardH };
+		CardRects.Add(Hit);
+		const bool bHov = Hover(Hit);
+		// Basilinca 0.12 sn icin kuculur; kilitli karta tiklayinca yana sallanir; acik kart ustundeyken kalkar.
+		const float PressT = (PressedCard == K) ? (NowReal - PressedAt) / 0.14f : 1.f;
+		const float Squash = PressT < 1.f ? 1.f - 0.05f * FMath::Sin(PressT * UE_PI) : 1.f;
+		const float ShakeT = (ShakeCard == K) ? NowReal - ShakeAt : 10.f;
+		const float Shake = ShakeT < 0.4f ? 6.f * FMath::Sin(ShakeT * 45.f) * (1.f - ShakeT / 0.4f) : 0.f;
+		const float Lift = (bHov && bOpen) ? 3.f : 0.f;
+		FRect R{ Hit.X + Shake + 0.5f * Hit.W * (1.f - Squash), Hit.Y - Lift + 0.5f * Hit.H * (1.f - Squash), Hit.W * Squash, Hit.H * Squash };
+		if (bHov && bOpen)
 		{
-			FillRound(R.X - 2.f, R.Y - 2.f, R.W + 4.f, R.H + 4.f, 16.f, Teal); // secili: turkuaz cerceve
+			FillRound(R.X + 1.f, R.Y + 6.f, R.W, R.H, 14.f, FLinearColor(0.30f, 0.20f, 0.40f, 0.12f)); // kalkan kartin golgesi
+		}
+		if (bSel || (bHov && bOpen))
+		{
+			FillRound(R.X - 2.f, R.Y - 2.f, R.W + 4.f, R.H + 4.f, 16.f, bSel ? Teal : Pale(Teal)); // secili / ustunde
 		}
 		FillRound(R.X, R.Y, R.W, R.H, 14.f, bOpen ? FLinearColor::White : FLinearColor(0.95f, 0.94f, 0.93f));
 
@@ -793,7 +926,9 @@ void ASLHUD::DrawDrawer(const USLBuildComponent& B, float DeltaSeconds)
 		const float BX = R.X + R.W - BtnW - 10.f, BY = R.Y + R.H - BtnH - 10.f;
 		if (bOpen)
 		{
-			FillRound(BX, BY, BtnW, BtnH, 0.5f * BtnH, Teal);
+			const bool bBtn = FRect{ BX, BY, BtnW, BtnH }.Contains(MousePos);
+			const FLinearColor BtnC = bBtn ? Teal * 0.82f : bHov ? Teal * 0.92f : Teal;
+			FillRound(BX, BY, BtnW, BtnH, 0.5f * BtnH, FLinearColor(BtnC.R, BtnC.G, BtnC.B, 1.f));
 			const FVector2D BSz = Measure(TEXT("Yerleştir"), 0.65f, false);
 			Text(TEXT("Yerleştir"), BX + 0.5f * (BtnW - BSz.X), BY + 0.5f * (BtnH - BSz.Y), FLinearColor::White, 0.65f);
 			const FString Key = FString::Printf(TEXT("%d"), I + 1);
@@ -823,7 +958,13 @@ void ASLHUD::DrawCenterMessage(const ASLPlatform& P, bool bLevelComplete)
 	}
 	else
 	{
-		switch (P.BalanceState)
+		const ASLGameMode* GMo = GetWorld()->GetAuthGameMode<ASLGameMode>();
+		if (GMo && GMo->IsOutOfMoves())
+		{
+			S = TEXT("HAMLE BİTTİ   Space / F5: tekrar");
+			C = Red;
+		}
+		else switch (P.BalanceState)
 		{
 		case ESLBalanceState::Warning:   S = TEXT("DENGE SINIRDA"); C = Yellow; break;
 		case ESLBalanceState::Failing:   S = FString::Printf(TEXT("DEVRİLİYOR  %.1f"), FMath::Max(0.f, P.FailSeconds - P.FailTimer)); C = Red; break;
@@ -835,9 +976,40 @@ void ASLHUD::DrawCenterMessage(const ASLPlatform& P, bool bLevelComplete)
 	const FVector2D Sz = Measure(S, Scale, true);
 	const float X = 0.5f * (Canvas->ClipX - Sz.X), Y = Canvas->ClipY - 64.f - Sz.Y;
 	const float BH = Sz.Y + 24.f;
-	Card(X - 54.f, Y - 12.f, Sz.X + 84.f, BH, 0.5f * BH, PanelColor);
-	FillCircle(X - 28.f, Y - 12.f + 0.5f * BH, 9.f, C);
-	Text(S, X, Y, C == Yellow ? FLinearColor(0.75f, 0.52f, 0.05f) : C, Scale, true);
+	const ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
+	const ASLLevelDirector* Dir = GM ? GM->GetDirector() : nullptr;
+	const bool bOver = GM && GM->IsRoundOver();
+	const bool bNext = bLevelComplete && Dir && Dir->NextLevelNumber > 0;
+	const float Lift = bOver ? 44.f : 0.f; // altta dugmelere yer
+	Card(X - 54.f, Y - 12.f - Lift, Sz.X + 84.f, BH, 0.5f * BH, PanelColor);
+	FillCircle(X - 28.f, Y - 12.f - Lift + 0.5f * BH, 9.f, C);
+	Text(S, X, Y - Lift, C == Yellow ? FLinearColor(0.75f, 0.52f, 0.05f) : C, Scale, true);
+	AgainRect = {};
+	NextRect = {};
+	if (bOver)
+	{
+		// Tiklanir dugmeler: "Tekrar" ve (bolum bittiyse) "Sonraki bölüm". Ustune gelince koyulasir, buyur.
+		auto Button = [&](FRect& Out, float BX, const FString& Label, const FLinearColor& Fill)
+		{
+			Out = { BX, Y + 10.f, 170.f, 40.f };
+			const bool bH = Hover(Out);
+			const float G = bH ? 3.f : 0.f;
+			const FLinearColor F = bH ? Fill * 0.85f : Fill;
+			Card(Out.X - G, Out.Y - G, Out.W + 2.f * G, Out.H + 2.f * G, 20.f, FLinearColor(F.R, F.G, F.B, 1.f));
+			const FVector2D LS = Measure(Label, 0.8f, false);
+			Text(Label, Out.X + 0.5f * (Out.W - LS.X), Out.Y + 0.5f * (Out.H - LS.Y), FLinearColor::White, 0.8f);
+		};
+		const float Mid = 0.5f * Canvas->ClipX;
+		if (bNext)
+		{
+			Button(AgainRect, Mid - 180.f, TEXT("Tekrar"), Muted);
+			Button(NextRect, Mid + 10.f, FString::Printf(TEXT("%d. bölüm"), Dir->NextLevelNumber), Teal);
+		}
+		else
+		{
+			Button(AgainRect, Mid - 85.f, TEXT("Tekrar"), bLevelComplete ? Teal : Red);
+		}
+	}
 }
 
 void ASLHUD::DrawTestPanel(const ASLPlatform& P, const USLBuildComponent& B)
@@ -870,8 +1042,41 @@ void ASLHUD::DrawTestPanel(const ASLPlatform& P, const USLBuildComponent& B)
 
 // --- Fare ----------------------------------------------------------------------------------------
 
+bool ASLHUD::Hover(const FRect& R)
+{
+	const bool bH = R.Contains(MousePos);
+	bAnyHover |= bH;
+	return bH;
+}
+
 bool ASLHUD::HandleMouseDown(const FVector2D& Mouse)
 {
+	ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
+	if (MusicRect.W > 0.f && MusicRect.Contains(Mouse) && GM)
+	{
+		GM->ToggleMusic();
+		ASLGameMode::PlaySfx(this, TEXT("SFX_UI_Tik"), 0);
+		return true;
+	}
+	if (GM && GM->IsRoundOver())
+	{
+		const ASLLevelDirector* Dir = GM->GetDirector();
+		if (NextRect.W > 0.f && NextRect.Contains(Mouse) && Dir && Dir->NextLevelNumber > 0)
+		{
+			GM->TravelToLevel(Dir->NextLevelNumber);
+			return true;
+		}
+		if (AgainRect.W > 0.f && AgainRect.Contains(Mouse))
+		{
+			GM->TravelToLevel(GM->LevelNumber);
+			return true;
+		}
+	}
+	if (DrawerOpen > 0.5f && HeaderCloseRect.Contains(Mouse))
+	{
+		SetDrawerOpen(false);
+		return true;
+	}
 	if (HandleRect.Contains(Mouse))
 	{
 		bDragging = true;
@@ -897,10 +1102,14 @@ bool ASLHUD::HandleMouseDown(const FVector2D& Mouse)
 			}
 			if (!B->IsSlotUnlocked(I))
 			{
+				ShakeCard = K;
+				ShakeAt = NowReal;
 				Flash(TEXT("Bu bina henüz kilitli: ailenin istediği görevi bitirince açılır."));
 				ASLGameMode::PlaySfx(this, TEXT("SFX_Gecersiz"), 0, 0.8f);
 				return true;
 			}
+			PressedCard = K;
+			PressedAt = NowReal;
 			B->SelectSlot(I);
 			ASLGameMode::PlaySfx(this, TEXT("SFX_UI_Tik"), 0);
 			if (bCloseDrawerOnSelect)

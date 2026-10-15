@@ -9,6 +9,7 @@
 #include "GameFramework/HUD.h"
 #include "SLHUD.generated.h"
 
+class ASLAmbience;
 class ASLLevelDirector;
 class ASLPlatform;
 class USLBuildComponent;
@@ -77,6 +78,10 @@ private:
 	/** Evlerin ustunde mutluluk yuzu (dunyaya bagli). */
 	void DrawHomeFaces(const ASLLevelDirector& D);
 	void DrawFace(float CX, float CY, float R, float Happy01);
+	/** Sag ust: gun, saat (gunes/ay), kalan hamle, muzik dugmesi. */
+	void DrawClock(const ASLLevelDirector& D);
+	void DrawSpeakerIcon(float CX, float CY, float S, bool bOn, const FLinearColor& C);
+
 	void DrawDrawer(const USLBuildComponent& B, float DeltaSeconds);
 	void DrawCenterMessage(const ASLPlatform& P, bool bLevelComplete);
 	void DrawTestPanel(const ASLPlatform& P, const USLBuildComponent& B);
@@ -108,6 +113,9 @@ private:
 		FVector2D GetCenter() const { return FVector2D(X + 0.5f * W, Y + 0.5f * H); }
 	};
 
+	/** Fare bu dikdortgenin ustunde mi; ustundeyse imlec el olur. */
+	bool Hover(const FRect& R);
+
 	float DrawerOpen = 0.f;  // 0 kapali, 1 acik (cizim)
 	bool bDrawerWanted = false;
 	bool bDragging = false;
@@ -118,6 +126,20 @@ private:
 	FRect DrawerRect;
 	TArray<FRect> CardRects;
 	TArray<int32> CardSlots; // kart -> slot indeksi (bolumde kullanilmayan slotlar gizli)
+
+	// --- Etkilesim (16 Eki): ustune gelince parlama, basinca kuculme, kilitliye tiklayinca sallanma ---
+	FVector2D MousePos = FVector2D::ZeroVector;
+	bool bAnyHover = false;
+	float NowReal = 0.f;
+	int32 PressedCard = -1;
+	float PressedAt = -10.f;
+	int32 ShakeCard = -1;
+	float ShakeAt = -10.f;
+	FRect HeaderCloseRect;
+	FRect MusicRect;
+	FRect AgainRect;
+	FRect NextRect;
+	TWeakObjectPtr<ASLAmbience> Ambience;
 	float TasksBottom = 0.f;
 	float LastDrawTime = -1.f;
 

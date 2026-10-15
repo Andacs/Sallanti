@@ -33,7 +33,8 @@ Bağlayıcı spec'ler: `C:\Dev\JamKit\09_MEKANIK_SPEC.md` (kod), `C:\Dev\JamKit\
 **Bitecekler:** mekanik · bir seviye · kazanma/kaybetme · yeniden başlama · çalışan paket
 
 **Bitmeyecekler:** envanter, NPC/AI, ayrı state system, karakter animasyonu, yıkım VFX'i, menü.
-(İkinci seviye bu listedeydi; 15 Ekim'de Andaç 2. bölümü istedi, yapıldı. Üçüncü bölüm için tekrar sorulur.)
+(İkinci seviye bu listedeydi; 15 Ekim'de Andaç 2. bölümü, 16 Ekim'de 3. bölümü istedi, ikisi de yapıldı.
+Dördüncü bölüm için tekrar sorulur.)
 
 **Kesme sırası:** 1. HUD denge göstergesi (platformun kırmızı nabzı yeter) 2. ses 3. kazanma sayacı
 (sadece kaybetme + yeniden başlatma kalır)
@@ -184,14 +185,48 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
   1–2. Kaya ailesine ev, yerleşir → 3–4. Hastane, AVM → 5. yollarla bağla (Kaya mutlu: evinin yolu
   hastaneye ve AVM'ye değiyor) → 6. **Durak**: önü (sarı kare) Ev+Hastane+AVM'yi birleştiren yola
   bakmalı, yoksa konmaz → otobüs (`ASLBus`) o ağda duraktan en uzak karoya gidip gelir, durakta bekler →
-  7–8. Demir ailesi duraktan iner, ona ev kur → 9. **iki aile de mutlu**. Demir'in isteği: evi durağa
-  en fazla **3 birim** (hücre, |dx|+|dy|, `FSLNeed::MaxCells`); uzaksa mutsuz (bar %10–45, uzaklaştıkça
-  azalır). Ev elindeyken durağın 3 birimlik çevresi sarı yanar, ipucu uzaklığı söyler. Sol altta
+  7–8. Demir ailesi duraktan iner, ona ev kur → 9. **iki aile de mutlu**. Demir'in istekleri (16 Ekim):
+  evi durağa en fazla **4 birim** (hücre, |dx|+|dy|, `FSLNeed::MaxCells`; çapraz komşu = 2, yani durağın
+  3×3 çevresi her zaman uygun) **ve** evinin kapısından durağa yol. Uzaksa mutsuz (bar %10–45).
+  Ev elindeyken isteği tutan boş hücreler sarı yanar, ipucu her isteği tek tek söyler. Sol altta
   "Aileler" kartı (yüz, bar, karşılanmayan istek), evlerin üstünde yüz. Mutsuz aile son görevde şikâyet eder.
   1. bölüm bitince **Enter** 2. bölümü açar. Bölüm numarası URL'de: `L_Test?Bolum=2`
-  (`ASLGameMode::LevelNumber`); F5/Space aynı bölümü baştan açar. 1. bölümün çekmecesinde Durak görünmez.
+  (`ASLGameMode::LevelNumber`); F5/Space aynı bölümü baştan açar. Çekmece bölümün hiç açmadığı slotu
+  göstermez (1. bölümde Durak, 1–2'de Park).
+- **3. bölüm: Komşular** (16 Ekim, Andaç: "Is This Seat Taken?" gibi istekler; `ConfigureLevel3`). Üç
+  ailenin istekleri birbirini zorlar: **Yılmaz** (yaşlı) hastaneye ≤3 ve yolla bağlı; **Demir** (çocuklu)
+  parka ≤2, AVM'ye ≥4 (`FarFrom`, gürültü); **Aydın** (Yılmazların çocukları, otobüsle) Yılmaz evine ≤2
+  (`NearFamily`) ve durağa yolla bağlı. Yeni bina **Park** 2×2 kütle 3 (6. kısayol). Zorluk: platform 8,
+  eğim 0,10/cm, devrilme 1,2 sn, **24 hamle** (her hamle 2 saat; biterse "HAMLE BİTTİ"). Test çözümü 15 hamle.
+- **Zorluk bölüme göre** (`ASLLevelDirector::bApplyTuning`, BeginPlay'de platforma yazılır): 1. bölüm
+  eğitim (12 / 0,08 / 1,5 sn), 2. bölüm 10 / 0,09 / 1,3 sn, 3. bölüm 8 / 0,10 / 1,2 sn + hamle sınırı.
+- **Gece-gündüz:** her başarılı koyma/taşıma bir hamle (`USLBuildComponent::GetMoveCount`; geri alma ve
+  aynı yere geri koyma saymaz). Saat = 07:00 + hamle × `HoursPerMove` (1. ve 2. bölüm 1 saat, 3. bölüm 2).
+  `ASLAmbience` saati yumuşakça ilerletir: güneş döner ve alçalır (en alçak 32°; 14°'de akşam tahta
+  kararıyordu), gökyüzü ve bulutlar akşam pembe, gece lacivert, yıldızlar çıkar, pencereler sarı yanar
+  (pencereler ışıksız `M_Ghost`). Sağ üstte saat kartı (gün, saat, kalan hamle, müzik düğmesi).
+- **Arka plan (16 Ekim):** kenardaki binalar kaldırıldı. Yerine yukarı-aşağı sallanan bahçe adacıkları,
+  rüzgârla süzülen sıcak hava balonları, tahtanın çevresinde dönen iki kuş sürüsü, üç katmanda farklı
+  hızda kayan bulutlar.
+- **Müzik:** `Tools/muzik_uret.py` sentezler (`Art/Audio/MUS_Cozy.wav`, 53 sn dikişsiz döngü, 72 BPM),
+  `sesleri_import.py` döngüye alır. `ASLGameMode::MusicVolume` 0,35; **M** ya da saat kartındaki hoparlör
+  aç/kapa. Ben dinlemedim, yalnızca ölçtüm (tepe −3 dBFS, RMS −16 dBFS, dikiş farkı örnek adımından küçük).
+- **Etkileşimli arayüz:** fare üstündeyken kart kalkar ve turkuaz çerçeve alır, "Yerleştir" koyulaşır,
+  kulp dışarı çıkar, imleç el olur; karta basınca kısa küçülme, kilitliye basınca sallanma. Başlıktaki ok
+  çekmeceyi kapatır. Bölüm sonunda / oyun bitince tıklanır "Tekrar" ve "N. bölüm" düğmeleri.
+- **Yol z-fighting:** üst üste binen yol parçaları (uzantılar, viraj dilimleri, çıkmaz diski) aynı
+  yükseklikteydi; parlama dalgası geçerken titriyordu. Şimdi uzantı karodan, komşu uzantılar hücre
+  paritesine göre birbirinden `RoadZStepCm` (0,05) alçak. 0,2'de parça kenarları çizgi gibi görünüyordu.
 - Katalog (`USLBuildComponent::Slots`): Ev **1×1×1 kütle 2** (3 kişi), Hastane 2×2×3 12, AVM 3×3×4 36,
-  Yol 1×1 düz 0,5, **Durak 1×1 kütle 1** (5. kısayol; gövde kutusu gizli, sundurma koddan). Mert'in mesh'leri `Slots[i].Mesh`'e bağlanır (mesh varken kod kapı çizmez).
+  Yol 1×1 düz 0,5, **Durak 1×1 kütle 1** (5. kısayol; gövde kutusu gizli, sundurma koddan),
+  **Park 2×2 kütle 3** (6. kısayol; kapısız, çimen, göl, ağaç, bank). Mert'in mesh'leri `Slots[i].Mesh`'e bağlanır (mesh varken kod kapı çizmez).
+
+**3. bölüm ekranda görüldü (16 Ekim, `SLTestLevel3`):** sarı bölge (Yılmaz: hastane çevresi; Demir: parka
+yakın ve AVM'den uzak), Demir'in evi AVM'ye 3 birim → mutsuz ("Park 3 birim uzakta, AVM çok yakın"),
+taşıyınca mutlu, durak + otobüs, Aydın duraktan iner, üçü mutlu → bölüm sonu 15 hamlede, saat 2. gün
+13:00. Gece görüntüsü (SLSaat 21) pencereler yanık. Aynı derlemeyle 1. ve 2. bölüm de bitti.
+**Görülmedi:** hamle sınırının dolması (HAMLE BİTTİ), fareyle hover/basma animasyonları (test fareyi
+koordinatla oynatıyor), müziğin kulağa nasıl geldiği.
 
 **2. bölüm ekranda görüldü (15 Ekim, `SLTestLevel2`):** Kaya mutlu (%100) yollar bağlanınca, durak
 yola bakmayınca reddediliyor ("önü yola bakmalı"), doğru yerde otobüs başlıyor (rota 5 karo), Demir
@@ -238,7 +273,7 @@ sebebi, CoM, ayarlar).
 
 | Tuş | Ne yapar |
 |---|---|
-| Çekmece (sağ kenar) / Tab | Aç-kapa, karta tıkla: seç. 1–5 kısayol |
+| Çekmece (sağ kenar) / Tab | Aç-kapa, karta tıkla: seç. 1–6 kısayol |
 | Sol tık | Seçiliyken koy · boştayken bir binayı kaldır (taşı) |
 | Sağ tık sürükle / C | Haritayı kaydır / ortala |
 | R / Q | Elindekini saat yönünde / tersine 90° çevir (kapının yönü) |
@@ -247,12 +282,14 @@ sebebi, CoM, ayarlar).
 | Backspace | Son konanı geri al |
 | F5 / Space | Baştan (Space yalnızca devrilince ya da bölüm bitince) |
 | Enter | Bölüm bitince sonraki bölüm |
+| M | Müziği aç / kapa |
 | H | Geliştirici paneli |
 
 Konsol (`~`): `SLKnobs` ayarları listeler, `SLSet <Ad> <Değer>` derlemeden değiştirir. Kalıcı değildir.
 `SLTestLevel1` bölümü otomatik oynayıp ölçer, ekran görüntüleri `Saved/Screenshots/WindowsEditor/SL_L1_*.png`;
 `SLTestLevel2` 2. bölümü oynar (oyunu `"/Game/Sallanti/Maps/L_Test?Bolum=2"` ile aç; `Build\oyna.bat 2`),
-görüntüler `SL_L2_*.png`. `SLBolum 2` konsoldan bölüm değiştirir. `SLReport` anlık eğim/CoM/görevi loga yazar. Eski `SLSelfTest`/`SLTest8` eski kataloga bağlıydı, kaldırıldı.
+görüntüler `SL_L2_*.png`. `SLTestLevel3` aynı şekilde (`?Bolum=3`, `oyna.bat 3`). `SLBolum N` konsoldan
+bölüm değiştirir, `SLSaat 21` saati sabitler (gece denemesi; −1 geri verir). `SLReport` anlık eğim/CoM/görevi loga yazar. Eski `SLSelfTest`/`SLTest8` eski kataloga bağlıydı, kaldırıldı.
 
 Spec çakışması: kesme listesi "R ile yeniden başlat" diyor, girdi tablosu R'yi döndürmeye veriyor.
 R döndürme kaldı, yeniden başlatma F5.

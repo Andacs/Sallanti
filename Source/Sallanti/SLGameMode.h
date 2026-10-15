@@ -10,6 +10,7 @@
 class ASLLevelDirector;
 class ASLPlatform;
 class USoundBase;
+class UAudioComponent;
 
 UCLASS()
 class SALLANTI_API ASLGameMode : public AGameModeBase
@@ -46,6 +47,26 @@ public:
 
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 
+	/** Hamle siniri doldu (3. bolum): oyun biter, devrilme gibi. */
+	void HandleOutOfMoves();
+	bool IsOutOfMoves() const { return bOutOfMoves; }
+
+	// --- Muzik ---
+
+	/** Cozy arka plan muzigi (Tools/muzik_uret.py yer tutucusu). Dongulu. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Ses")
+	TObjectPtr<USoundBase> Music;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Ses", meta = (ClampMin = "0", ClampMax = "1"))
+	float MusicVolume = 0.35f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Ses", meta = (ClampMin = "0"))
+	float MusicFadeInSeconds = 2.f;
+
+	/** M tusu ve HUD'daki hoparlor dugmesi. Bolum degisince sifirlanir (bilerek: her bolum muzikle acilir). */
+	void ToggleMusic();
+	bool IsMusicOn() const { return bMusicOn; }
+
 	/** Ses efekti iste. Ayni karede birden fazla istek gelirse yalnizca en yuksek oncelikli calar
 	 *  ("bir olay, bir ses": yol konup ayni anda baglaninca tik degil can duyulur). */
 	static void PlaySfx(const UObject* WorldContext, FName Name, int32 Priority = 0, float Volume = 1.f, float Pitch = 1.f);
@@ -79,6 +100,11 @@ private:
 
 	bool bGameOver = false;
 	bool bLevelComplete = false;
+	bool bOutOfMoves = false;
+	bool bMusicOn = true;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> MusicComp;
 
 	struct FQueuedSfx { FName Name; int32 Priority = -1; float Volume = 1.f; float Pitch = 1.f; };
 	FQueuedSfx QueuedSfx;

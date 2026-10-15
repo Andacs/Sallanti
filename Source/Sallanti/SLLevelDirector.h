@@ -70,7 +70,9 @@ UENUM(BlueprintType)
 enum class ESLNeedKind : uint8
 {
 	ConnectedTo, // evin kapisindan giden yol agi Type'a degiyor
-	NearType     // evden en yakin Type binasina uzaklik <= MaxCells (hucre, sehir blogu: |dx|+|dy|)
+	NearType,    // evden en yakin Type binasina uzaklik <= MaxCells (hucre, sehir blogu: |dx|+|dy|)
+	FarFrom,     // evden en yakin Type binasina uzaklik >= MinCells (gurultu: "AVM'den uzak"); Type yoksa tamam
+	NearFamily   // FamilyIndex ailesinin evine uzaklik <= MaxCells (akrabalar yan yana)
 };
 
 /** Bir ailenin istegi. Mutluluk = isteklerin ortalamasi; hepsi tamamsa aile mutlu. */
@@ -87,7 +89,15 @@ struct FSLNeed
 
 	/** NearType: en fazla bu kadar hucre uzak. 2. bolum: 3 (Andac, 15 Eki). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti", meta = (ClampMin = "0"))
-	int32 MaxCells = 3;
+	int32 MaxCells = 4;
+
+	/** FarFrom: en az bu kadar hucre uzak. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti", meta = (ClampMin = "0"))
+	int32 MinCells = 4;
+
+	/** NearFamily: hangi aileye yakin (Families indeksi). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
+	int32 FamilyIndex = 0;
 
 	/** HUD'da istegin kisa adi, ornegin "Durağa yakın". */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti")
@@ -138,6 +148,7 @@ public:
 
 	/** N. bolumun varsayilan gorevlerini ve ailelerini yazar (BeginPlay'den once cagrilir). */
 	void ConfigureLevel(int32 Number);
+	void ConfigureLevel3();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
 	int32 LevelNumber = 1;
@@ -170,6 +181,37 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Bolum")
 	float DoneSpeechSeconds = 2.5f;
+
+	// --- Zorluk (bolume gore platforma yazilir; 1. bolum egitim: platformun kendi degerleri) ---
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Zorluk")
+	bool bApplyTuning = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Zorluk")
+	float TunePlatformMass = 12.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Zorluk")
+	float TuneTiltPerCm = 0.08f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Zorluk")
+	float TuneFailSeconds = 1.5f;
+
+	/** Hamle siniri (0 = yok). Dolunca yapi kapanir; bolum bitmediyse "Süre doldu". */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Zorluk", meta = (ClampMin = "0"))
+	int32 MoveLimit = 0;
+
+	// --- Gece-gunduz: her hamle saati ilerletir ---
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Zaman")
+	float StartHour = 7.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Zaman", meta = (ClampMin = "0"))
+	float HoursPerMove = 1.f;
+
+	int32 GetMoveCount() const;
+	/** Bolum basindan beri gecen saat dahil mutlak saat (7 = 1. gun 07:00, 31 = 2. gun 07:00). */
+	float GetTimeHours() const { return StartHour + GetMoveCount() * HoursPerMove; }
+	int32 GetMovesLeft() const { return MoveLimit > 0 ? FMath::Max(0, MoveLimit - GetMoveCount()) : -1; }
 
 	/** Otobus: bu turden bir bina (durak) yol agina bagliysa otobus o agda gidip gelir. Bos = otobus yok. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Otobus")
@@ -267,4 +309,13 @@ private:
 	float DoneUntil = -1.f;
 
 	int32 UnlockedForTask = -1;
+	float OutOfMovesTimer = 0.f;
+
+	void ApplyTuning();
+	void CheckMoveLimit(float DeltaSeconds);
+	/** Iki ayak izi arasi sehir blogu uzakligi (komsu = 1). */
+	static int32 FootDistance(FIntPoint MinA, FIntPoint FootA, FIntPoint MinB, FIntPoint FootB);
+	/** Ailenin uzaklik isteklerinin hepsi bu hucrede (1x1 ev) tutuyor mu; uzaklik istegi yoksa false. */
+	bool CellSatisfiesDistanceNeeds(int32 Fam, FIntPoint Cell, const ASLPlaceable* Ignore) const;
+	int32 FamilyForPlacement(const ASLPlaceable* Moving) const;
 };

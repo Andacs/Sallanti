@@ -62,6 +62,14 @@ public:
 	UFUNCTION(Exec)
 	void SLBolum(int32 Number);
 
+	/** 3. bolumu oynar (L_Test?Bolum=3): uc ailenin istekleri, park, AVM'ye yakin ev -> mutsuz -> tasi. */
+	UFUNCTION(Exec)
+	void SLTestLevel3();
+
+	/** Saati sabitle (0..24, gece-gunduz denemesi). Negatif = hamleye don. */
+	UFUNCTION(Exec)
+	void SLSaat(float Hour);
+
 	/** Sag tikin "tiklama" sayilmasi icin en fazla surukleme, px. Fazlasi haritayi kaydirir. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Kamera")
 	float PanClickThresholdPx = 6.f;
@@ -87,6 +95,8 @@ private:
 	void OnSlot3();
 	void OnSlot4();
 	void OnSlot5();
+	void OnSlot6();
+	void OnToggleMusic();
 	void OnNextLevel();
 	void OnUndo();
 	void OnRestart();
@@ -98,6 +108,7 @@ private:
 
 	void TestLevel1Step();
 	void TestLevel2Step();
+	void TestLevel3Step();
 	void MouseAtLocal(int32 Slot, const FVector& Local);
 	void MoveMouseToLocal(const FVector& Local);
 	void MoveMouseToScreen(const FVector2D& Screen);

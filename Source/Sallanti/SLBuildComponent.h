@@ -155,6 +155,9 @@ public:
 	bool PickUp(ASLPlaceable* Target);
 
 	bool IsMoving() const { return Moving != nullptr; }
+
+	/** Basarili koyma ve tasima sayisi (gece-gunduz ve hamle siniri bunu okur). Geri alma azaltmaz. */
+	int32 GetMoveCount() const { return MoveCount; }
 	const ASLPlaceable* GetMoving() const { return Moving; }
 
 	/** Son yerlestirileni kaldirir (test icin). */
@@ -209,4 +212,5 @@ private:
 	bool bAimOverride = false;
 	FVector2D AimOverride = FVector2D::ZeroVector;
 	const TCHAR* BlockedReason = TEXT("");
+	int32 MoveCount = 0;
 };

@@ -7,7 +7,7 @@ import unreal
 EAL = unreal.EditorAssetLibrary
 SRC = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "Art", "Audio"))
 DST = "/Game/Sallanti/Audio"
-LOOPS = {"SFX_Gicirti_Dongu"}
+LOOPS = {"SFX_Gicirti_Dongu", "MUS_Cozy"}
 
 files = sorted(f for f in os.listdir(SRC) if f.lower().endswith(".wav"))
 if not files:

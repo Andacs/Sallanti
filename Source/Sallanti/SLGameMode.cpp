@@ -7,6 +7,7 @@
 #include "SLBuildComponent.h"
 #include "SLPlayerController.h"
 #include "SLHUD.h"
+#include "Components/AudioComponent.h"
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
@@ -28,6 +29,11 @@ ASLGameMode::ASLGameMode()
 	SL_SFX(SFX_Gorev) SL_SFX(SFX_Bolum) SL_SFX(SFX_Gicirti_Dongu) SL_SFX(SFX_Devrilme) SL_SFX(SFX_Konusma)
 	SL_SFX(SFX_Cekmece) SL_SFX(SFX_UI_Tik)
 #undef SL_SFX
+	static ConstructorHelpers::FObjectFinder<USoundBase> MusicFinder(TEXT("/Game/Sallanti/Audio/MUS_Cozy.MUS_Cozy"));
+	if (MusicFinder.Succeeded())
+	{
+		Music = MusicFinder.Object;
+	}
 }
 
 ASLPlatform* ASLGameMode::GetPlatform()
@@ -98,6 +104,14 @@ void ASLGameMode::StartPlay()
 {
 	Super::StartPlay();
 	GetDirector();
+	if (Music)
+	{
+		MusicComp = UGameplayStatics::CreateSound2D(this, Music, MusicVolume, 1.f, 0.f, nullptr, true, false);
+		if (MusicComp)
+		{
+			MusicComp->FadeIn(MusicFadeInSeconds, MusicVolume);
+		}
+	}
 	// Cozy cevre: seviyeye konmadiysa platformun yerine dogur (L_Ana'ya Yigit koyarsa o kullanilir).
 	if (!TActorIterator<ASLAmbience>(GetWorld()))
 	{
@@ -133,7 +147,7 @@ ASLLevelDirector* ASLGameMode::GetDirector()
 void ASLGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
-	LevelNumber = FMath::Clamp(UGameplayStatics::GetIntOption(Options, TEXT("Bolum"), 1), 1, 2);
+	LevelNumber = FMath::Clamp(UGameplayStatics::GetIntOption(Options, TEXT("Bolum"), 1), 1, 3);
 	UE_LOG(LogTemp, Log, TEXT("SL_BOLUM %d (secenekler: %s)"), LevelNumber, *Options);
 }
 
@@ -159,6 +173,35 @@ void ASLGameMode::HandleLevelComplete()
 		}
 	}
 	UE_LOG(LogTemp, Log, TEXT("SL_LEVEL_DONE bolum tamamlandi"));
+}
+
+void ASLGameMode::ToggleMusic()
+{
+	bMusicOn = !bMusicOn;
+	if (MusicComp)
+	{
+		MusicComp->AdjustVolume(0.5f, bMusicOn ? MusicVolume : 0.f);
+	}
+	UE_LOG(LogTemp, Log, TEXT("SL_MUSIC %s"), bMusicOn ? TEXT("acik") : TEXT("kapali"));
+}
+
+void ASLGameMode::HandleOutOfMoves()
+{
+	if (bLevelComplete || bGameOver)
+	{
+		return;
+	}
+	bGameOver = true;
+	bOutOfMoves = true;
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (ASLPlayerController* PC = Cast<ASLPlayerController>(It->Get()))
+		{
+			PC->Build->DisableBuilding();
+		}
+	}
+	PlaySfx(this, TEXT("SFX_Devrilme"), 6, 0.6f, 0.8f);
+	UE_LOG(LogTemp, Log, TEXT("SL_GAMEOVER hamle bitti"));
 }
 
 void ASLGameMode::HandleCollapsed()

@@ -473,10 +473,23 @@ table.matrix td[colspan]{background:var(--chip);text-align:center}
         <li>Hastane ve AVM kurulur, yollarla eve bağlanır. Kaya ailesinin iki isteği: evinden hastaneye ve AVM'ye yol. İkisi de varsa %100 mutlu.</li>
         <li><b>Otobüs durağı:</b> yalnızca evi, hastaneyi ve AVM'yi birleştiren yolun kenarına konur; önü (sarı kare) o yola bakmalı. Konunca otobüs o yol ağında gidip gelir, durakta bekler.</li>
         <li><b>Demir ailesi</b> otobüsle gelir, durağın önünde belirir ve durağa yakın bir ev ister.</li>
-        <li>Demir ailesinin evi durağa <b>en fazla 3 birim</b> (hücre) uzaksa mutlu, daha uzaksa mutsuz. Ev elindeyken durağın çevresindeki 3 birimlik bölge sarı yanar ve ipucu uzaklığı söyler.</li>
+        <li>Demir ailesinin evi durağa <b>en fazla 4 birim</b> (hücre) uzak olmalı ve kapısından durağa yol gitmeli. Durağın 3×3 çevresi her zaman uygun. Ev elindeyken uygun boş hücreler sarı yanar ve ipucu her isteği tek tek söyler.</li>
         <li>Mutsuz aile ne istediğini balonla söyler. Evi tıklayıp taşımak çözer; iki aile de mutlu olunca bölüm tamamlanır.</li>
       </ol>
       <p class="note">Ekranda: sol altta "Aileler" kartı (yüz, mutluluk barı, karşılanmayan istek), evlerin üstünde mutlu / idare eder / mutsuz yüzü. Otobüs ve durak şimdilik koddan çizili; Mert'in modeli gelince yerini alır (otobüs 36×18×17 cm, pivot taban ortası, ön yüz +X; durak 1×1 hücre, önü +X).</p>
+    </section>
+
+    <section class="card" id="bolum3">
+      <h2>3. Bölüm: Komşular <span class="hand">istekler çakışıyor · zor</span></h2>
+      <p>"Is This Seat Taken?" oyunundaki gibi herkesin bir isteği var ve istekler birbirini zorluyor. Üç aile de mutlu olunca bölüm biter.</p>
+      <table class="spec">
+        <tr><th>Aile</th><th>İstek</th></tr>
+        <tr><td>Yılmaz (yaşlı)</td><td>Hastaneye en fazla 3 birim, evden hastaneye yol</td></tr>
+        <tr><td>Demir (çocuklu)</td><td>Parka en fazla 2 birim, AVM'ye en az 4 birim (gürültü)</td></tr>
+        <tr><td>Aydın (Yılmazların çocukları, otobüsle gelir)</td><td>Yılmazların evine en fazla 2 birim, evden durağa yol</td></tr>
+      </table>
+      <p><b>Zorluk:</b> platform daha hafif (8), eğim daha hızlı (0,10°/cm), devrilme sayacı 1,2 sn. <b>24 hamle</b> var; her koyma ya da taşıma bir hamle ve saati 2 saat ilerletir. Hamle biterse bölüm kaybedilir. Yeni bina: <b>Park</b> (2×2, kütle 3).</p>
+      <p class="note">Bütün bölümlerde gece-gündüz var: her hamle saati ilerletir, akşam gökyüzü pembeleşir, gece pencereler yanar ve yıldızlar çıkar. Zorluk 1. bölümden 3. bölüme artar (platform 12 → 10 → 8).</p>
     </section>
 
     <section class="card" id="istekler">

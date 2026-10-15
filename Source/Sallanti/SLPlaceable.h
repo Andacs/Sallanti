@@ -63,6 +63,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Nesne")
 	float FlatHeightCm = 2.5f;
 
+	/** Ust uste binen yol parcalari arasi yukseklik farki, cm (z-fighting). 0.2 cm parca kenarlarinda ince
+	 *  cizgi birakiyordu (ekran goruntusu); ters-Z derinlikte 0.05 yetiyor. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Yol", meta = (ClampMin = "0.01"))
+	float RoadZStepCm = 0.05f;
+
 	/** Plaka kalinligi, cm. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Nesne")
 	float PlateHeightCm = 2.f;
@@ -110,6 +115,19 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
 	FLinearColor TreeColor = FLinearColor(0.20f, 0.45f, 0.38f);
+
+	/** Pencereler isiksiz (gece yanar). Gunduz rengi = WindowColor * WindowDayBrightness. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
+	float WindowDayBrightness = 1.6f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
+	FLinearColor WindowNightColor = FLinearColor(1.f, 0.78f, 0.38f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
+	float WindowNightBrightness = 3.f;
+
+	/** 0 gunduz .. 1 gece: pencereler sicak sariya doner (gece-gunduz, ASLAmbience cagirir). */
+	void SetNightGlow(float Night);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
 	FLinearColor BushColor = FLinearColor(0.38f, 0.66f, 0.42f);
@@ -261,6 +279,11 @@ private:
 	TArray<TObjectPtr<USceneComponent>> DecorParts;
 
 	UPROPERTY(Transient)
+	TArray<TObjectPtr<UMaterialInstanceDynamic>> WindowMIDs;
+
+	float NightGlow = 0.f;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UStaticMesh> ConeMesh;
 
 	UPROPERTY(Transient)
@@ -275,6 +298,8 @@ private:
 	void BuildEntrance();
 	void BuildDecor();
 	void BuildStopDecor();
+	void BuildParkDecor();
+	void AddWindowPart(const FVector& Loc, const FVector& Size);
 	void ClearDecor();
 	UStaticMeshComponent* AddDecor(UStaticMesh* InMesh, const FVector& Loc, const FVector& SizeCm, const FLinearColor& Color, const FRotator& Rot = FRotator::ZeroRotator);
 	void AddCypress(const FVector& Base, float Height);
