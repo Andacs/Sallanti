@@ -106,7 +106,7 @@ Teslim konfigürasyonu: **Shipping.** Çıktı: `Build\Package\Windows\Sallanti.
 
 ## Git akışı
 
-Tek dal: `main`. Uzak depo: https://github.com/Andacs/Sallanti (private). Herkes oraya push eder.
+Tek dal: `main`. Uzak depo: https://github.com/Andacs/Sallanti (**public**, 15 Ekim 2026). Herkes oraya push eder.
 Feature branch + PR 48 saatte maliyeti faydasından fazla.
 
 - Çalışan her şey commit edilir, **her commit push edilir**
@@ -244,7 +244,9 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
     oyun penceresini yakalar (Shipping'de log ve konsol yok).
   - **Madde 3.1: Sallantı tema açıklanmadan (14–15 Ekim) yapıldı, teslim edilemez.** Bu proje prova; jam'de
     yeni oyun yapılacak, araçlar (trailer, menü/jenerik düzeni, ses/müzik üreticileri, paketleme) taşınır.
-  - Repo şu an **private**; kurallar public istiyor (6.5). Görünürlük Andaç'ın kararı.
+  - Repo **public** (6.5). Herkes okuyabilir: repoya şifre, anahtar, token koyma (3.7). Commit e-postaları da görünür.
+    UE'nin şablonla ürettiği `AndroidFileServer SecurityToken` silindi, eklenti kapalı; editör yeniden eklerse commit'leme.
+    Takım adı repo açıklamasında ve `freaklabs` konusunda (9.6). Organizasyon gerekmiyor, repo Andacs altında.
 - **Zorluk bölüme göre** (`ASLLevelDirector::bApplyTuning`, BeginPlay'de platforma yazılır): 1. bölüm
   eğitim (12 / 0,08 / 1,5 sn), 2. bölüm 10 / 0,09 / 1,3 sn, 3. bölüm 8 / 0,10 / 1,2 sn + hamle sınırı.
 - **Gece-gündüz:** her başarılı koyma/taşıma bir hamle (`USLBuildComponent::GetMoveCount`; geri alma ve

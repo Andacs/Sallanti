@@ -17,7 +17,7 @@ https://game.ktimo.com.tr/jam/teslim
 | Platform | Windows |
 | Oynanabilir sürüm | `Build/Teslim/Sallanti_Windows.zip` (Shipping, 682 MB; repoya girmez). 15 Ekim 20.20'de temiz klasöre açılıp çalıştırıldı: açılış videosu → ana menü ekranda görüldü (`Tools/pencere_goruntu.ps1`). Paket süresi 2 dk 14 sn. |
 | Video (≤ 1 dk, MP4) | `Build/Teslim/Sallanti_Trailer.mp4` (36,5 sn, 1920×1080, H.264 + AAC) |
-| Public repo | [https://github.com/Andacs/Sallanti] **şu an private: teslimden önce public yapılmalı (madde 6.5, aksi hâlde diskalifiye)** |
+| Public repo | [https://github.com/Andacs/Sallanti] public (15 Ekim, girişsiz açıldığı denendi). Jam oyununun reposu da teslimden önce public olmalı (madde 6.5, aksi hâlde diskalifiye). |
 | Kurulum / çalıştırma / kontroller | `README.md` → "Çalıştırma" bölümü (EK A.3 şablonu) |
 | Hazır kaynak beyanı | `README.md` → "Hazır kaynak beyanı" (beş kategori) |
 | AI beyanı | `README.md` → "Yapay zekâ beyanı" (beş kategori) |
@@ -31,7 +31,7 @@ https://game.ktimo.com.tr/jam/teslim
 | Oyun 48 saatte hazırlandı | **Sallantı için HAYIR** (prova). Jam oyunu için 16 Ekim 18.00 sonrası commit'ler kanıt. |
 | Build test edildi, ZIP hazır | `Build\paketle.bat` → ZIP → başka klasörde açıp çalıştır |
 | Video ≤ 1 dk MP4 | `bash Tools/trailer_yap.sh` |
-| Repo public, doğru bağlantı | Teslimden önce yapılacak |
+| Repo public, doğru bağlantı | Sallantı: tamam. Jam oyunu: public yap, tarayıcıda girişsiz aç, gizli bilgi taraması yap (`git grep -niE "token\|secret\|password\|apikey"`) |
 | ZIP ile repo uyumlu | ZIP'i son commit'ten üret, commit hash'ini not et |
 | Hazır kaynak beyanı (5 kategori) | README'de |
 | Kısıtlı ham asset repoda yok | Yok (motor içerikleri motorla gelir) |
