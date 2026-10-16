@@ -35,7 +35,12 @@ python -c "import numpy, scipy, PIL" 2>/dev/null && tamam "numpy, scipy, pillow"
 [ -x /c/Windows/System32/tar.exe ] && tamam "Windows tar.exe (ZIP icin)" || bozuk "Windows tar.exe yok"
 [ -f "$UE" ] && tamam "Unreal 5.8: $UE" || bozuk "Unreal 5.8 yok ya da yanlis yerde (C:\\Program Files\\Epic Games\\UE_5.8 olmali)"
 UEV=$(python -c "import json;d=json.load(open(r'C:/Program Files/Epic Games/UE_5.8/Engine/Build/Build.version'));print('%d.%d.%d'%(d['MajorVersion'],d['MinorVersion'],d['PatchVersion']))" 2>/dev/null || echo "?")
-[ "$UEV" = "5.8.0" ] && tamam "Unreal surumu 5.8.0" || olcu "Unreal surumu $UEV (5.8.0 bekleniyor)"
+# 5.8.x hepsi olur (EngineAssociation "5.8"), ama ekipteki bilgisayarlar AYNI yama surumunde olmali:
+# yeni yamanin kaydettigi asset eski yamada uyari verebilir. 16 Ekim: Andac 5.8.0, Yigit 5.8.3 -> esitlendi.
+case "$UEV" in
+  5.8.*) tamam "Unreal surumu $UEV (ekipteki diger bilgisayarlarla ayni yama olmali)";;
+  *)     bozuk "Unreal surumu $UEV: 5.8 bekleniyor";;
+esac
 VSWHERE="/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe"
 if [ -x "$VSWHERE" ]; then
   VS=$("$VSWHERE" -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property displayName 2>/dev/null | tr -d '\r')
