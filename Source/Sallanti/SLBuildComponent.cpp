@@ -36,10 +36,12 @@ USLBuildComponent::USLBuildComponent()
 	Ev.Residents = 3;
 	Ev.bHasEntrance = true;
 	Slots.Add(Ev);
-	FSLSlot Hastane = Make(TEXT("Hastane"), TEXT("Hastane"), 2, 2, 3, 12.f, FLinearColor(0.97f, 0.95f, 0.92f)); // orta bina
+	// Hastane 4x3, AVM 4x5 (23 Eki, Yigit). Ilk sayi kapiya dik derinlik, ikincisi kapi yuzunun eni; ikisinde
+	// de en tek: kapi onu tek hucre. Kutleler ayni kaldi (12 / 36): bolum dengesi onlarla olculdu.
+	FSLSlot Hastane = Make(TEXT("Hastane"), TEXT("Hastane"), 4, 3, 3, 12.f, FLinearColor(0.86f, 0.93f, 0.96f)); // orta bina; gok mavisi beyaz, krem cerceveler secilsin
 	Hastane.bHasEntrance = true;
 	Slots.Add(Hastane);
-	FSLSlot Avm = Make(TEXT("AVM"), TEXT("AVM"), 3, 3, 4, 36.f, FLinearColor(0.96f, 0.84f, 0.80f));             // buyuk bina
+	FSLSlot Avm = Make(TEXT("AVM"), TEXT("AVM"), 4, 5, 4, 36.f, FLinearColor(0.96f, 0.84f, 0.80f));             // buyuk bina
 	Avm.bHasEntrance = true;
 	Slots.Add(Avm);
 	FSLSlot Yol = Make(TEXT("Yol"), TEXT("Yol"), 1, 1, 1, 0.5f, FLinearColor(0.90f, 0.77f, 0.60f));

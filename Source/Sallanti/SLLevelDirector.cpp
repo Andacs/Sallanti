@@ -333,19 +333,18 @@ void ASLLevelDirector::SpawnMenuTown()
 	}
 	bMenuSpawned = true;
 	B->bBuildEnabled = false;
-	// 3. bolumun test cozumu: dengede (egim ~2 derece), herkes mutlu olurdu.
-	B->SpawnDirect(TEXT("Hastane"), FIntPoint(4, 6), 3);
+	// 3. bolumun test cozumu (Hastane 4x3, AVM 4x5): dengede (egim ~3 derece), herkes mutlu olurdu.
+	B->SpawnDirect(TEXT("Hastane"), FIntPoint(3, 5), 3);
 	B->SpawnDirect(TEXT("AVM"), FIntPoint(7, 5), 3);
-	B->SpawnDirect(TEXT("Park"), FIntPoint(2, 9), 3);
-	B->SpawnDirect(TEXT("Ev"), FIntPoint(3, 5), 0);
-	B->SpawnDirect(TEXT("Ev"), FIntPoint(4, 10), 3);
-	B->SpawnDirect(TEXT("Ev"), FIntPoint(3, 3), 0);
-	B->SpawnDirect(TEXT("Yol"), FIntPoint(4, 5), 0);
-	for (int32 X = 4; X <= 8; ++X)
+	B->SpawnDirect(TEXT("Park"), FIntPoint(1, 10), 3);
+	B->SpawnDirect(TEXT("Ev"), FIntPoint(2, 4), 0);
+	B->SpawnDirect(TEXT("Ev"), FIntPoint(3, 10), 3);
+	B->SpawnDirect(TEXT("Ev"), FIntPoint(2, 3), 0);
+	for (int32 X = 3; X <= 9; ++X)
 	{
 		B->SpawnDirect(TEXT("Yol"), FIntPoint(X, 4), 0);
 	}
-	B->SpawnDirect(TEXT("Yol"), FIntPoint(4, 3), 0);
+	B->SpawnDirect(TEXT("Yol"), FIntPoint(3, 3), 0);
 	B->SpawnDirect(TEXT("Durak"), FIntPoint(6, 3), 1);
 	UE_LOG(LogSLLevel, Log, TEXT("SL_MENU kasaba kuruldu"));
 }

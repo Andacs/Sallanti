@@ -265,16 +265,19 @@ void ASLHUD::DrawHUD()
 	}
 
 	// Gokyuzu pusulasi (16 Eki): eski kartlar (gorev listesi, aileler karti, cekmece, saat karti, denge
-	// bari) cizilmiyor; fonksiyonlari duruyor (WBP_HUD'a gecerken basvuru).
+	// bari) cizilmiyor; fonksiyonlari duruyor (WBP_HUD'a gecerken basvuru). Sol taraf 23 Eki'den beri B
+	// yonu: aile rayi + istek karti, su terazisi, alt rafta binalar (takimyildizi ve pusula cizilmiyor).
+	FamilyCardRect = {};
 	if (D)
 	{
 		DrawHomeNodes(*D);
 		DrawSky(*D);
-		DrawConstellation(*GM->GetDirector());
+		DrawFamilyRail(*D);
 		DrawFamilyOverlays(*GM->GetDirector());
 		DrawSpeech(*D);
 	}
-	DrawCompass(*P, *B);
+	DrawLevel(*P, *B);
+	DrawDock(*P, *B);
 	DrawRotateButtons();
 	if (!bCinema)
 	{
@@ -1437,7 +1440,7 @@ bool ASLHUD::HandleMouseDown(const FVector2D& Mouse)
 		ASLGameMode::PlaySfx(this, TEXT("SFX_UI_Tik"), 0);
 		return true;
 	}
-	return false;
+	return IsOverPanels(Mouse);
 }
 
 void ASLHUD::HandleMouseUp(const FVector2D& Mouse)
@@ -1756,6 +1759,10 @@ void ASLHUD::DrawLens(const ASLLevelDirector& D, int32 Fam)
 	}
 	const float LR = 34.f * S;
 	Arc(P.X, P.Y, LR, 0.f, 360.f, 1.5f, CInk);
+	if (FamilyCardRect.W > 0.f)
+	{
+		return; // B yonu: istekler soldaki kartta, mercek yalniz aileyi isaretler
+	}
 	// Kutular sagda yukarida; ekrandan tasarsa sola.
 	const int32 N = Def.Needs.Num();
 	const float BoxW = 178.f * S, BoxH = 74.f * S, Gap = 10.f * S;
@@ -2331,6 +2338,469 @@ void ASLHUD::DrawCinemaOverlay()
 	if (!CinemaCaption.IsEmpty())
 	{
 		const FVector2D Sz = Measure(CinemaCaption, 1.1f * S, false);
-		TextHalo(CinemaCaption, 0.5f * (Canvas->ClipX - Sz.X), Canvas->ClipY - 120.f * S, MInk, 1.1f * S);
+		TextHalo(CinemaCaption, 0.5f * (Canvas->ClipX - Sz.X), Canvas->ClipY - 190.f * S, MInk, 1.1f * S); // raftan yukarida
+	}
+}
+
+// =================================================================================================
+// B yonu (23 Eki, Yigit secti; tasarim: https://claude.ai/artifact/8wGifc6E1G6yfX4WWrKrU2)
+// Solda aile rayi: aile renginde yuvarlak portre, cevresinde mutluluk halkasi, altinda ad. Secili ailenin
+// yaninda istek karti (soz, istekler: tik / carpi). Sol altta su terazisi. Binalar alt ortada rafta:
+// simge, stok rozeti, kisayol numarasi; secilen yukari kalkar. Ustunde secilenin olcusu ve tahmini egim.
+// =================================================================================================
+
+namespace
+{
+	const FLinearColor BInk(0.243f, 0.208f, 0.314f);
+	const FLinearColor BMuted(0.404f, 0.369f, 0.471f);
+	const FLinearColor BCream(1.f, 0.973f, 0.933f);
+	const FLinearColor BTile(0.957f, 0.922f, 0.867f);
+	const FLinearColor BTrack(0.929f, 0.894f, 0.839f);
+	const FLinearColor BSelFill(0.890f, 0.949f, 0.933f);
+	const FLinearColor BTealDark(0.173f, 0.498f, 0.478f);
+	const FLinearColor BTeal(0.247f, 0.651f, 0.627f);
+	const FLinearColor BCoral(0.886f, 0.447f, 0.357f);
+	const FLinearColor BCoralDark(0.706f, 0.278f, 0.184f);
+	const FLinearColor BYellow(0.886f, 0.710f, 0.243f);
+	const FLinearColor BGoodFill(0.827f, 0.925f, 0.906f);
+	const FLinearColor BBadFill(0.976f, 0.851f, 0.820f);
+	const FLinearColor BShadow(0.243f, 0.208f, 0.314f, 0.16f);
+
+	FLinearColor WithAlpha(const FLinearColor& C, float A) { return FLinearColor(C.R, C.G, C.B, C.A * A); }
+}
+
+void ASLHUD::DrawBuildingIcon(FName Id, float CX, float CY, float Size, const FLinearColor& C)
+{
+	// Tasarim sayfasindaki SVG simgeleriyle ayni cizgiler (24 birimlik kutu, egriler kirik cizgi).
+	const float K = Size / 24.f;
+	const float T = FMath::Max(1.5f, 1.8f * K);
+	auto P = [&](float X, float Y) { return FVector2D(CX + (X - 12.f) * K, CY + (Y - 12.f) * K); };
+	auto Poly = [&](std::initializer_list<FVector2D> Pts)
+	{
+		const FVector2D* Prev = nullptr;
+		for (const FVector2D& Q : Pts)
+		{
+			if (Prev)
+			{
+				DrawLine(Prev->X, Prev->Y, Q.X, Q.Y, C, T);
+			}
+			Prev = &Q;
+		}
+	};
+	if (Id == TEXT("Ev"))
+	{
+		Poly({ P(4, 11), P(12, 4), P(20, 11) });
+		Poly({ P(6, 10), P(6, 20), P(18, 20), P(18, 10) });
+		Poly({ P(10, 20), P(10, 14), P(14, 14), P(14, 20) });
+	}
+	else if (Id == TEXT("Hastane"))
+	{
+		Poly({ P(4, 8), P(20, 8), P(20, 20), P(4, 20), P(4, 8) });
+		Poly({ P(10, 20), P(10, 16), P(14, 16), P(14, 20) });
+		Poly({ P(12, 10), P(12, 14) });
+		Poly({ P(10, 12), P(14, 12) });
+		Poly({ P(3, 20), P(21, 20) });
+	}
+	else if (Id == TEXT("AVM"))
+	{
+		Poly({ P(3, 9), P(5, 4), P(19, 4), P(21, 9) });
+		Poly({ P(4, 9), P(4, 20), P(20, 20), P(20, 9) });
+		Poly({ P(9, 20), P(9, 14), P(15, 14), P(15, 20) });
+		Poly({ P(3, 9), P(4.5f, 10.5f), P(6, 11), P(7.5f, 10.5f), P(9, 9), P(10.5f, 10.5f), P(12, 11), P(13.5f, 10.5f),
+			P(15, 9), P(16.5f, 10.5f), P(18, 11), P(19.5f, 10.5f), P(21, 9) });
+	}
+	else if (Id == TEXT("Yol"))
+	{
+		Poly({ P(7, 3), P(5, 21) });
+		Poly({ P(17, 3), P(19, 21) });
+		Poly({ P(12, 4), P(12, 7) });
+		Poly({ P(12, 10), P(12, 13) });
+		Poly({ P(12, 16), P(12, 20) });
+	}
+	else if (Id == TEXT("Durak"))
+	{
+		Poly({ P(3, 8), P(6, 4), P(18, 4), P(21, 8), P(3, 8) });
+		Poly({ P(5, 8), P(5, 20) });
+		Poly({ P(19, 8), P(19, 20) });
+		Poly({ P(8, 14), P(16, 14) });
+		Poly({ P(3, 20), P(21, 20) });
+	}
+	else if (Id == TEXT("Park"))
+	{
+		Arc(CX, CY - 3.f * K, 5.5f * K, 0.f, 360.f, T, C);
+		Poly({ P(12, 14.5f), P(12, 21) });
+		Poly({ P(4, 21), P(20, 21) });
+	}
+	else
+	{
+		Poly({ P(6, 6), P(18, 6), P(18, 18), P(6, 18), P(6, 6) });
+	}
+}
+
+void ASLHUD::DrawFamilyRail(const ASLLevelDirector& D)
+{
+	if (!D.HasFamilyNeeds())
+	{
+		FamilyRowRects.Reset();
+		return;
+	}
+	const float S = UiScale();
+	const float CX = 64.f * S, Y0 = 158.f * S, Step = FamilyRailStep * S;
+	const float PR = 24.f * S, RingR = 31.f * S, RingT = 4.f * S;
+	FamilyRowRects.SetNum(D.Families.Num());
+	const int32 Sel = D.GetSelectedFamily();
+	for (int32 I = 0; I < D.Families.Num(); ++I)
+	{
+		const FSLFamilyDef& Def = D.Families[I];
+		const float CY = Y0 + I * Step;
+		const bool bPresent = D.IsFamilyPresent(I);
+		const bool bKnown = D.IsFamilyDiscovered(I);
+		const ASLPlaceable* Home = D.GetHome(I);
+		const bool bHappy = D.IsFamilyHappy(I);
+		const bool bSel = Sel == I;
+		const FRect R{ CX - RingR - 4.f * S, CY - RingR - 4.f * S, 2.f * RingR + 8.f * S, 2.f * RingR + 50.f * S };
+		FamilyRowRects[I] = R;
+		const bool bHov = bPresent && Hover(R);
+		const float Y = CY + (bHov && !bSel ? -2.f * S : 0.f);
+
+		FString Status;
+		FLinearColor StatusC = BMuted;
+		if (!bPresent)
+		{
+			FillCircle(CX, Y, PR, WithAlpha(BCream, 0.55f));
+			Arc(CX, Y, PR, 0.f, 360.f, 2.f, BMuted, true);
+			const FVector2D Q = Measure(TEXT("?"), 0.8f * S, false);
+			Text(TEXT("?"), CX - 0.5f * Q.X, Y - 0.5f * Q.Y, BMuted, 0.8f * S);
+			Status = Def.bArriveAtStop ? TEXT("otobüsle gelecek") : TEXT("yolda");
+		}
+		else if (!bKnown)
+		{
+			FillCircle(CX, Y, RingR, BCream);
+			FillCircle(CX, Y, PR, WithAlpha(Def.Tint, 0.35f));
+			Arc(CX, Y, PR, NowReal * 40.f, NowReal * 40.f + 360.f, 2.f, BInk, true);
+			const FVector2D Q = Measure(TEXT("?"), 0.8f * S, false);
+			Text(TEXT("?"), CX - 0.5f * Q.X, Y - 0.5f * Q.Y, BInk, 0.8f * S);
+			Status = TEXT("tanışmadın");
+		}
+		else
+		{
+			// Mutluluk halkasi: krem zemin, ustunde mutlulukla dolan yay (mutlu turkuaz, degilse mercan).
+			Arc(CX, Y, RingR, 0.f, 360.f, RingT, BCream);
+			const float H = Home ? FMath::Clamp(D.GetHappiness(I), 0.f, 1.f) : 0.f;
+			if (H > 0.01f)
+			{
+				Arc(CX, Y, RingR, 90.f, 90.f - 360.f * H, RingT, bHappy ? BTeal : BCoral);
+			}
+			FillCircle(CX, Y, PR, Def.Tint);
+			// Yuz: krem gozler; agiz mutluysa gulumser, mutsuzsa asagi, yerlesmediyse duz.
+			const float E = FMath::Max(1.5f, 0.1f * PR);
+			FillCircle(CX - 0.3f * PR, Y - 0.12f * PR, E, BCream);
+			FillCircle(CX + 0.3f * PR, Y - 0.12f * PR, E, BCream);
+			const float MW = 0.36f * PR, MY = Y + 0.3f * PR, Bend = 0.14f * PR, MT = FMath::Max(1.5f, 0.1f * PR);
+			if (!Home || !Home->bResidentsArrived)
+			{
+				DrawLine(CX - MW, MY, CX + MW, MY, BCream, MT);
+			}
+			else
+			{
+				const float Sg = bHappy ? 1.f : -1.f;
+				const float Y1 = MY - Sg * 0.5f * Bend;
+				DrawLine(CX - MW, Y1, CX - 0.4f * MW, Y1 + Sg * Bend, BCream, MT);
+				DrawLine(CX - 0.4f * MW, Y1 + Sg * Bend, CX + 0.4f * MW, Y1 + Sg * Bend, BCream, MT);
+				DrawLine(CX + 0.4f * MW, Y1 + Sg * Bend, CX + MW, Y1, BCream, MT);
+			}
+			if (!Home)
+			{
+				Status = TEXT("ev arıyor");
+			}
+			else if (!Home->bResidentsArrived)
+			{
+				Status = TEXT("taşınıyor");
+			}
+			else if (bHappy)
+			{
+				Status = TEXT("mutlu");
+				StatusC = BTealDark;
+			}
+			else
+			{
+				Status = TEXT("mutsuz");
+				StatusC = BCoralDark;
+			}
+		}
+		if (bSel || bHov)
+		{
+			Arc(CX, Y, RingR + 5.f * S, 0.f, 360.f, bSel ? 2.f : 1.f, BInk);
+		}
+
+		// Ad hapi (secili: koyu), altinda durum.
+		FString Short = Def.Name;
+		int32 Sp = INDEX_NONE;
+		if (Short.FindChar(TEXT(' '), Sp))
+		{
+			Short = Short.Left(Sp);
+		}
+		const float NS = 0.8f * S;
+		const FVector2D NSz = Measure(Short, NS, false);
+		const float PadX = 9.f * S, PY = Y + RingR + 6.f * S;
+		FillRound(CX - 0.5f * NSz.X - PadX, PY, NSz.X + 2.f * PadX, NSz.Y + 2.f * S, 0.5f * (NSz.Y + 2.f * S), bSel ? BInk : BCream);
+		Text(Short, CX - 0.5f * NSz.X, PY + 1.f * S, bSel ? BCream : (bPresent ? BInk : BMuted), NS);
+		const float SS = 0.64f * S;
+		const FVector2D SSz = Measure(Status, SS, false);
+		TextHalo(Status, CX - 0.5f * SSz.X, PY + NSz.Y + 6.f * S, StatusC, SS);
+	}
+	if (D.Families.IsValidIndex(Sel) && D.IsFamilyPresent(Sel))
+	{
+		DrawFamilyCard(D, Sel, Y0 + Sel * Step);
+	}
+}
+
+void ASLHUD::DrawFamilyCard(const ASLLevelDirector& D, int32 Fam, float AnchorY)
+{
+	const float S = UiScale();
+	const FSLFamilyDef& Def = D.Families[Fam];
+	const ASLPlaceable* Home = D.GetHome(Fam);
+	const float W = 330.f * S, Pad = 18.f * S;
+	const float X = 122.f * S;
+	const float TitleS = 0.8f * S, QuoteS = 0.7f * S, LabelS = 0.82f * S, DetailS = 0.66f * S;
+	const TArray<FString> Quote = Def.Greeting.IsEmpty() ? TArray<FString>() : Wrap(FString::Printf(TEXT("“%s”"), *Def.Greeting), W - 2.f * Pad, QuoteS);
+	const float QuoteLH = Measure(TEXT("Ag"), QuoteS, false).Y + 1.f;
+	const float RowH = 52.f * S;
+	const float TitleH = 30.f * S;
+	float H = Pad + TitleH + Quote.Num() * QuoteLH + 10.f * S + Def.Needs.Num() * RowH + Pad;
+	if (!Home)
+	{
+		H += 26.f * S;
+	}
+	const float Y = FMath::Clamp(AnchorY - 34.f * S, 120.f * S, FMath::Max(120.f * S, Canvas->ClipY - H - 240.f * S));
+	FamilyCardRect = { X - 10.f * S, Y, W + 10.f * S, H };
+	Card(X, Y, W, H, 18.f * S, BCream);
+	// Portreye bakan uc.
+	const float TipY = FMath::Clamp(AnchorY, Y + 20.f * S, Y + H - 20.f * S);
+	const int32 TipN = FMath::RoundToInt(10.f * S);
+	for (int32 R = -TipN; R <= TipN; ++R)
+	{
+		const float Wd = float(TipN - FMath::Abs(R));
+		DrawRect(BCream, X - Wd, TipY + R, Wd + 1.f, 1.f);
+	}
+	float CY = Y + Pad;
+	{
+		TGuardValue<bool> Title(bUseTitleFont, true);
+		Text(TrUpper(Def.Name), X + Pad, CY, BInk, TitleS);
+	}
+	CY += TitleH;
+	for (const FString& L : Quote)
+	{
+		Text(L, X + Pad, CY, BMuted, QuoteS);
+		CY += QuoteLH;
+	}
+	CY += 10.f * S;
+	for (int32 N = 0; N < Def.Needs.Num(); ++N)
+	{
+		bool bMet = false;
+		const FString Detail = D.DescribeNeed(Fam, N, bMet);
+		const float IX = X + Pad + 11.f * S, IY = CY + 14.f * S, IR = 11.f * S;
+		if (!Home)
+		{
+			Arc(IX, IY, IR, 0.f, 360.f, 1.5f, BMuted, true);
+		}
+		else if (bMet)
+		{
+			FillCircle(IX, IY, IR, BGoodFill);
+			DrawLine(IX - 4.5f * S, IY + 0.5f * S, IX - 1.5f * S, IY + 3.5f * S, BTealDark, 2.f * S);
+			DrawLine(IX - 1.5f * S, IY + 3.5f * S, IX + 4.5f * S, IY - 3.f * S, BTealDark, 2.f * S);
+		}
+		else
+		{
+			FillCircle(IX, IY, IR, BBadFill);
+			DrawLine(IX - 3.5f * S, IY - 3.5f * S, IX + 3.5f * S, IY + 3.5f * S, BCoralDark, 2.f * S);
+			DrawLine(IX + 3.5f * S, IY - 3.5f * S, IX - 3.5f * S, IY + 3.5f * S, BCoralDark, 2.f * S);
+		}
+		const float TX = IX + IR + 10.f * S;
+		Text(Def.Needs[N].Label, TX, CY, BInk, LabelS);
+		Text(!Home ? FString(TEXT("önce bir ev")) : Detail, TX, CY + 24.f * S, BMuted, DetailS);
+		CY += RowH;
+	}
+	if (!Home)
+	{
+		Text(TEXT("Raftan Ev'i seçip koy ya da boş bir eve tıkla."), X + Pad, CY, BTealDark, DetailS);
+	}
+}
+
+void ASLHUD::DrawLevel(const ASLPlatform& P, const USLBuildComponent& B)
+{
+	// Su terazisi: krem daire, ince arti; sari kesik halka uyari, mercan halka devrilme. Kabarcik platformun
+	// yattigi yone, egimle orantili kayar. Kesik halka: elindekini koyarsan kabarcigin gidecegi yer.
+	const float S = UiScale();
+	const float R = LevelRadius * S;
+	const float CX = 24.f * S + R, CY = Canvas->ClipY - 24.f * S - R;
+	LevelRect = { CX - R, CY - R, 2.f * R, 2.f * R };
+	FillCircle(CX + 1.f, CY + 4.f, R, BShadow);
+	FillCircle(CX, CY, R, BCream);
+	const float Inner = R - 12.f * S;
+	DrawLine(CX, CY - Inner, CX, CY + Inner, BTrack, 1.5f);
+	DrawLine(CX - Inner, CY, CX + Inner, CY, BTrack, 1.5f);
+	const float Max = FMath::Max(P.FailTilt * 1.15f, 0.1f);
+	const float WarnR = Inner * P.WarnTilt / Max, FailR = Inner * P.FailTilt / Max;
+	Arc(CX, CY, WarnR, 0.f, 360.f, 2.f, BYellow, true);
+	Arc(CX, CY, FailR, 0.f, 360.f, 3.f, BCoral);
+	const FVector2D Tilt = P.CurrentTilt;
+	const float Deg = P.IsCollapsed() ? Max : Tilt.Size();
+	FVector2D Dir(0.f, -1.f);
+	if (Tilt.SizeSquared() > 1e-4f)
+	{
+		const FVector C0 = P.TiltPivot->GetComponentLocation();
+		const FVector C1 = C0 + FVector(Tilt.X, Tilt.Y, 0.f).GetSafeNormal() * 100.f;
+		const FVector S0 = Project(C0), S1 = Project(C1);
+		Dir = FVector2D(S1.X - S0.X, S1.Y - S0.Y).GetSafeNormal();
+	}
+	const float BR = 11.f * S;
+	const float Len = Inner * FMath::Clamp(Deg / Max, 0.f, 1.f);
+	const FLinearColor BubbleC = Deg >= P.FailTilt ? BCoral : Deg >= P.WarnTilt ? BYellow : BTeal;
+	if (const ASLPlaceable* G = B.GetGhost(); G && B.State == ESLBuildState::Placing)
+	{
+		const float Pred = P.PredictTiltDegrees(G->Mass, B.GetGhostCenterLocal());
+		const FVector2D GL = B.GetGhostCenterLocal();
+		FVector2D PD = Dir;
+		const FVector C0 = P.TiltPivot->GetComponentLocation();
+		const FVector C1 = P.TiltPivot->GetComponentTransform().TransformPosition(FVector(GL.X, GL.Y, 0.f));
+		const FVector S0 = Project(C0), S1 = Project(C1);
+		const FVector2D V(S1.X - S0.X, S1.Y - S0.Y);
+		if (V.SizeSquared() > 1.f && Pred > Deg)
+		{
+			PD = (Dir * Deg + V.GetSafeNormal() * (Pred - Deg)).GetSafeNormal();
+		}
+		const float PL = Inner * FMath::Clamp(Pred / Max, 0.f, 1.f);
+		Arc(CX + PD.X * PL, CY + PD.Y * PL, BR, 0.f, 360.f, 1.6f, Pred >= P.FailTilt ? BCoralDark : BInk, true);
+	}
+	const FVector2D Bub(CX + Dir.X * Len, CY + Dir.Y * Len);
+	FillCircle(Bub.X, Bub.Y, BR, BubbleC);
+	FillCircle(Bub.X - 0.3f * BR, Bub.Y - 0.3f * BR, 0.28f * BR, WithAlpha(BCream, 0.8f));
+	if (P.BalanceState == ESLBalanceState::Failing)
+	{
+		const float Left = FMath::Clamp(1.f - P.FailTimer / FMath::Max(P.FailSeconds, 0.01f), 0.f, 1.f);
+		Arc(CX, CY, R + 6.f * S, 90.f, 90.f + 360.f * Left, 4.f, BCoral);
+	}
+	const FString DegS = FString::Printf(TEXT("%.0f°"), Deg);
+	{
+		TGuardValue<bool> Title(bUseTitleFont, true);
+		const FVector2D DS = Measure(DegS, 1.3f * S, false);
+		Text(DegS, CX - 0.5f * DS.X, CY + 0.3f * R, Deg >= P.FailTilt ? BCoralDark : BInk, 1.3f * S);
+	}
+	const FVector2D LS = Measure(TEXT("DENGE"), 0.56f * S, false);
+	Text(TEXT("DENGE"), CX - 0.5f * LS.X, CY + 0.3f * R + 38.f * S, BMuted, 0.56f * S);
+}
+
+void ASLHUD::DrawDock(const ASLPlatform& P, const USLBuildComponent& B)
+{
+	const float S = UiScale();
+	CardRects.Reset();
+	CardSlots.Reset();
+	DockRect = {};
+	const ASLGameMode* GM = GetWorld()->GetAuthGameMode<ASLGameMode>();
+	const ASLLevelDirector* Dir = GM ? GM->GetDirector() : nullptr;
+	// Bolumun hic acmadigi slot rafta yok (1. bolumde Durak, 1-2'de Park).
+	TArray<int32> Shown;
+	for (int32 I = 0; I < B.Slots.Num(); ++I)
+	{
+		bool bUsed = !Dir;
+		for (int32 T = 0; Dir && T < Dir->Tasks.Num() && !bUsed; ++T)
+		{
+			bUsed = Dir->Tasks[T].Unlocks.Contains(B.Slots[I].Id);
+		}
+		if (bUsed)
+		{
+			Shown.Add(I);
+		}
+	}
+	if (Shown.Num() == 0)
+	{
+		return;
+	}
+	const float BW = DockButtonSize.X * S, BH = DockButtonSize.Y * S, Gap = DockGap * S, Pad = 8.f * S;
+	const float W = Shown.Num() * BW + (Shown.Num() - 1) * Gap + 2.f * Pad, H = BH + 2.f * Pad;
+	const float X0 = 0.5f * (Canvas->ClipX - W), Y0 = Canvas->ClipY - 20.f * S - H;
+	DockRect = { X0, Y0 - 10.f * S, W, H + 10.f * S };
+	Card(X0, Y0, W, H, 24.f * S, BCream);
+	int32 InfoSlot = INDEX_NONE;
+	for (int32 K = 0; K < Shown.Num(); ++K)
+	{
+		const int32 I = Shown[K];
+		const FSLSlot& Sl = B.Slots[I];
+		const bool bOpen = B.IsSlotUnlocked(I);
+		const int32 Left = B.GetRemaining(Sl.Id);
+		const bool bUsable = bOpen && Left != 0;
+		const bool bSel = B.SelectedSlot == I && !B.IsMoving() && B.State != ESLBuildState::Idle;
+		float X = X0 + Pad + K * (BW + Gap), Y = Y0 + Pad;
+		const FRect Hit{ X, Y - 8.f * S, BW, BH + 8.f * S };
+		CardRects.Add(Hit);
+		CardSlots.Add(I);
+		const bool bHov = Hover(Hit);
+		if (bHov)
+		{
+			InfoSlot = I;
+		}
+		else if (bSel && InfoSlot == INDEX_NONE)
+		{
+			InfoSlot = I;
+		}
+		const float PressT = (PressedCard == K) ? (NowReal - PressedAt) / 0.14f : 1.f;
+		const float ShakeT = (ShakeCard == K) ? NowReal - ShakeAt : 10.f;
+		X += ShakeT < 0.4f ? 5.f * FMath::Sin(ShakeT * 45.f) * (1.f - ShakeT / 0.4f) : 0.f;
+		Y -= bSel ? 8.f * S : (bHov && bUsable ? 3.f * S : 0.f);
+		Y += PressT < 1.f ? 3.f * S * FMath::Sin(PressT * UE_PI) : 0.f;
+		const float A = bUsable ? 1.f : 0.75f;
+		if (bSel)
+		{
+			FillRound(X + 1.f, Y + 6.f * S, BW, BH, 16.f * S, WithAlpha(BTealDark, 0.25f));
+			OutlineRound(X, Y, BW, BH, 16.f * S, 2.f * S, BTealDark, BSelFill);
+		}
+		else if (bHov && bUsable)
+		{
+			OutlineRound(X, Y, BW, BH, 16.f * S, 1.f, CLine, BTile);
+		}
+		else
+		{
+			FillRound(X, Y, BW, BH, 16.f * S, WithAlpha(BTile, bUsable ? 1.f : 0.55f));
+		}
+		const FLinearColor TC = WithAlpha(bUsable ? BInk : BMuted, A);
+		Text(FString::FromInt(I + 1), X + 9.f * S, Y + 5.f * S, WithAlpha(BMuted, A), 0.6f * S);
+		if (!bOpen)
+		{
+			DrawLockIcon(X + BW - 15.f * S, Y + 15.f * S, 14.f * S, WithAlpha(BMuted, A));
+		}
+		else if (Left > 0)
+		{
+			const FString N = FString::FromInt(Left);
+			const float NS = 0.6f * S;
+			const FVector2D NSz = Measure(N, NS, false);
+			const float RW = FMath::Max(22.f * S, NSz.X + 12.f * S);
+			FillRound(X + BW - 6.f * S - RW, Y + 5.f * S, RW, 22.f * S, 11.f * S, BInk);
+			Text(N, X + BW - 6.f * S - 0.5f * RW - 0.5f * NSz.X, Y + 16.f * S - 0.5f * NSz.Y, BCream, NS);
+		}
+		DrawBuildingIcon(Sl.Id, X + 0.5f * BW, Y + 40.f * S, 32.f * S, TC);
+		const FString L = (Left == 0 && bOpen) ? FString(TEXT("bitti")) : Sl.Label;
+		const float LS = 0.72f * S;
+		const FVector2D LSz = Measure(L, LS, false);
+		Text(L, X + 0.5f * (BW - LSz.X), Y + BH - LSz.Y - 7.f * S, TC, LS);
+	}
+
+	// Ustte: secilen ya da ustune gelinen binanin olcusu, kutlesi ve (elindeyse) koyunca egim.
+	if (InfoSlot != INDEX_NONE && !(GM && GM->IsRoundOver()))
+	{
+		const FSLSlot& Sl = B.Slots[InfoSlot];
+		FString Mass = FString::SanitizeFloat(Sl.Mass, 0);
+		Mass.ReplaceInline(TEXT("."), TEXT(","));
+		FString InfoLine = FString::Printf(TEXT("%s  ·  %d×%d  ·  kütle %s"), *Sl.Label, Sl.SizeCells.X, Sl.SizeCells.Y, *Mass);
+		const float Pred = (B.SelectedSlot == InfoSlot) ? PredictPlacement(P, B) : -1.f;
+		if (Pred >= 0.f)
+		{
+			InfoLine += FString::Printf(TEXT("  ·  buraya konarsa %.0f°"), Pred);
+		}
+		const float IS = 0.72f * S;
+		const FVector2D ISz = Measure(InfoLine, IS, false);
+		const float IX = 0.5f * (Canvas->ClipX - ISz.X), IY = Y0 - ISz.Y - 26.f * S;
+		FillRound(IX - 12.f * S, IY - 4.f * S, ISz.X + 24.f * S, ISz.Y + 8.f * S, 0.5f * (ISz.Y + 8.f * S), WithAlpha(BCream, 0.94f));
+		Text(InfoLine, IX, IY, Pred >= P.FailTilt ? BCoralDark : BInk, IS);
 	}
 }

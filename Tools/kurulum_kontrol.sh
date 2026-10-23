@@ -111,7 +111,7 @@ else
     else
       bozuk "trailer olmadi: Saved/kurulum_trailer.log"; tail -3 "$ROOT/Saved/kurulum_trailer.log"
     fi
-    git restore Content/Movies/Intro.mp4 "Build/Teslim/${PROJE}_Trailer.mp4" 2>/dev/null   # deneme reposu eski haline
+    git restore "Build/Teslim/${PROJE}_Trailer.mp4" 2>/dev/null   # deneme reposu eski haline
   fi
 fi
 

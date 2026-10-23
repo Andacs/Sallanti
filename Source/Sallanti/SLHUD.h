@@ -64,6 +64,21 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|HUD")
 	float BalanceBarWidth = 520.f;
 
+	/** Bina rafi: dugme olcusu (UiScale ile carpilir), dugmeler arasi bosluk. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|HUD")
+	FVector2D DockButtonSize = FVector2D(84.f, 92.f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|HUD")
+	float DockGap = 6.f;
+
+	/** Su terazisi yaricapi (UiScale ile carpilir). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|HUD")
+	float LevelRadius = 84.f;
+
+	/** Aile rayinda iki portre arasi, px (UiScale ile carpilir). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|HUD")
+	float FamilyRailStep = 124.f;
+
 	/** Cekmece genisligi, px. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Cekmece")
 	float DrawerWidth = 330.f;
@@ -180,6 +195,21 @@ private:
 	FRect RotLeftRect;
 	FRect RotRightRect;
 	TArray<FRect> FamilyRowRects;
+
+	// --- B yonu (23 Eki, Yigit secti: https://claude.ai/artifact/8wGifc6E1G6yfX4WWrKrU2) ---
+	// Solda aile rayi (yuvarlak portre + mutluluk halkasi), secili ailenin yaninda istek karti; sol altta
+	// su terazisi; binalar alt ortada rafta. Takimyildizi ve pusula fonksiyonlari duruyor, cizilmiyor.
+	void DrawFamilyRail(const ASLLevelDirector& D);
+	void DrawFamilyCard(const ASLLevelDirector& D, int32 Fam, float AnchorY);
+	void DrawLevel(const ASLPlatform& P, const USLBuildComponent& B);
+	void DrawDock(const ASLPlatform& P, const USLBuildComponent& B);
+	/** Binanin cizgi simgesi (24 birimlik kutuda cizildi, Size px'e olceklenir). */
+	void DrawBuildingIcon(FName Id, float CX, float CY, float Size, const FLinearColor& C);
+	FRect FamilyCardRect;
+	FRect DockRect;
+	FRect LevelRect;
+	/** Raf ve kartlar tiklamayi yutar; tahtaya gecmez. */
+	bool IsOverPanels(const FVector2D& P) const { return FamilyCardRect.Contains(P) || DockRect.Contains(P) || LevelRect.Contains(P); }
 
 	// --- Menu ve jenerik ---
 	TArray<FString> GetCreditsLines() const;

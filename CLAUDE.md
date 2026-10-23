@@ -198,7 +198,8 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
   ailenin istekleri birbirini zorlar: **Yılmaz** (yaşlı) hastaneye ≤3 ve yolla bağlı; **Demir** (çocuklu)
   parka ≤2, AVM'ye ≥4 (`FarFrom`, gürültü); **Aydın** (Yılmazların çocukları, otobüsle) Yılmaz evine ≤2
   (`NearFamily`) ve durağa yolla bağlı. Yeni bina **Park** 2×2 kütle 3 (6. kısayol). Zorluk: platform 8,
-  eğim 0,10/cm, devrilme 1,2 sn, **24 hamle** (her hamle 2 saat; biterse "HAMLE BİTTİ"). Test çözümü 15 hamle.
+  eğim 0,10/cm, devrilme 1,2 sn, **24 hamle** (her hamle 2 saat; biterse "HAMLE BİTTİ"). Test çözümü 16 hamle
+  (23 Ekim, yeni ölçülerle; en büyük ara eğim 7,3°: hastane + Yılmaz evi, AVM'den önce).
 - **Açık bölümler (16 Ekim, Andaç: "görevler sırayla, simülasyon gibi"):** 2. ve 3. bölümde sıralı görev
   yok (`ASLLevelDirector::bOpenLevel`). Tek hedef: herkes mutlu + mahalle planı (`RequiredTypes`) kurulu.
   Binalar baştan açık ama **stoklu** (`SlotLimits`: 3. bölümde 3 Ev, 12 Yol...). Ailelerin istekleri
@@ -216,6 +217,13 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
   https://claude.ai/artifact/FNFkufSuNDvnZLMMMCkqhp).** Kart/panel yok. Üstte güneşin yolu: güneş/ay saate göre
   yayda, boncuklar hamle sınırı varsa hamleler (dolu = harcandı), yoksa günün saatleri; altında bölüm adı
   aralıklı büyük harf, gün · saat · kalan hamle, eğitimde sıradaki görev + nokta ilerleme, altında ipucu.
+  **Sol taraf 23 Ekim'den beri B yönü** (Yiğit seçti: https://claude.ai/artifact/8wGifc6E1G6yfX4WWrKrU2;
+  `DrawFamilyRail`, `DrawFamilyCard`, `DrawLevel`, `DrawDock`): solda aile rayı (aile renginde yüz, etrafında
+  mutlulukla dolan halka, ad hapı, durum), seçili ailenin yanında istek kartı (sözü, istekler tik / çarpı);
+  sol altta su terazisi; binalar **alt ortada rafta** (simge, stok rozeti, kısayol, kilit; üstünde ölçü,
+  kütle, "buraya konarsa N°"). Raf, kart ve terazi tıklamayı yutar. Mercek artık yalnız halka. Ekranda
+  görüldü (`SLTestLevel1/3`); **görülmedi:** gerçek fareyle raf/aile tıklaması, hover. Aşağıdaki
+  takımyıldızı ve pusula kodda duruyor, çizilmiyor:
   Solda aileler takımyıldızı (dolu = mutlu, mercan halka = mutsuz, kesik "?" = tanışmadın; tıklanır).
   Sol altta **denge pusulası**: su terazisi gibi nokta platformun yattığı yöne kayar; kesik sarı halka
   uyarı, mercan halka devrilme, boş halka elindekinin tahmini. Etrafındaki yayda bina daireleri (sayı =
@@ -229,7 +237,8 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
   penceresi açmaya çalışıp çöküyor (`CurrentApplication.IsValid()`); bu yüzden asset değil dosya. Dosya
   yoksa Roboto'ya düşer (logda `SL_FONT yok`). `SlateCore` modülü bunun için eklendi.
 - **Açılış, menü, jenerik, trailer (16 Ekim, kural kitapçığı v09'a göre):**
-  - Açılış videosu `Content/Movies/Intro.mp4` (19 sn), `DefaultGame.ini` `StartupMovies` (atlanabilir).
+  - **Açılış videosu yok** (23 Ekim, Yiğit): `Intro.mp4` ve `StartupMovies` kaldırıldı, oyun doğrudan ana
+    menüyle açılır.
   - **Ana menü = bölüm 0** (URL'de `Bolum` yoksa oyun menüyle açılır; `oyna.bat` varsayılanı 0). Arkada
     3. bölümün çözümü kurulu canlı kasaba döner (`ConfigureMenu`, `SpawnMenuTown`), gün döngüsü akar.
     Oyna · Bölümler · Nasıl oynanır · Emeği geçenler · Çıkış. Oyunda sol üstte "Menü"; bitiş ekranında
@@ -238,7 +247,7 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
     takım adı `TeamName` = **FreakLabs**, ekip `TeamMembers`).
   - **Trailer:** `bash Tools/trailer_yap.sh` → `SLSinema` 3. bölümü sabit 30 fps (`-benchmark -fps=30`) oynar,
     her kareyi kaydeder; ffmpeg kareler + müzik → `Build/Teslim/Sallanti_Trailer.mp4` (36,5 sn, ≤ 60 kuralı)
-    ve kısa kesit → `Intro.mp4`. Süre ~6 dk. Başlık kartı zemini %86 opak (%50'de arayüzün altında kaldı).
+    Süre ~6 dk. Başlık kartı zemini %86 opak (%50'de arayüzün altında kaldı).
   - Teslim belgeleri: `README.md` (çalıştırma, kontroller, beş kategoride hazır kaynak ve AI beyanı),
     `Docs/TESLIM.md` (form alanları, kontrol listesi). Paket denemesi: `Tools/pencere_goruntu.ps1` yalnızca
     oyun penceresini yakalar (Shipping'de log ve konsol yok).
@@ -266,9 +275,23 @@ Feature branch + PR 48 saatte maliyeti faydasından fazla.
 - **Yol z-fighting:** üst üste binen yol parçaları (uzantılar, viraj dilimleri, çıkmaz diski) aynı
   yükseklikteydi; parlama dalgası geçerken titriyordu. Şimdi uzantı karodan, komşu uzantılar hücre
   paritesine göre birbirinden `RoadZStepCm` (0,05) alçak. 0,2'de parça kenarları çizgi gibi görünüyordu.
-- Katalog (`USLBuildComponent::Slots`): Ev **1×1×1 kütle 2** (3 kişi), Hastane 2×2×3 12, AVM 3×3×4 36,
+- **Bina ölçüleri ve cozy süs (23 Ekim, Yiğit):** Hastane **4×3**, AVM **4×5** (ilk sayı kapıya dik
+  derinlik, ikincisi kapı yüzü; ikisi de tek, kapı önü tek hücre). Kütleler değişmedi (12 / 36). Test, menü
+  kasabası ve trailer yerleşimleri yeni ölçülere taşındı; Python modeliyle önce hesaplandı, oyunda ölçülen
+  eğimler aynı çıktı (1. bölüm 2,3 / 5,1 / devriliyor / 4,7 / son 4,2°). Süs (`BuildHouseDecor`,
+  `BuildHospitalDecor`, `BuildMallDecor`): krem çerçeveli ve kayıtlı pencereler, alt sırada çiçek kutusu,
+  evde panjur, sundurma, basamak, fener; hastane gök mavisi beyaz, turkuaz beşik çatı, alınlıkta haçlı
+  rozet, direkli saçak, "HASTANE" tabelası, saksı; AVM'de dükkân başına başka renk çizgili, fırfırlı tente,
+  kat silmesi, çatı bahçesi. Fenerler pencere gibi gece yanar. Renkler `EditAnywhere` (`TrimColor`,
+  `ShutterColor`, `AwningColors`...).
+- Katalog (`USLBuildComponent::Slots`): Ev **1×1×1 kütle 2** (3 kişi), Hastane 4×3×3 12, AVM 4×5×4 36,
   Yol 1×1 düz 0,5, **Durak 1×1 kütle 1** (5. kısayol; gövde kutusu gizli, sundurma koddan),
   **Park 2×2 kütle 3** (6. kısayol; kapısız, çimen, göl, ağaç, bank). Mert'in mesh'leri `Slots[i].Mesh`'e bağlanır (mesh varken kod kapı çizmez).
+
+**Yeni ölçüler ekranda görüldü (23 Ekim, `SLTestLevel1/2/3`):** üç bölüm baştan sona bitti (3. bölüm 16
+hamle), gündüz yakın plan `SL_L1_9_yakin_yol`, arka yüzler `SL_L1_9b_yakin_arka`, gece `SL_L3_7_gece`,
+menü kasabası `SL_M_0_ana` (`SLTestMenu`).
+**Görülmedi:** trailer (`SLSinema`) yeni koordinatlarla çekilmedi; trailer eski binaları gösteriyor.
 
 **Açık bölümler ekranda görüldü (16 Ekim, `SLTestLevel2/3`):** "?" işaretli aileler, istek kartı, aile
 seçiliyken kurulan eve yürüyüş, kapı önünde duran aileler, sarı bölge, tepkiler, döndürülmüş görünüş, gece.

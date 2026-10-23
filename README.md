@@ -46,8 +46,8 @@ işini doğrudan çağırıyor).
 Unreal Engine **5.8.0**. Editör kapalıyken `Build\derle.bat`, paket için `Build\paketle.bat`
 (Shipping, çıktı `Build\Package\Windows`). Ayrıntılar ve proje kuralları `CLAUDE.md`'de.
 
-Trailer ve açılış videosu oyundan çekilir: `bash Tools/trailer_yap.sh` (ffmpeg gerekir) →
-`Build/Teslim/Sallanti_Trailer.mp4` (≤ 60 sn) ve `Content/Movies/Intro.mp4`.
+Trailer oyundan çekilir: `bash Tools/trailer_yap.sh` (ffmpeg gerekir) →
+`Build/Teslim/Sallanti_Trailer.mp4` (≤ 60 sn). Açılış videosu yok; oyun doğrudan ana menüyle açılır.
 
 ## Hazır kaynak beyanı (kitapçık 3.4, EK A.4)
 

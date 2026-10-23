@@ -261,13 +261,37 @@ void ASLPlaceable::AddCypress(const FVector& Base, float Height)
 	AddDecor(SphereMesh, Base + FVector(0, 0, Trunk + 0.2f * Crown), FVector(W, W, Crown * 0.4f), TreeColor);
 }
 
-void ASLPlaceable::AddWindowGrid(int32 Face, float Bottom, float Top, int32 Rows, int32 Cols, float WinW, float WinH, bool bSkipDoorColumn)
+FVector ASLPlaceable::FaceLoc(int32 Face, float Along, float Out, float Z) const
 {
-	// Yuzler: 0 +X (kapi), 1 +Y, 2 -X, 3 -Y. Pencere govdeden 0.75 cm disari tasan ince kutu.
-	const bool bAlongX = (Face % 2) == 1; // +-Y yuzlerinde pencereler X boyunca dizilir
-	const float Sign = (Face < 2) ? 1.f : -1.f;
-	const float Off = (bAlongX ? BodyHalfY() : BodyHalfX()) + 0.4f;
-	const float Half = bAlongX ? BodyHalfX() : BodyHalfY();
+	switch (Face & 3)
+	{
+	case 0: return FVector(Out, Along, Z);
+	case 1: return FVector(Along, Out, Z);
+	case 2: return FVector(-Out, Along, Z);
+	default: return FVector(Along, -Out, Z);
+	}
+}
+
+FVector ASLPlaceable::FaceSize(int32 Face, float AlongSize, float OutSize, float H) const
+{
+	return (Face & 1) ? FVector(AlongSize, OutSize, H) : FVector(OutSize, AlongSize, H);
+}
+
+float ASLPlaceable::FaceDepth(int32 Face) const
+{
+	return (Face & 1) ? BodyHalfY() : BodyHalfX();
+}
+
+float ASLPlaceable::FaceHalfLen(int32 Face) const
+{
+	return (Face & 1) ? BodyHalfX() : BodyHalfY();
+}
+
+void ASLPlaceable::AddWindowGrid(int32 Face, float Bottom, float Top, int32 Rows, int32 Cols, float WinW, float WinH, bool bSkipDoorColumn,
+	bool bFlowers, bool bShutters)
+{
+	// Yuzler: 0 +X (kapi), 1 +Y, 2 -X, 3 -Y. Cicek kutusu yalnizca alt sirada.
+	const float Half = FaceHalfLen(Face);
 	for (int32 R = 0; R < Rows; ++R)
 	{
 		const float Z = Rows == 1 ? 0.5f * (Bottom + Top) : FMath::Lerp(Bottom, Top, float(R) / (Rows - 1));
@@ -278,11 +302,117 @@ void ASLPlaceable::AddWindowGrid(int32 Face, float Bottom, float Top, int32 Rows
 			{
 				continue;
 			}
-			const FVector Loc = bAlongX ? FVector(T, Sign * Off, Z) : FVector(Sign * Off, T, Z);
-			const FVector Size = bAlongX ? FVector(WinW, 1.5f, WinH) : FVector(1.5f, WinW, WinH);
-			AddWindowPart(Loc, Size);
+			AddFramedWindow(Face, T, Z, WinW, WinH, bFlowers && R == 0, bShutters);
 		}
 	}
+}
+
+void ASLPlaceable::AddFramedWindow(int32 Face, float Along, float Z, float W, float H, bool bFlowers, bool bShutters)
+{
+	// Katmanlar govdeden disari: cerceve (D-0.3..D+0.9) < cam (D-0.35..D+1.15) < kayit (D+1.05..D+1.55).
+	const float D = FaceDepth(Face);
+	const float B = FMath::Clamp(0.18f * FMath::Min(W, H), 1.2f, 3.5f); // cerceve payi
+	AddDecor(DefaultCube, FaceLoc(Face, Along, D + 0.3f, Z), FaceSize(Face, W + 2.f * B, 1.2f, H + 2.f * B), TrimColor);
+	AddWindowPart(FaceLoc(Face, Along, D + 0.4f, Z), FaceSize(Face, W, 1.5f, H));
+	const float Bar = FMath::Max(0.6f, 0.08f * FMath::Min(W, H));
+	AddDecor(DefaultCube, FaceLoc(Face, Along, D + 1.3f, Z), FaceSize(Face, Bar, 0.5f, H), TrimColor);
+	AddDecor(DefaultCube, FaceLoc(Face, Along, D + 1.3f, Z), FaceSize(Face, W, 0.5f, Bar), TrimColor);
+	const float Bottom = Z - 0.5f * H - B;
+	if (bFlowers)
+	{
+		// Cicek kutusu: toprak rengi kutu, ustunde yesil kume ve renkli ciceker.
+		const float BoxW = W + 2.f * B, BoxH = FMath::Clamp(0.22f * H, 1.8f, 4.f), BoxD = FMath::Clamp(0.3f * W, 2.5f, 5.f);
+		const float BoxZ = Bottom - 0.5f * BoxH;
+		AddDecor(DefaultCube, FaceLoc(Face, Along, D + 0.5f * BoxD, BoxZ), FaceSize(Face, BoxW, BoxD, BoxH), PlanterColor);
+		AddDecor(SphereMesh, FaceLoc(Face, Along, D + 0.5f * BoxD, BoxZ + 0.5f * BoxH), FaceSize(Face, BoxW - 0.5f, BoxD * 0.9f, BoxH * 1.1f), BushColor);
+		const int32 N = FMath::Clamp(FMath::RoundToInt(BoxW / 4.f), 2, 7);
+		const float Dot = FMath::Clamp(BoxW / N * 0.75f, 1.6f, 3.5f);
+		for (int32 I = 0; I < N && FlowerColors.Num() > 0; ++I)
+		{
+			const float A = Along - 0.5f * BoxW + (I + 0.5f) * BoxW / N;
+			AddDecor(SphereMesh, FaceLoc(Face, A, D + 0.6f * BoxD, BoxZ + 0.5f * BoxH + 0.35f * Dot), FVector(Dot), FlowerColors[I % FlowerColors.Num()]);
+		}
+	}
+	else
+	{
+		AddDecor(DefaultCube, FaceLoc(Face, Along, D + 1.f, Bottom - 0.3f * B), FaceSize(Face, W + 2.f * B + 1.5f, 2.4f, FMath::Max(1.f, 0.6f * B)), TrimColor);
+	}
+	if (bShutters)
+	{
+		const float SW = 0.42f * W;
+		for (int32 S = -1; S <= 1; S += 2)
+		{
+			AddDecor(DefaultCube, FaceLoc(Face, Along + S * (0.5f * W + B + 0.5f * SW), D + 0.5f, Z), FaceSize(Face, SW, 1.f, H + B), ShutterColor);
+		}
+	}
+}
+
+void ASLPlaceable::AddAwning(int32 Face, float Along, float ZTop, float Width, float Depth, const FLinearColor& Color)
+{
+	// Seritler duvardan one egik iner; on kenarda her seridin altinda yuvarlak firfir.
+	const float D = FaceDepth(Face);
+	const int32 N = FMath::Max(2, AwningStripes);
+	const float W = Width / N;
+	const float Pitch = 22.f;
+	const float C = FMath::Cos(FMath::DegreesToRadians(Pitch)), S = FMath::Sin(FMath::DegreesToRadians(Pitch));
+	for (int32 I = 0; I < N; ++I)
+	{
+		const FLinearColor Stripe = (I % 2) ? TrimColor : Color;
+		const float A = Along - 0.5f * Width + (I + 0.5f) * W;
+		AddDecor(DefaultCube, FaceLoc(Face, A, D + 0.5f * Depth * C, ZTop - 0.5f * Depth * S), FVector(Depth, W + 0.05f, 1.2f), Stripe,
+			FRotator(-Pitch, 90.f * (Face & 3), 0.f));
+		AddDecor(SphereMesh, FaceLoc(Face, A, D + Depth * C, ZTop - Depth * S - 0.15f * W), FaceSize(Face, 0.95f * W, 1.4f, 0.6f * W), Stripe);
+	}
+	AddDecor(DefaultCube, FaceLoc(Face, Along, D + 0.6f, ZTop + 0.6f), FaceSize(Face, Width + 2.f, 1.2f, 1.5f), TrimColor);
+}
+
+void ASLPlaceable::AddPlanter(const FVector& Center, const FVector& Size, int32 Flowers)
+{
+	AddDecor(DefaultCube, Center + FVector(0, 0, 0.5f * Size.Z), Size, PlanterColor);
+	AddDecor(SphereMesh, Center + FVector(0, 0, Size.Z), FVector(Size.X - 0.5f, Size.Y - 0.5f, Size.Z * 0.9f), BushColor);
+	const bool bAlongX = Size.X >= Size.Y;
+	const float Len = bAlongX ? Size.X : Size.Y;
+	const float Dot = FMath::Clamp(Len / FMath::Max(1, Flowers) * 0.7f, 1.6f, 3.5f);
+	for (int32 I = 0; I < Flowers && FlowerColors.Num() > 0; ++I)
+	{
+		const float T = -0.5f * Len + (I + 0.5f) * Len / Flowers;
+		const FVector At = Center + (bAlongX ? FVector(T, 0, 0) : FVector(0, T, 0)) + FVector(0, 0, Size.Z * 1.3f);
+		AddDecor(SphereMesh, At, FVector(Dot), FlowerColors[I % FlowerColors.Num()]);
+	}
+}
+
+void ASLPlaceable::AddLamp(const FVector& Base, float Height)
+{
+	// Direk + fener (pencere gibi: gece sicak sari yanar) + kulah.
+	AddDecor(DefaultCube, Base + FVector(0, 0, 0.5f * Height), FVector(1.4f, 1.4f, Height), LampPostColor);
+	AddWindowPart(Base + FVector(0, 0, Height + 2.2f), FVector(4.f, 4.f, 4.4f));
+	AddDecor(ConeMesh, Base + FVector(0, 0, Height + 5.8f), FVector(6.f, 6.f, 3.f), LampPostColor);
+}
+
+void ASLPlaceable::AddRoundTree(const FVector& Base, float Height)
+{
+	AddDecor(DefaultCube, Base + FVector(0, 0, 0.3f * Height), FVector(0.1f * Height, 0.1f * Height, 0.6f * Height), FLinearColor(0.50f, 0.36f, 0.26f));
+	AddDecor(SphereMesh, Base + FVector(0, 0, 0.72f * Height), FVector(0.6f * Height, 0.6f * Height, 0.55f * Height), BushColor * 0.9f);
+}
+
+void ASLPlaceable::AddGableRoof(float Top, const FLinearColor& Gable, const FLinearColor& Roof)
+{
+	// Govde boyunca 45 derece cevrilmis kup: ust yarisi ucgen alinlik. Ustune iki cati levhasi ve mahya.
+	// Mahya kapiya dik (X boyunca): alinlik kapinin ustunde.
+	const float HX = BodyHalfX();
+	const float W = 2.f * BodyHalfY();
+	const float S = W / UE_SQRT_2;
+	AddDecor(DefaultCube, FVector(0, 0, Top), FVector(2.f * HX, S, S), Gable, FRotator(0, 0, 45.f));
+	const float SlabLen = 0.5f * W * UE_SQRT_2 + 4.f;
+	const float SlabT = FMath::Clamp(0.06f * W, 3.f, 6.f);
+	const float Over = FMath::Clamp(0.08f * HX, 3.f, 8.f); // sacak
+	for (int32 Side = -1; Side <= 1; Side += 2)
+	{
+		const FVector Mid(0, Side * 0.25f * W, Top + 0.25f * W);
+		const FVector N = FVector(0, Side, 1).GetSafeNormal();
+		AddDecor(DefaultCube, Mid + N * (0.5f * SlabT) + FVector(0, Side * 1.f, -1.f), FVector(2.f * HX + 2.f * Over, SlabLen, SlabT), Roof, FRotator(0, 0, Side * 45.f));
+	}
+	AddDecor(DefaultCube, FVector(0, 0, Top + 0.5f * W + 0.4f * SlabT), FVector(2.f * HX + 2.f * Over + 2.f, 1.3f * SlabT, 1.3f * SlabT), Roof * 0.8f, FRotator(0, 0, 45.f));
 }
 
 void ASLPlaceable::BuildDecor()
@@ -302,13 +432,11 @@ void ASLPlaceable::BuildDecor()
 		BuildParkDecor();
 		return;
 	}
-	const float HX = BodyHalfX(), HY = BodyHalfY();
-	const float Base = PlateHeightCm;
 	const float H = SizeCells.Z * GridSize;
-	const float Top = Base + H;
+	const float Base = PlateHeightCm;
 	const float PX = 0.5f * PlateSizeX(), PY = 0.5f * PlateSizeY();
 
-	// Plakanin arka koselerinde servi, on koselerde cali (kapinin onu bos kalir).
+	// Plakanin arka koselerinde servi, on koselerde cali (kapinin onu bos kalir). Govde altinda koyu supurgelik.
 	const float Margin = 0.5f * BodyInsetCm;
 	const float TreeH = FMath::Clamp(H * 0.55f, 22.f, 60.f);
 	AddCypress(FVector(-PX + Margin, -PY + Margin, Base), TreeH);
@@ -316,76 +444,191 @@ void ASLPlaceable::BuildDecor()
 	const float BushD = FMath::Max(5.f, BodyInsetCm * 0.8f);
 	AddDecor(SphereMesh, FVector(PX - Margin, PY - Margin, Base + 0.3f * BushD), FVector(BushD, BushD, BushD * 0.75f), BushColor);
 	AddDecor(SphereMesh, FVector(PX - Margin, -PY + Margin, Base + 0.3f * BushD), FVector(BushD, BushD, BushD * 0.75f), BushColor);
+	const float Skirt = FMath::Clamp(0.06f * H, 3.f, 7.f);
+	AddDecor(DefaultCube, FVector(0, 0, Base + 0.5f * Skirt), FVector(2.f * BodyHalfX() + 1.6f, 2.f * BodyHalfY() + 1.6f, Skirt), Tint * 0.82f);
 
 	if (TypeId == TEXT("Ev"))
 	{
-		// Bes kenarli cati: govde boyunca 45 derece cevrilmis kup (ust yarisi ucgen alinlik), ustune iki
-		// mercan cati levhasi, bir baca. Mahya kapiya dik (X boyunca): alinlik kapinin ustunde.
-		const float W = 2.f * HY;
-		const float S = W / UE_SQRT_2;
-		AddDecor(DefaultCube, FVector(0, 0, Top), FVector(2.f * HX, S, S), Tint, FRotator(0, 0, 45.f));
-		const float SlabLen = 0.5f * W * UE_SQRT_2 + 4.f;
-		const float SlabT = 3.f;
-		for (int32 Side = -1; Side <= 1; Side += 2)
-		{
-			const FVector Mid(0, Side * 0.25f * W, Top + 0.25f * W);
-			const FVector N = FVector(0, Side, 1).GetSafeNormal();
-			AddDecor(DefaultCube, Mid + N * (0.5f * SlabT) + FVector(0, Side * 1.f, -1.f), FVector(2.f * HX + 6.f, SlabLen, SlabT), RoofColor, FRotator(0, 0, Side * 45.f));
-		}
-		AddDecor(DefaultCube, FVector(-0.35f * HX, 0.3f * W, Top + 0.4f * W), FVector(6.f, 6.f, 0.5f * W), RoofColor * 0.85f);
-		// Pencereler: yanlarda ve arkada birer.
-		AddWindowGrid(1, Base + 0.55f * H, Base + 0.55f * H, 1, 1, 0.7f * HX, 0.25f * H, false);
-		AddWindowGrid(3, Base + 0.55f * H, Base + 0.55f * H, 1, 1, 0.7f * HX, 0.25f * H, false);
-		AddWindowGrid(2, Base + 0.55f * H, Base + 0.55f * H, 1, 1, 0.7f * HY, 0.25f * H, false);
+		BuildHouseDecor();
 	}
 	else if (TypeId == TEXT("Hastane"))
 	{
-		// Duz cati kenari, on yuzde kapinin ustunde kirmizi hac, catida da bir hac. Pencere siralari.
-		AddDecor(DefaultCube, FVector(0, 0, Top + 2.f), FVector(2.f * HX + 4.f, 2.f * HY + 4.f, 4.f), Tint * 0.97f);
-		const float CrossL = 0.45f * HY * 2.f, CrossT = CrossL * 0.32f;
-		const float CrossZ = Base + 0.7f * H;
-		AddDecor(DefaultCube, FVector(HX + 1.f, 0, CrossZ), FVector(2.f, CrossL, CrossT), RoofColor);
-		AddDecor(DefaultCube, FVector(HX + 1.f, 0, CrossZ), FVector(2.f, CrossT, CrossL), RoofColor);
-		AddDecor(DefaultCube, FVector(0, 0, Top + 4.5f), FVector(CrossL, CrossT, 1.5f), RoofColor);
-		AddDecor(DefaultCube, FVector(0, 0, Top + 4.5f), FVector(CrossT, CrossL, 1.5f), RoofColor);
-		const float WinW = 0.18f * HY * 2.f, WinH = 0.09f * H;
-		for (int32 F = 1; F < 4; ++F)
-		{
-			AddWindowGrid(F, Base + 0.22f * H, Base + 0.85f * H, 4, 3, WinW, WinH, false);
-		}
+		BuildHospitalDecor();
 	}
 	else if (TypeId == TEXT("AVM"))
 	{
-		// Zemin katta cam vitrin bandi, kapinin ustunde turkuaz tente ve "AVM" tabelasi, ust katlarda pencere.
-		const float GlassH = 0.28f * H;
-		for (int32 F = 1; F < 4; ++F) // 0 = kapi yuzu: vitrin yok
-		{
-			const bool bAlongX = (F % 2) == 1;
-			const float Sign = (F < 2) ? 1.f : -1.f;
-			const float Off = (bAlongX ? HY : HX) + 0.4f;
-			const float Len = 2.f * (bAlongX ? HX : HY) * 0.86f;
-			AddWindowPart(bAlongX ? FVector(0, Sign * Off, Base + 0.5f * GlassH + 4.f) : FVector(Sign * Off, 0, Base + 0.5f * GlassH + 4.f),
-				bAlongX ? FVector(Len, 1.5f, GlassH) : FVector(1.5f, Len, GlassH));
-			AddWindowGrid(F, Base + 0.52f * H, Base + 0.85f * H, 3, 4, 0.13f * Len, 0.08f * H, false);
-		}
-		const float DoorH = FMath::Min(H * 0.55f, 90.f);
-		AddDecor(DefaultCube, FVector(HX + 6.f, 0, Base + DoorH + 3.f), FVector(12.f, 0.7f * HY * 2.f, 3.f), AccentColor, FRotator(-15.f, 0, 0));
-		const float SignZ = Base + 0.8f * H;
-		AddDecor(DefaultCube, FVector(HX + 1.5f, 0, SignZ), FVector(3.f, 0.6f * HY * 2.f, 0.16f * H), RoofColor);
-		UTextRenderComponent* Text = NewObject<UTextRenderComponent>(this);
-		Text->SetupAttachment(GetRootComponent());
-		Text->RegisterComponent();
-		Text->SetText(FText::FromString(TEXT("AVM")));
-		Text->SetHorizontalAlignment(EHTA_Center);
-		Text->SetVerticalAlignment(EVRTA_TextCenter);
-		Text->SetWorldSize(0.12f * H);
-		Text->SetTextRenderColor(FColor(255, 248, 235));
-		Text->SetRelativeLocation(FVector(HX + 3.2f, 0, SignZ));
-		Text->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		Text->SetCastShadow(false);
-		DecorParts.Add(Text);
-		AddDecor(DefaultCube, FVector(0, 0, Top + 2.f), FVector(2.f * HX + 4.f, 2.f * HY + 4.f, 4.f), Tint * 0.95f);
+		BuildMallDecor();
 	}
+}
+
+void ASLPlaceable::BuildHouseDecor()
+{
+	// Mercan besik cati, bacasi sapkali; alinlikta yuvarlak pencere; yanlarda panjurlu, cicek kutulu
+	// pencereler; kapinin ustunde kucuk sacak, onunde basamak, yaninda fener.
+	const float HX = BodyHalfX(), HY = BodyHalfY();
+	const float Base = PlateHeightCm;
+	const float H = SizeCells.Z * GridSize;
+	const float Top = Base + H;
+	const float W = 2.f * HY;
+	AddGableRoof(Top, Tint, RoofColor);
+	AddDecor(DefaultCube, FVector(-0.35f * HX, 0.3f * W, Top + 0.4f * W), FVector(6.f, 6.f, 0.5f * W), RoofColor * 0.85f);
+	AddDecor(DefaultCube, FVector(-0.35f * HX, 0.3f * W, Top + 0.65f * W + 0.75f), FVector(8.f, 8.f, 1.5f), LampPostColor);
+	AddDecor(DiscMesh, FVector(HX + 0.6f, 0, Top + 0.2f * W), FVector(0.3f * W, 0.3f * W, 1.2f), TrimColor, FRotator(90.f, 0, 0));
+	AddWindowPart(FVector(HX + 1.0f, 0, Top + 0.2f * W), FVector(1.f, 0.17f * W, 0.17f * W));
+
+	const float WinW = 0.7f * HX, WinH = 0.25f * H, WinZ = Base + 0.55f * H;
+	AddWindowGrid(1, WinZ, WinZ, 1, 1, WinW, WinH, false, true, true);
+	AddWindowGrid(3, WinZ, WinZ, 1, 1, WinW, WinH, false, true, true);
+	AddWindowGrid(2, WinZ, WinZ, 1, 1, 0.7f * HY, WinH, false, false, true);
+
+	const float DoorW = FMath::Clamp(W * 0.35f, 8.f, 60.f);
+	const float DoorH = FMath::Min(H * 0.55f, 90.f);
+	AddDecor(DefaultCube, FVector(HX + 0.5f, 0, Base + 0.5f * DoorH + 0.6f), FVector(1.f, DoorW + 2.4f, DoorH + 1.2f), TrimColor);
+	AddDecor(DefaultCube, FVector(HX + 3.f, 0, Base + DoorH + 2.5f), FVector(6.f, DoorW + 5.f, 1.2f), RoofColor, FRotator(-18.f, 0, 0));
+	AddDecor(DefaultCube, FVector(HX + 1.6f, 0, Base + 0.6f), FVector(3.2f, DoorW + 3.f, 1.2f), TrimColor);
+	AddLamp(FVector(HX + 4.f, 0.5f * DoorW + 5.5f, Base), 0.3f * H); // -Y yaninda aile durur
+}
+
+void ASLPlaceable::BuildHospitalDecor()
+{
+	// Gok mavisi beyaz govde, turkuaz besik cati; alinlikta turkuaz halka icinde beyaz daire, kirmizi hac.
+	// Kapinin ustunde direkli sacak ve tabela, iki yaninda fener ve cicek saksisi; cerceveli pencere siralari.
+	const float HX = BodyHalfX(), HY = BodyHalfY();
+	const float Base = PlateHeightCm;
+	const float H = SizeCells.Z * GridSize;
+	const float Top = Base + H;
+	const float W = 2.f * HY;
+	AddDecor(DefaultCube, FVector(0, 0, Top - 2.f), FVector(2.f * HX + 4.f, 2.f * HY + 4.f, 4.f), TrimColor); // kornis
+	AddGableRoof(Top, Tint, HospitalRoofColor);
+	const float BadgeZ = Top + 0.2f * W;
+	AddDecor(DiscMesh, FVector(HX + 0.6f, 0, BadgeZ), FVector(0.36f * W, 0.36f * W, 1.2f), HospitalRoofColor * 0.85f, FRotator(90.f, 0, 0));
+	AddDecor(DiscMesh, FVector(HX + 1.4f, 0, BadgeZ), FVector(0.29f * W, 0.29f * W, 1.2f), TrimColor, FRotator(90.f, 0, 0));
+	const float CrossL = 0.2f * W, CrossT = CrossL * 0.32f;
+	AddDecor(DefaultCube, FVector(HX + 2.2f, 0, BadgeZ), FVector(1.2f, CrossL, CrossT), RoofColor);
+	AddDecor(DefaultCube, FVector(HX + 2.2f, 0, BadgeZ), FVector(1.2f, CrossT, CrossL), RoofColor);
+
+	const float WinW = 0.14f * W, WinH = 0.15f * H;
+	AddWindowGrid(1, Base + 0.27f * H, Base + 0.8f * H, 3, 4, WinW, WinH, false, true);
+	AddWindowGrid(3, Base + 0.27f * H, Base + 0.8f * H, 3, 4, WinW, WinH, false, true);
+	AddWindowGrid(2, Base + 0.27f * H, Base + 0.8f * H, 3, 3, WinW, WinH, false, true);
+	AddWindowGrid(0, Base + 0.8f * H, Base + 0.8f * H, 1, 4, WinW, WinH, false);
+
+	const float DoorW = FMath::Clamp(W * 0.35f, 8.f, 60.f);
+	const float DoorH = FMath::Min(H * 0.55f, 90.f);
+	AddDecor(DefaultCube, FVector(HX + 0.5f, 0, Base + 0.5f * DoorH + 1.f), FVector(1.f, DoorW + 4.f, DoorH + 2.f), TrimColor);
+	const float CanopyZ = Base + DoorH + 5.f;
+	AddDecor(DefaultCube, FVector(HX + 5.f, 0, CanopyZ), FVector(11.f, DoorW + 14.f, 2.5f), HospitalRoofColor, FRotator(-6.f, 0, 0));
+	for (int32 S = -1; S <= 1; S += 2)
+	{
+		AddDecor(DefaultCube, FVector(HX + 6.f, S * (0.5f * DoorW + 5.f), Base + 0.5f * (CanopyZ - Base)), FVector(2.2f, 2.2f, CanopyZ - Base), TrimColor);
+		AddLamp(FVector(HX + 5.f, S * (0.5f * DoorW + 13.f), Base), 0.2f * H);
+		AddPlanter(FVector(HX + 4.f, S * (0.5f * DoorW + 26.f), Base), FVector(5.f, 14.f, 4.f), 4);
+	}
+	UTextRenderComponent* Text = NewObject<UTextRenderComponent>(this);
+	Text->SetupAttachment(GetRootComponent());
+	Text->RegisterComponent();
+	Text->SetText(FText::FromString(TEXT("HASTANE")));
+	Text->SetHorizontalAlignment(EHTA_Center);
+	Text->SetVerticalAlignment(EVRTA_TextCenter);
+	Text->SetWorldSize(0.075f * H);
+	Text->SetTextRenderColor(FColor(64, 132, 138));
+	Text->SetRelativeLocation(FVector(HX + 0.8f, 0, CanopyZ + 0.075f * H));
+	Text->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Text->SetCastShadow(false);
+	DecorParts.Add(Text);
+}
+
+void ASLPlaceable::BuildMallDecor()
+{
+	// Zemin kat: dukkan vitrinleri, her birinin ustunde baska renk cizgili tente. Kat arasinda krem silme;
+	// ust katlarda cerceveli pencereler; kapinin ustunde buyuk tente ve "AVM" tabelasi. Duz catida
+	// korkuluk ve kucuk bahce (agaclar, saksilar, bank); kapinin iki yaninda fener ve saksi.
+	const float HX = BodyHalfX(), HY = BodyHalfY();
+	const float Base = PlateHeightCm;
+	const float H = SizeCells.Z * GridSize;
+	const float Top = Base + H;
+	const float GroundH = 0.32f * H;
+	const int32 NC = FMath::Max(1, AwningColors.Num());
+	int32 Shop = 0;
+	auto Shopfront = [&](int32 Face, float Along, float ShopW)
+	{
+		AddFramedWindow(Face, Along, Base + 0.42f * GroundH, ShopW, 0.5f * GroundH, false, false);
+		AddAwning(Face, Along, Base + GroundH - 3.f, ShopW + 8.f, 0.26f * GroundH, AwningColors.Num() ? AwningColors[Shop++ % NC] : AccentColor);
+	};
+	for (int32 F = 1; F < 4; ++F)
+	{
+		const float Len = 2.f * FaceHalfLen(F);
+		const int32 Count = FMath::Max(1, FMath::RoundToInt(Len / 75.f));
+		const float Step = Len / Count;
+		for (int32 I = 0; I < Count; ++I)
+		{
+			Shopfront(F, -0.5f * Len + (I + 0.5f) * Step, Step * 0.68f);
+		}
+	}
+	const float DoorW = FMath::Clamp(2.f * HY * 0.35f, 8.f, 60.f);
+	const float DoorH = FMath::Min(H * 0.55f, 90.f);
+	const float SideW = FMath::Max(10.f, (HY - 0.5f * DoorW - 14.f) * 0.7f);
+	for (int32 S = -1; S <= 1; S += 2)
+	{
+		Shopfront(0, S * 0.5f * (HY + 0.5f * DoorW + 8.f), SideW);
+	}
+	// Silme: kapi zemin kattan uzun, on yuzde kapinin ustunu bos birak.
+	const float BandZ = Base + GroundH + 2.f;
+	AddDecor(DefaultCube, FVector(-1.5f, 0, BandZ), FVector(2.f * HX + 3.f, 2.f * HY + 3.f, 4.f), TrimColor);
+	const float Gap = 0.5f * DoorW + 3.f, BandLen = HY + 1.5f - Gap;
+	for (int32 S = -1; S <= 1; S += 2)
+	{
+		AddDecor(DefaultCube, FVector(HX + 0.75f, S * (Gap + 0.5f * BandLen), BandZ), FVector(1.5f, BandLen, 4.f), TrimColor);
+	}
+
+	const float WinW = 0.09f * 2.f * FMath::Min(HX, HY), WinH = 0.11f * H;
+	const float Row1 = Base + 0.55f * H, Row2 = Base + 0.69f * H; // tente ile tabela arasi
+	for (int32 F = 0; F < 4; ++F)
+	{
+		const int32 Cols = FMath::Clamp(FMath::RoundToInt(2.f * FaceHalfLen(F) / 45.f), 3, 6);
+		AddWindowGrid(F, Row1, Row2, 2, Cols, WinW, WinH, F == 0, true);
+	}
+
+	// Kapi: buyuk tente, tabela, fenerler, saksilar.
+	AddDecor(DefaultCube, FVector(HX + 0.5f, 0, Base + 0.5f * DoorH + 1.f), FVector(1.f, DoorW + 4.f, DoorH + 2.f), TrimColor);
+	AddAwning(0, 0.f, Base + DoorH + 4.f, DoorW + 16.f, 0.3f * GroundH, AwningColors.Num() ? AwningColors[0] : AccentColor);
+	const float SignZ = Base + 0.86f * H;
+	AddDecor(DefaultCube, FVector(HX + 1.5f, 0, SignZ), FVector(3.f, 0.5f * HY * 2.f, 0.14f * H), RoofColor);
+	AddDecor(DefaultCube, FVector(HX + 1.2f, 0, SignZ), FVector(2.4f, 0.5f * HY * 2.f + 4.f, 0.14f * H + 4.f), TrimColor);
+	UTextRenderComponent* Text = NewObject<UTextRenderComponent>(this);
+	Text->SetupAttachment(GetRootComponent());
+	Text->RegisterComponent();
+	Text->SetText(FText::FromString(TEXT("AVM")));
+	Text->SetHorizontalAlignment(EHTA_Center);
+	Text->SetVerticalAlignment(EVRTA_TextCenter);
+	Text->SetWorldSize(0.11f * H);
+	Text->SetTextRenderColor(FColor(255, 248, 235));
+	Text->SetRelativeLocation(FVector(HX + 3.2f, 0, SignZ));
+	Text->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Text->SetCastShadow(false);
+	DecorParts.Add(Text);
+	for (int32 S = -1; S <= 1; S += 2)
+	{
+		AddLamp(FVector(HX + 5.f, S * (0.5f * DoorW + 10.f), Base), 0.17f * H);
+	}
+
+	// Cati: kornis, deck, alcak korkuluk, bahce.
+	AddDecor(DefaultCube, FVector(0, 0, Top - 2.5f), FVector(2.f * HX + 6.f, 2.f * HY + 6.f, 5.f), TrimColor);
+	AddDecor(DefaultCube, FVector(0, 0, Top + 0.5f), FVector(2.f * HX, 2.f * HY, 1.f), FLinearColor(0.86f, 0.80f, 0.74f));
+	const float Rail = 6.f;
+	for (int32 S = -1; S <= 1; S += 2)
+	{
+		AddDecor(DefaultCube, FVector(S * (HX + 1.5f), 0, Top + 0.5f * Rail), FVector(3.f, 2.f * HY + 6.f, Rail), Tint * 0.95f);
+		AddDecor(DefaultCube, FVector(0, S * (HY + 1.5f), Top + 0.5f * Rail), FVector(2.f * HX + 6.f, 3.f, Rail), Tint * 0.95f);
+	}
+	const float RoofBase = Top + 1.f;
+	AddRoundTree(FVector(-0.55f * HX, -0.55f * HY, RoofBase), 30.f);
+	AddRoundTree(FVector(-0.55f * HX, 0.5f * HY, RoofBase), 26.f);
+	AddCypress(FVector(-0.2f * HX, 0.8f * HY, RoofBase), 28.f);
+	AddPlanter(FVector(0.35f * HX, -0.6f * HY, RoofBase), FVector(8.f, 24.f, 5.f), 5);
+	AddPlanter(FVector(0.35f * HX, 0.6f * HY, RoofBase), FVector(8.f, 24.f, 5.f), 5);
+	AddDecor(DefaultCube, FVector(0.1f * HX, 0, RoofBase + 4.f), FVector(6.f, 22.f, 1.6f), FLinearColor(0.80f, 0.55f, 0.40f)); // bank
+	AddDecor(DefaultCube, FVector(0.1f * HX - 3.f, 0, RoofBase + 7.f), FVector(1.4f, 22.f, 5.f), FLinearColor(0.80f, 0.55f, 0.40f));
 }
 
 UStaticMeshComponent* ASLPlaceable::MakePart(const FLinearColor& Color, bool bForGhost, UStaticMesh* InMesh)

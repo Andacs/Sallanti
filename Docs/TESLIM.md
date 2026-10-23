@@ -43,7 +43,7 @@ https://game.ktimo.com.tr/jam/teslim
 
 ## Oyun içinde kurallarla ilgili olanlar
 
-- **Açılış videosu:** `Content/Movies/Intro.mp4` (19 sn), `Config/DefaultGame.ini` → `StartupMovies`; atlanabilir.
+- **Açılış videosu yok** (23 Ekim): oyun doğrudan ana menüyle açılır.
 - **Ana menü:** Oyna · Bölümler · Nasıl oynanır · Emeği geçenler · Çıkış. Arkada canlı, dönen kasaba.
 - **Jenerik (Emeği geçenler):** ekip, hazır kaynaklar, yapay zekâ kullanımı, teşekkürler. README'deki
   beyanlarla aynı içerik (madde 3.4 ve 4.2 "kaynaklar takımın özgün üretimi gibi gösterilemez").

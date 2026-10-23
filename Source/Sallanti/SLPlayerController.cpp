@@ -528,11 +528,11 @@ void ASLPlayerController::TestLevel1Step()
 		UE_LOG(LogSLInput, Log, TEXT("SL_HINT %s"), *HUD->GetCurrentHint());
 	}
 	// 13x13 tahta, 50 cm hucre (CellToLocal(i) = -325 + 50i). Beklenen (PlatformMass 12, TiltPerCm 0.08):
-	//  Ev 1x1 (-100,0) hucre (4,6) yon 3, giris (4,5); egim 1.1 | aile (-230,-250)'den kapiya ~4 sn |
-	//  Hastane 2x2 (175,25) hucre (9,6) yon 1 (kapi +Y, yanlis) giris (9,8)(10,8); egim 5.9 |
-	//  AVM 3x3 (250,250) hucre (10,10): hedef 12 -> DEVRILIYOR -> fareyle kaldir -> 5.9 -> (0,50) hucre (5,6)
-	//  giris (6,5); egim 3.7 | yol (4..9, 5): ilk karoda Ev baglanir (efekt), (6,5)'te AVM; Hastane kapisi
-	//  ters: 2/3 | Hastaneyi kaldir, R R (1 -> 3), ayni yere: giris (9,5)(10,5) -> 3/3 BOLUM TAMAMLANDI.
+	//  Ev 1x1 (-200,0) hucre (2,6) yon 3, giris (2,5); egim 2.3 | aile (-230,-250)'den kapiya |
+	//  Hastane 4x3 (150,75) hucre (8,6) yon 1 (kapi +Y, yanlis) giris (9,10); egim 5.1 |
+	//  AVM 4x5 (-200,225) hucre (0,9): hedef 13.8 -> DEVRILIYOR -> fareyle kaldir -> 5.1 -> (-50,75) hucre (3,6)
+	//  giris (5,5); egim 4.7 | yol (2..9, 5): ilk karoda Ev baglanir (efekt), (5,5)'te AVM; Hastane kapisi
+	//  ters: 2/3 | Hastaneyi kaldir, R R (1 -> 3), ayni yere: giris (9,5) -> 3/3 BOLUM TAMAMLANDI, egim 4.2.
 	switch (I)
 	{
 	case 1: Shot(TEXT("L1_0_baslangic")); break;
@@ -542,47 +542,48 @@ void ASLPlayerController::TestLevel1Step()
 	case 5: if (HUD) { HUD->HandleMouseDown(HUD->GetCardCenter(0)); }
 		UE_LOG(LogSLInput, Log, TEXT("SL_DRAWER Ev kartina tik -> secilen slot %d, istenen acik %d"), Build->SelectedSlot, HUD && HUD->IsDrawerWanted() ? 1 : 0); break;
 	// Ekran goruntusu kare sonunda alinir: hayaleti gostereceksek koyma bir sonraki adimda olmali.
-	case 6: Build->SetAimOverride(FVector2D(-100.f, 0.f)); Shot(TEXT("L1_0c_ev_hayalet")); break;
+	case 6: Build->SetAimOverride(FVector2D(-200.f, 0.f)); Shot(TEXT("L1_0c_ev_hayalet")); break;
 	case 7: OnPlace(); break;                                                       // Ev, yon 3
-	case 8: SLPlace(2, 175.f, 25.f); break;                                         // Hastane henuz kilitli
+	case 8: SLPlace(2, 150.f, 75.f); break;                                         // Hastane henuz kilitli
 	case 9: Shot(TEXT("L1_1_aile_yuruyor")); break;
 	case 13: Shot(TEXT("L1_1b_aile_yolda")); break;
 	case 18: Shot(TEXT("L1_2_aile_yerlesti")); if (Cam) { Cam->Zoom(3.f); } break;
 	case 20: Shot(TEXT("L1_2b_yakin")); UE_LOG(LogSLInput, Log, TEXT("SL_ZOOM uzaklik %.0f hedef %.0f"), Cam ? Cam->Distance : 0.f, Cam ? Cam->GetTargetDistance() : 0.f);
 		if (Cam) { Cam->Zoom(-3.f); } break;
-	case 22: SLGhost(2, 175.f, 25.f); Build->SetFacing(1); Shot(TEXT("L1_2c_hastane_ters")); break;
+	case 22: SLGhost(2, 150.f, 75.f); Build->SetFacing(1); Shot(TEXT("L1_2c_hastane_ters")); break;
 	case 23: Build->TryPlace(); break;                                              // Hastane, kapi +Y
-	case 24: SLGhost(3, 250.f, 250.f); Shot(TEXT("L1_3a_avm_tahmin")); break;      // tahmin isareti + ipucu
+	case 24: SLGhost(3, -200.f, 225.f); Shot(TEXT("L1_3a_avm_tahmin")); break;     // tahmin isareti + ipucu
 	case 25: Build->TryPlace(); break;                                              // AVM yanlis yere
-	case 26: Build->Cancel(); MoveMouseToLocal(FVector(250.f, 250.f, 204.f)); Shot(TEXT("L1_3_devriliyor")); break;
+	case 26: Build->Cancel(); MoveMouseToLocal(FVector(-200.f, 225.f, 204.f)); Shot(TEXT("L1_3_devriliyor")); break;
 	case 27:
 		OnPlace(); LogGhost(TEXT("tasima_fare"));                                     // bosta sol tik: AVM'yi kaldir
 		if (!Build->IsMoving())
 		{
 			UE_LOG(LogSLInput, Warning, TEXT("SL_TASIMA fare kaydi (kullanici?), hucreden kaldiriliyor"));
-			Build->PickUp(GetWorld()->GetAuthGameMode<ASLGameMode>()->GetPlatform()->FindPlaceableAt(FIntPoint(11, 11)));
+			Build->PickUp(GetWorld()->GetAuthGameMode<ASLGameMode>()->GetPlatform()->FindPlaceableAt(FIntPoint(2, 10)));
 		}
 		break;
-	case 28: Build->SetAimOverride(FVector2D(0.f, 50.f)); Shot(TEXT("L1_4_elde")); break;
+	case 28: Build->SetAimOverride(FVector2D(-50.f, 75.f)); Shot(TEXT("L1_4_elde")); break;
 	case 29: OnPlace(); break;                                                      // yeni yerine
-	case 30: case 31: case 32: case 33: case 34: case 35:
-		SLPlace(4, 50.f * (4 + (I - 30)) - 300.f, -50.f);                           // yol hucre (4..9, 5)
+	case 30: case 31: case 32: case 33: case 34: case 35: case 36: case 37:
+		SLPlace(4, 50.f * (2 + (I - 30)) - 300.f, -50.f);                           // yol hucre (2..9, 5)
 		if (I == 31) { Shot(TEXT("L1_5a_ev_baglandi")); }
 		if (I == 33) { Shot(TEXT("L1_5b_avm_baglandi")); }
 		break;
-	case 36: Build->Cancel(); Shot(TEXT("L1_5c_hastane_bagli_degil")); break;
-	case 37: Build->PickUp(GetWorld()->GetAuthGameMode<ASLGameMode>()->GetPlatform()->FindPlaceableAt(FIntPoint(9, 6))); break;
-	case 38: OnRotate(); OnRotate(); Build->SetAimOverride(FVector2D(175.f, 25.f)); LogGhost(TEXT("hastane_R_R")); break;
-	case 39: Shot(TEXT("L1_6_hastane_cevrildi")); break;
-	case 40: OnPlace(); break;
-	case 41: Shot(TEXT("L1_6b_hastane_baglandi")); break;
-	case 43: Shot(TEXT("L1_7_tamamlandi")); if (Cam) { Cam->PanByScreen(-300.f, 0.f, 1280.f); }
+	case 38: Build->Cancel(); Shot(TEXT("L1_5c_hastane_bagli_degil")); break;
+	case 39: Build->PickUp(GetWorld()->GetAuthGameMode<ASLGameMode>()->GetPlatform()->FindPlaceableAt(FIntPoint(9, 7))); break;
+	case 40: OnRotate(); OnRotate(); Build->SetAimOverride(FVector2D(150.f, 75.f)); LogGhost(TEXT("hastane_R_R")); break;
+	case 41: Shot(TEXT("L1_6_hastane_cevrildi")); break;
+	case 42: OnPlace(); break;
+	case 43: Shot(TEXT("L1_6b_hastane_baglandi")); break;
+	case 45: Shot(TEXT("L1_7_tamamlandi")); if (Cam) { Cam->PanByScreen(-300.f, 0.f, 1280.f); }
 		UE_LOG(LogSLInput, Log, TEXT("SL_PAN kaydirma (%.0f, %.0f)"), Cam ? Cam->GetPanOffset().X : 0.f, Cam ? Cam->GetPanOffset().Y : 0.f); break;
-	case 44: Shot(TEXT("L1_8_kaydirildi")); OnCenterCamera();
+	case 46: Shot(TEXT("L1_8_kaydirildi")); OnCenterCamera();
 		UE_LOG(LogSLInput, Log, TEXT("SL_PAN merkez (%.0f, %.0f)"), Cam ? Cam->GetPanOffset().X : 0.f, Cam ? Cam->GetPanOffset().Y : 0.f); break;
-	case 45: if (Cam) { Cam->Zoom(7.f); } break;                                   // yakin plan: viraj ve giris yolu
-	case 47: Shot(TEXT("L1_9_yakin_yol")); break;
-	case 49:
+	case 47: if (Cam) { Cam->Zoom(7.f); } SLSaat(13.f); break;                     // yakin plan, gunduz: viraj, giris yolu, susler
+	case 49: Shot(TEXT("L1_9_yakin_yol")); RotateView(2); break;
+	case 52: Shot(TEXT("L1_9b_yakin_arka")); SLSaat(-1.f); break;                 // binalarin arka yuzleri
+	case 53:
 		GetWorldTimerManager().ClearTimer(SelfTestTimer);
 		UE_LOG(LogSLInput, Log, TEXT("SL_TESTL1_DONE"));
 		ConsoleCommand(TEXT("quit"));
@@ -645,24 +646,24 @@ void ASLPlayerController::TestLevel2Step()
 		}
 	};
 
-	// Acik bolum (16 Eki). Hucre merkezi = -300 + 50i. Ev (4,6) kapi (4,5) | Hastane 2x2 (9,6) kapi (9,5) |
-	// AVM 3x3 (5,6) kapi (6,5) | yol (4..10,5) | durak (8,4) yon 1 -> Demir otobusle gelir | Demir evi
-	// once (1,10): uzak -> mutsuz | evi (7,4) yon 1'e tasi: kapi (7,5) yolda, duraga 1 -> mutlu -> bitis.
+	// Acik bolum (16 Eki; 23 Eki Hastane 4x3, AVM 4x5). Hucre merkezi = -300 + 50i. Ev (2,6) kapi (2,5) |
+	// Hastane (8,6) kapi (9,5) | AVM (3,6) kapi (5,5) | yol (2..9,5) | durak (7,4) yon 1 -> Demir otobusle
+	// gelir | Demir evi once (1,10): uzak -> mutsuz | evi (6,4) yon 1'e tasi: kapi (6,5) yolda, duraga 1 -> mutlu.
 	switch (I)
 	{
 	case 1: Shot(TEXT("L2_0_baslangic")); break;
 	case 2: if (D) { D->SelectFamily(0); } break;
 	case 3: Shot(TEXT("L2_1_kaya_istek")); break;
-	case 4: PlaceHomeFor(0, -100.f, 0.f, 3); break;
-	case 14: Place(2, 175.f, 25.f, 3); break;
-	case 15: Place(3, 0.f, 50.f, 3); break;
-	case 16: case 17: case 18: case 19: case 20: case 21: case 22:
-		Place(4, -300.f + 50.f * (4 + (I - 16)), -50.f, 0);
+	case 4: PlaceHomeFor(0, -200.f, 0.f, 3); break;
+	case 14: Place(2, 150.f, 75.f, 3); break;
+	case 15: Place(3, -50.f, 75.f, 3); break;
+	case 16: case 17: case 18: case 19: case 20: case 21: case 22: case 23:
+		Place(4, -300.f + 50.f * (2 + (I - 16)), -50.f, 0);
+		if (I == 23) { Shot(TEXT("L2_2_yollar")); }
 		break;
-	case 23: Shot(TEXT("L2_2_yollar")); break;
 	case 24: SLGhost(5, -200.f, -200.f); Shot(TEXT("L2_3a_durak_gecersiz"));
 		UE_LOG(LogSLInput, Log, TEXT("SL_DURAK gecersiz bekleniyor: %s (%s)"), *UEnum::GetValueAsString(Build->State), Build->GetBlockedReason()); break;
-	case 25: Build->Cancel(); Place(5, 100.f, -100.f, 1); break;
+	case 25: Build->Cancel(); Place(5, 50.f, -100.f, 1); break;
 	case 28: Shot(TEXT("L2_3c_demir_geldi")); break;
 	case 29: if (D) { D->SelectFamily(1); } break;
 	case 30: Shot(TEXT("L2_4_demir_istek")); break;
@@ -673,7 +674,7 @@ void ASLPlayerController::TestLevel2Step()
 	case 57:
 		if (Plat) { Build->PickUp(Plat->FindPlaceableAt(FIntPoint(1, 10))); }
 		Build->SetFacing(1);
-		Build->SetAimOverride(FVector2D(50.f, -100.f));
+		Build->SetAimOverride(FVector2D(0.f, -100.f));
 		break;
 	case 58: Shot(TEXT("L2_6a_tasima_yakin")); break;
 	case 59: Build->TryPlace(); Build->Cancel(); break;
@@ -781,21 +782,20 @@ void ASLPlayerController::CinemaStep()
 	};
 	switch (I)
 	{
-	case 8: Caption(TEXT("Sallanan bir adaya şehir kur"), 3.5f); Place(2, -75.f, 25.f, 3); if (Cam) { Cam->SetTargetDistance(2700.f); } break;
+	case 8: Caption(TEXT("Sallanan bir adaya şehir kur"), 3.5f); Place(2, -100.f, 25.f, 3); if (Cam) { Cam->SetTargetDistance(2700.f); } break;
 	case 11: Caption(TEXT("Herkesin bir isteği var"), 4.f); if (D) { D->SelectFamily(0); } break;
-	case 13: SLGhost(1, -150.f, -50.f); Build->SetFacing(0); break;
+	case 13: SLGhost(1, -200.f, -100.f); Build->SetFacing(0); break;
 	case 15: Build->TryPlace(); Build->Cancel(); Assign(0); break;
 	case 17: Caption(TEXT("Her bina dengeyi bozar"), 3.5f); SLGhost(3, 200.f, 200.f); break;
-	case 21: Build->Cancel(); Place(3, 100.f, 0.f, 3); break;
-	case 23: Place(6, -175.f, 175.f, 3); break;
-	case 25: Caption(TEXT("Kimin nerede oturacağına sen karar ver"), 4.f); if (D) { D->SelectFamily(1); } SLGhost(1, -100.f, 200.f); Build->SetFacing(3); break;
+	case 21: Build->Cancel(); Place(3, 150.f, 25.f, 3); break;
+	case 23: Place(6, -225.f, 225.f, 3); break;
+	case 25: Caption(TEXT("Kimin nerede oturacağına sen karar ver"), 4.f); if (D) { D->SelectFamily(1); } SLGhost(1, -150.f, 200.f); Build->SetFacing(3); break;
 	case 28: Build->TryPlace(); Build->Cancel(); Assign(1); break;
-	case 30: Place(4, -100.f, -50.f, 0); break;
-	case 31: case 32: case 33: case 34: case 35: Place(4, -300.f + 50.f * (4 + (I - 31)), -100.f, 0); break;
-	case 36: Caption(TEXT("Yollar ve otobüs mahalleyi birleştirir"), 4.f); Place(5, 0.f, -150.f, 1); break;
+	case 30: case 31: case 32: case 33: case 34: case 35: Place(4, -300.f + 50.f * (3 + (I - 30)), -100.f, 0); break; // yol (3..8, 4)
+	case 36: Caption(TEXT("Yollar ve otobüs mahalleyi birleştirir"), 4.f); Place(4, 150.f, -100.f, 0); Place(5, 0.f, -150.f, 1); break;
 	case 39: if (D) { D->SelectFamily(2); } break;
-	case 41: Place(1, -150.f, -150.f, 0); Assign(2); break;
-	case 42: Place(4, -100.f, -150.f, 0); if (Cam) { Cam->SetTargetDistance(1800.f); } break;
+	case 41: Place(1, -200.f, -150.f, 0); Assign(2); break;
+	case 42: Place(4, -150.f, -150.f, 0); if (Cam) { Cam->SetTargetDistance(1800.f); } break;
 	case 46: Caption(TEXT("Gün batar, pencereler yanar"), 4.f); SLSaat(20.5f); break;
 	case 52: Caption(TEXT("Herkes mutlu olunca mahalle tamamdır"), 4.f); SLSaat(-1.f); if (Cam) { Cam->SetTargetDistance(3000.f); } break;
 	case 62:
@@ -870,39 +870,39 @@ void ASLPlayerController::TestLevel3Step()
 		}
 	};
 
-	// Acik bolum. Hastane 2x2 (4,6) yon 3 kapi (4,5) | Yilmaz evi (3,5) yon 0 kapi (4,5) | AVM (7,5) kapi
-	// (8,4) | Park (2,9) | Demir evi once (6,9): AVM'ye 3, parka 3 -> mutsuz; sonra (4,10) | yol (4,5)
-	// (4..8,4) | Durak (6,3) yon 1 -> Aydin gelir | Aydin evi (3,3) yon 0 + yol (4,3). 15 hamle / 24.
+	// Acik bolum (23 Eki: Hastane 4x3, AVM 4x5). Hastane (3,5) yon 3 kapi (4,4) | Yilmaz evi (2,4) yon 0
+	// kapi (3,4) | AVM (7,5) kapi (9,4) | Park (1,10) | Demir evi once (7,10): AVM'ye 2, parka 5 -> mutsuz;
+	// sonra (3,10) | yol (3..9,4) | Durak (6,3) yon 1 -> Aydin gelir | Aydin evi (2,3) yon 0 + yol (3,3).
+	// En buyuk ara egim 7.3 (Hastane + Yilmaz, AVM'den once), son 3.8.
 	switch (I)
 	{
 	case 1: Shot(TEXT("L3_0_baslangic")); break;
-	case 2: Place(2, -75.f, 25.f, 3); break;                 // Hastane
+	case 2: Place(2, -100.f, 25.f, 3); break;                // Hastane
 	case 3: if (D) { D->SelectFamily(0); } break;            // Yilmaz: istekleri acilir
 	case 4: Shot(TEXT("L3_1a_yilmaz_istek")); break;
-	case 5: SLGhost(1, -150.f, -50.f); Build->SetFacing(0); break;
+	case 5: SLGhost(1, -200.f, -100.f); Build->SetFacing(0); break;
 	case 6: Shot(TEXT("L3_1b_yilmaz_bolge")); break;
 	case 7: if (Build->TryPlace() && D) { D->AssignFamilyToHouse(0, Build->GetLastPlaced()); D->ClearFamilySelection(); } Build->Cancel(); break;
-	case 20: Place(3, 100.f, 0.f, 3); break;                 // AVM
-	case 21: Place(6, -175.f, 175.f, 3); break;              // Park (2,9)
-	case 22: if (D) { D->SelectFamily(1); } SLGhost(1, 0.f, 150.f); Build->SetFacing(3); break; // Demir, AVM'ye yakin
+	case 20: Place(3, 150.f, 25.f, 3); break;                // AVM
+	case 21: Place(6, -225.f, 225.f, 3); break;              // Park (1,10)
+	case 22: if (D) { D->SelectFamily(1); } SLGhost(1, 50.f, 200.f); Build->SetFacing(3); break; // Demir, AVM'ye yakin
 	case 23: Shot(TEXT("L3_2a_demir_hayalet_yakin")); break;
 	case 24: if (Build->TryPlace() && D) { D->AssignFamilyToHouse(1, Build->GetLastPlaced()); D->ClearFamilySelection(); } Build->Cancel(); break;
 	case 40: Shot(TEXT("L3_2b_demir_mutsuz")); break;
 	case 41:
-		if (Plat) { Build->PickUp(Plat->FindPlaceableAt(FIntPoint(6, 9))); }
-		Build->SetAimOverride(FVector2D(-100.f, 200.f));        // (4,10)
+		if (Plat) { Build->PickUp(Plat->FindPlaceableAt(FIntPoint(7, 10))); }
+		Build->SetAimOverride(FVector2D(-150.f, 200.f));        // (3,10)
 		break;
 	case 42: Shot(TEXT("L3_2c_tasima")); break;
 	case 43: Build->TryPlace(); Build->Cancel(); break;
-	case 44: Place(4, -100.f, -50.f, 0); break;              // yol (4,5)
-	case 45: case 46: case 47: case 48: case 49:
-		Place(4, -300.f + 50.f * (4 + (I - 45)), -100.f, 0);  // yol (4..8, 4)
+	case 44: case 45: case 46: case 47: case 48: case 49: case 50:
+		Place(4, -300.f + 50.f * (3 + (I - 44)), -100.f, 0);  // yol (3..9, 4)
+		if (I == 50) { Shot(TEXT("L3_3_yollar")); }
 		break;
-	case 50: Shot(TEXT("L3_3_yollar")); break;
 	case 51: Place(5, 0.f, -150.f, 1); break;               // Durak (6,3) -> Aydin otobusle gelir
 	case 54: Shot(TEXT("L3_4_aydin_geldi")); break;
-	case 55: PlaceHomeFor(2, -150.f, -150.f, 0); break;      // Aydin evi (3,3)
-	case 56: Place(4, -100.f, -150.f, 0); break;             // yol (4,3)
+	case 55: PlaceHomeFor(2, -200.f, -150.f, 0); break;      // Aydin evi (2,3)
+	case 56: Place(4, -150.f, -150.f, 0); break;             // yol (3,3)
 	case 74: Shot(TEXT("L3_5_tamamlandi")); RotateView(-1); break;
 	case 77: Shot(TEXT("L3_6_cevrildi")); SLSaat(21.f); break;
 	case 79: Shot(TEXT("L3_7_gece")); break;

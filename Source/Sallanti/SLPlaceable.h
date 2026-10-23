@@ -135,6 +135,40 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
 	FLinearColor AccentColor = FLinearColor(0.30f, 0.72f, 0.70f);
 
+	// --- Cozy ayrintilar (23 Eki): pencere cercevesi, panjur, cicek kutusu, cizgili tente, fener ---
+
+	/** Pencere cercevesi, kayitlar, cati kornisi: krem beyaz. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
+	FLinearColor TrimColor = FLinearColor(1.f, 0.97f, 0.90f);
+
+	/** Ev panjurlari. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
+	FLinearColor ShutterColor = FLinearColor(0.42f, 0.66f, 0.62f);
+
+	/** Cicek kutusu ve saksi. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
+	FLinearColor PlanterColor = FLinearColor(0.78f, 0.52f, 0.38f);
+
+	/** Hastanenin besik catisi (evinki RoofColor). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
+	FLinearColor HospitalRoofColor = FLinearColor(0.45f, 0.70f, 0.72f);
+
+	/** Cicekler: kutularda ve saksilarda sirayla. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
+	TArray<FLinearColor> FlowerColors = { FLinearColor(0.98f, 0.55f, 0.60f), FLinearColor(1.f, 0.85f, 0.35f), FLinearColor(0.80f, 0.60f, 0.95f) };
+
+	/** AVM dukkan tenteleri: her dukkan bir renk, krem ile serit serit. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
+	TArray<FLinearColor> AwningColors = { FLinearColor(0.93f, 0.45f, 0.42f), FLinearColor(0.30f, 0.72f, 0.70f), FLinearColor(0.98f, 0.78f, 0.35f) };
+
+	/** Tente seridi sayisi (dukkan basina). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme", meta = (ClampMin = "2", ClampMax = "12"))
+	int32 AwningStripes = 6;
+
+	/** Fener ve direk rengi. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Susleme")
+	FLinearColor LampPostColor = FLinearColor(0.25f, 0.38f, 0.36f);
+
 	/** Bos = olcekli gri kup. Modelcinin mesh'i verilirse olceklenmez; kapisi mesh'te, kod kapi cizmez. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sallanti|Nesne")
 	TObjectPtr<UStaticMesh> DisplayMesh;
@@ -312,13 +346,32 @@ private:
 
 	void BuildEntrance();
 	void BuildDecor();
+	void BuildHouseDecor();
+	void BuildHospitalDecor();
+	void BuildMallDecor();
 	void BuildStopDecor();
 	void BuildParkDecor();
 	void AddWindowPart(const FVector& Loc, const FVector& Size);
 	void ClearDecor();
 	UStaticMeshComponent* AddDecor(UStaticMesh* InMesh, const FVector& Loc, const FVector& SizeCm, const FLinearColor& Color, const FRotator& Rot = FRotator::ZeroRotator);
 	void AddCypress(const FVector& Base, float Height);
-	void AddWindowGrid(int32 Face, float Bottom, float Top, int32 Rows, int32 Cols, float WinW, float WinH, bool bSkipDoorColumn);
+	void AddWindowGrid(int32 Face, float Bottom, float Top, int32 Rows, int32 Cols, float WinW, float WinH, bool bSkipDoorColumn,
+		bool bFlowers = false, bool bShutters = false);
+
+	// Govde yuzleri: 0 +X (kapi), 1 +Y, 2 -X, 3 -Y. Along = yuz boyunca, Out = govde merkezinden disari.
+	FVector FaceLoc(int32 Face, float Along, float Out, float Z) const;
+	FVector FaceSize(int32 Face, float AlongSize, float OutSize, float H) const;
+	float FaceDepth(int32 Face) const;   // yuzun govde merkezine uzakligi
+	float FaceHalfLen(int32 Face) const; // yuzun yari boyu
+	/** Cerceveli pencere: cam (gece yanar), krem cerceve, dikey kayit; istenirse cicek kutusu ve panjur. */
+	void AddFramedWindow(int32 Face, float Along, float Z, float W, float H, bool bFlowers, bool bShutters);
+	/** Cizgili, one egik tente; on kenarinda yuvarlak firfirlar. ZTop = duvara bitistigi yukseklik. */
+	void AddAwning(int32 Face, float Along, float ZTop, float Width, float Depth, const FLinearColor& Color);
+	void AddPlanter(const FVector& Center, const FVector& Size, int32 Flowers);
+	void AddLamp(const FVector& Base, float Height);
+	void AddRoundTree(const FVector& Base, float Height);
+	/** Besik cati: govde boyunca 45 derece cevrilmis kup (alinlik) + iki cati levhasi. Mahya X boyunca. */
+	void AddGableRoof(float Top, const FLinearColor& Gable, const FLinearColor& Roof);
 	void BuildRoadLinks();
 	void BuildRoadShape();
 	UStaticMeshComponent* MakePart(const FLinearColor& Color, bool bForGhost, UStaticMesh* InMesh = nullptr);
