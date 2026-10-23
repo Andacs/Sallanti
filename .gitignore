@@ -7,6 +7,9 @@ Saved/
 *.slnx
 # paket ciktisi
 Build/Package/
+Build/Package_yeni/
+Build/Oyna/
+Build/Oyna.eski/
 Build/Windows/
 Build/*.log
 Build/Teslim/

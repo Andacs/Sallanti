@@ -96,6 +96,16 @@ deneme takılmadan önce ~19 dakikaya varmıştı; jam'de ilk paketi **en az 30 
 Teslim konfigürasyonu: **Shipping.** Çıktı: `Build\Package\Windows\Sallanti.exe` (boş proje 639 MB).
 14 Ekim'de paket açıldı, `L_Ana` ekranda görüldü.
 
+**Otomatik build (23 Ekim, Yiğit):** her commit ve pull'dan sonra Git hook'u `Tools/otomatik_build.sh`'i
+arka planda başlatır: editör açıksa kapanmasını bekler, `Build\paketle.bat Build\Package_yeni` ile paketler,
+başarılıysa `Build\Oyna`'ya koyar (oyun açıksa kapanmasını bekler) ve Windows bildirimi verir. Masaüstünde
+"Sallanti (son build)" kısayolu hep `Build\Oyna\Sallanti.exe`'yi açar; hangi commit olduğu
+`Build\Oyna\BUILD_BILGISI.txt`'de. Üst üste commit'te yalnız sonuncusu paketlenir; log 10 dk yazılmazsa
+paket durdurulur. Günlük `Saved/otobuild.log`, paket logu `Saved/otobuild_paket.log`. Kurulum (makine başına,
+hook'lar repoyla gelmez): `bash Tools/otomatik_build_kur.sh` (`kaldir` ile söker). Tek seferlik atlamak:
+`OTOBUILD=0 git commit ...`. Paket çalışma kopyasından alınır: kaydedilmemiş değişiklik varsa bilgi dosyası söyler.
+Teslim paketi ayrı kalır (`Build\Package`, `Tools/teslim_hazirla.sh`).
+
 **XGE kapalı tutulmalı.** `Sallanti.uproject`'te `XGEController` eklentisi kapalı,
 `DefaultEngine.ini`'de `r.XGEShaderCompile=0`. Açıkken cook işini bitirip kapanışta
 "Exiting ShaderCompilingThread" satırında **2,5 saat asılı kaldı**; logdaki tek iz
