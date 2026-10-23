@@ -7,7 +7,8 @@
 # - .git/hooks/post-commit ve post-merge'e (Git LFS satirlarinin altina) Tools/otomatik_build_baslat.ps1
 #   cagrisini ekler: her commit ve pull'dan sonra Tools/otomatik_build.sh arka planda paketler.
 #   Tek seferlik atlamak icin: OTOBUILD=0 git commit ...
-# - Masaustune "Sallanti (son build)" kisayolu: Build\Oyna\Sallanti.exe.
+# - Masaustune "Sallanti (son build)" kisayolu: Tools/son_build_ac.ps1 (build varsa Build\Oyna\Sallanti.exe'yi
+#   acar, yoksa hazirlandigini soyler).
 # Hook'lar repoyla paylasilmaz (.git/hooks); her ekip uyesi isterse kendisi kurar.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -36,8 +37,11 @@ if [ "${1:-}" != kaldir ]; then
   powershell.exe -NoProfile -Command "
     \$Masaustu = [Environment]::GetFolderPath('Desktop');
     \$K = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path \$Masaustu 'Sallanti (son build).lnk'));
-    \$K.TargetPath = '$(cygpath -w "$ROOT/Build/Oyna/Sallanti.exe")';
-    \$K.WorkingDirectory = '$(cygpath -w "$ROOT/Build/Oyna")';
+    \$K.TargetPath = 'powershell.exe';
+    \$K.Arguments = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"$(cygpath -w "$ROOT/Tools/son_build_ac.ps1")\"';
+    \$K.WorkingDirectory = '$(cygpath -w "$ROOT")';
+    \$K.IconLocation = '$(cygpath -w "$ROOT/Build/Oyna/Sallanti.exe"),0';
+    \$K.WindowStyle = 7;
     \$K.Description = 'Sallanti: son commitin oynanabilir paketi (Tools/otomatik_build.sh)';
     \$K.Save();
     Write-Output ('kisayol: ' + (Join-Path \$Masaustu 'Sallanti (son build).lnk'))"

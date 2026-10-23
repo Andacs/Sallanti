@@ -99,8 +99,11 @@ Teslim konfigürasyonu: **Shipping.** Çıktı: `Build\Package\Windows\Sallanti.
 **Otomatik build (23 Ekim, Yiğit):** her commit ve pull'dan sonra Git hook'u `Tools/otomatik_build.sh`'i
 arka planda başlatır: editör açıksa kapanmasını bekler, `Build\paketle.bat Build\Package_yeni` ile paketler,
 başarılıysa `Build\Oyna`'ya koyar (oyun açıksa kapanmasını bekler) ve Windows bildirimi verir. Masaüstünde
-"Sallanti (son build)" kısayolu hep `Build\Oyna\Sallanti.exe`'yi açar; hangi commit olduğu
-`Build\Oyna\BUILD_BILGISI.txt`'de. Üst üste commit'te yalnız sonuncusu paketlenir; log 10 dk yazılmazsa
+"Sallanti (son build)" kısayolu `Tools/son_build_ac.ps1` üzerinden `Build\Oyna\Sallanti.exe`'yi açar (build henüz
+yoksa ya da yerine konuyorsa "hazırlanıyor" der; ilk denemede kısayol doğrudan exe'ye bakıyordu ve ilk
+paket bitmeden "Eksik Kısayol" hatası verdi). Hangi commit olduğu `Build\Oyna\BUILD_BILGISI.txt`'de.
+İlk otomatik paket 8 dk 26 sn sürdü (yeni süsler için shader derlemesi); açılan oyun introsuz doğrudan
+ana menüye geldi (pencere görüntüsü, 4. sn). Üst üste commit'te yalnız sonuncusu paketlenir; log 10 dk yazılmazsa
 paket durdurulur. Günlük `Saved/otobuild.log`, paket logu `Saved/otobuild_paket.log`. Kurulum (makine başına,
 hook'lar repoyla gelmez): `bash Tools/otomatik_build_kur.sh` (`kaldir` ile söker). Tek seferlik atlamak:
 `OTOBUILD=0 git commit ...`. Paket çalışma kopyasından alınır: kaydedilmemiş değişiklik varsa bilgi dosyası söyler.
